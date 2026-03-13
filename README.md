@@ -34,6 +34,7 @@
 | 👀 **Maid Gaze** | Your maid turns to look at you during the kiss |
 | ⏱️ **Tiered Cooldown** | Cooldown decreases as maid favorability rises: 5s → 3s → 1s → 0s |
 | 🎥 **Zero-Distance Camera** | Camera smoothly zooms into the maid's face on kiss — true face-to-face close-up |
+| 💞 **Romantic Particle System v2** | Hearts now emit in timed bursts with configurable shapes (RING/HALO/SPIRAL), reducing face occlusion while keeping a dreamy look |
 
 ### 🤲 Princess-Carry Kiss Key
 
@@ -89,6 +90,12 @@ All values are tunable in `config/touhou_maid_affection-common.toml`:
   - `carriedSideOffset` (default `0.48`)
   - `carriedForwardOffset` (default `0.16`)
   - `carriedVerticalOffset` (default `-0.10`)
+- Advanced particle controls:
+  - anti-occlusion anchor tuning: `offsetY`, `forwardOffset`, `avoidViewStrength`
+  - geometry + motion: `shapeMode`, `spreadRadius`, `upwardSpeed`, `radialSpeed`, `swirlSpeed`
+  - timing: `phaseBursts`, `phaseIntervalTicks`, `phaseRamp`
+  - size simulation: `clusterCopies`, `clusterJitter`
+  - romantic accents: `accentEnabled`, `accentType`, `accentChance`, `favorabilityColorAccent`
 - Particle counts
 
 ## 📥 Installation

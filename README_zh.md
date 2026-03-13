@@ -34,6 +34,7 @@
 | 👀 **女仆凝视** | 亲吻时女仆会转头看向你 |
 | ⏱️ **分级冷却** | 冷却时间随好感度等级降低：5秒 → 3秒 → 1秒 → 0秒 |
 | 🎥 **零距离镜头** | 亲吻时镜头平滑推近到女仆面前——真正的面对面特写 |
+| 💞 **浪漫粒子系统 v2** | 爱心改为分阶段生成并支持 RING/HALO/SPIRAL 形态，可减少遮脸、提升氛围感 |
 
 ### 🤲 公主抱亲吻按键
 
@@ -89,6 +90,12 @@
   - `carriedSideOffset`（默认 `0.48`）
   - `carriedForwardOffset`（默认 `0.16`）
   - `carriedVerticalOffset`（默认 `-0.10`）
+- 进阶粒子控制参数：
+  - 防遮挡锚点：`offsetY`、`forwardOffset`、`avoidViewStrength`
+  - 空间与运动：`shapeMode`、`spreadRadius`、`upwardSpeed`、`radialSpeed`、`swirlSpeed`
+  - 时间节奏：`phaseBursts`、`phaseIntervalTicks`、`phaseRamp`
+  - 大小模拟：`clusterCopies`、`clusterJitter`
+  - 浪漫陪衬：`accentEnabled`、`accentType`、`accentChance`、`favorabilityColorAccent`
 - 粒子数量
 
 ## 📥 安装
