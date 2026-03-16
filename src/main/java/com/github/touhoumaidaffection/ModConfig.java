@@ -1,6 +1,9 @@
 package com.github.touhoumaidaffection;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraft.util.Mth;
+
+import java.util.Locale;
 
 public class ModConfig {
     public static final ForgeConfigSpec SPEC;
@@ -28,6 +31,36 @@ public class ModConfig {
     // Particles
     public static final ForgeConfigSpec.IntValue PARTICLE_COUNT_MIN;
     public static final ForgeConfigSpec.IntValue PARTICLE_COUNT_EXTRA;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_OFFSET_Y;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_SPREAD_RADIUS;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_FORWARD_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_AVOID_VIEW_STRENGTH;
+    public static final ForgeConfigSpec.ConfigValue<String> PARTICLE_SHAPE_MODE;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_UPWARD_SPEED;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_RADIAL_SPEED;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_SWIRL_SPEED;
+    public static final ForgeConfigSpec.IntValue PARTICLE_PHASE_BURSTS;
+    public static final ForgeConfigSpec.IntValue PARTICLE_PHASE_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.ConfigValue<String> PARTICLE_PHASE_RAMP;
+    public static final ForgeConfigSpec.IntValue PARTICLE_CLUSTER_COPIES;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_CLUSTER_JITTER;
+    public static final ForgeConfigSpec.BooleanValue PARTICLE_ACCENT_ENABLED;
+    public static final ForgeConfigSpec.ConfigValue<String> PARTICLE_ACCENT_TYPE;
+    public static final ForgeConfigSpec.DoubleValue PARTICLE_ACCENT_CHANCE;
+    public static final ForgeConfigSpec.BooleanValue PARTICLE_FAVORABILITY_COLOR_ACCENT;
+    public static final ForgeConfigSpec.ConfigValue<String> PARTICLE_ACCENT_COLOR_MODE;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_SOLID_R;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_SOLID_G;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_SOLID_B;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_SOLID_A;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_START_R;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_START_G;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_START_B;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_START_A;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_R;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_G;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_B;
+    public static final ForgeConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_A;
 
     // FOV zoom
     public static final ForgeConfigSpec.BooleanValue FOV_ZOOM_ENABLED;
@@ -132,6 +165,99 @@ public class ModConfig {
                 .comment("Extra random particles (total = min + random(0..extra)) (default: 4)")
                 .defineInRange("extraRandom", 4, 0, 50);
 
+        PARTICLE_OFFSET_Y = builder
+                .comment("Vertical offset applied to particle anchor to avoid covering faces (default: 0.12)")
+                .defineInRange("offsetY", 0.12, -1.0, 2.5);
+
+        PARTICLE_SPREAD_RADIUS = builder
+                .comment("Horizontal spread radius of the particle field (default: 0.18)")
+                .defineInRange("spreadRadius", 0.18, 0.0, 2.0);
+
+        PARTICLE_FORWARD_OFFSET = builder
+                .comment("Forward offset of the particle anchor along player->maid direction (default: 0.45)")
+                .defineInRange("forwardOffset", 0.45, -1.0, 1.0);
+
+        PARTICLE_AVOID_VIEW_STRENGTH = builder
+                .comment("How strongly particles avoid the center line of sight (default: 0.0)")
+                .defineInRange("avoidViewStrength", 0.0, 0.0, 2.0);
+
+        PARTICLE_SHAPE_MODE = builder
+                .comment("Particle spatial mode: RING | HALO | SPIRAL (default: SPIRAL)")
+                .define("shapeMode", ParticleShapeMode.SPIRAL.name());
+
+        PARTICLE_UPWARD_SPEED = builder
+                .comment("Base upward speed of particles (default: 0.08)")
+                .defineInRange("upwardSpeed", 0.08, -0.2, 1.0);
+
+        PARTICLE_RADIAL_SPEED = builder
+                .comment("Base radial expansion speed from anchor (default: 0.0)")
+                .defineInRange("radialSpeed", 0.0, -0.3, 0.3);
+
+        PARTICLE_SWIRL_SPEED = builder
+                .comment("Tangential swirl speed component, useful for spiral feeling (default: 0.0)")
+                .defineInRange("swirlSpeed", 0.0, -2.0, 2.0);
+
+        PARTICLE_PHASE_BURSTS = builder
+                .comment("How many timed burst phases a kiss emits (default: 5)")
+                .defineInRange("phaseBursts", 5, 1, 12);
+
+        PARTICLE_PHASE_INTERVAL_TICKS = builder
+                .comment("Interval between burst phases in ticks (default: 2)")
+                .defineInRange("phaseIntervalTicks", 2, 1, 20);
+
+        PARTICLE_PHASE_RAMP = builder
+                .comment("Burst count ramp mode: EASE_IN | UNIFORM (default: EASE_IN)")
+                .define("phaseRamp", ParticlePhaseRamp.EASE_IN.name());
+
+        PARTICLE_CLUSTER_COPIES = builder
+                .comment("Extra micro-copies per logical heart to simulate larger size (default: 1)")
+                .defineInRange("clusterCopies", 1, 0, 8);
+
+        PARTICLE_CLUSTER_JITTER = builder
+                .comment("Jitter radius used for heart cluster size simulation (default: 0.03)")
+                .defineInRange("clusterJitter", 0.03, 0.0, 0.3);
+
+        PARTICLE_ACCENT_ENABLED = builder
+                .comment("Enable subtle accent particles (DUST/GLOW) to enrich atmosphere (default: true)")
+                .define("accentEnabled", true);
+
+        PARTICLE_ACCENT_TYPE = builder
+                .comment("Accent particle type: NONE | DUST | GLOW (default: GLOW)")
+                .define("accentType", ParticleAccentType.GLOW.name());
+
+        PARTICLE_ACCENT_CHANCE = builder
+                .comment("Chance per logical particle to spawn an accent particle (default: 0.7)")
+                .defineInRange("accentChance", 0.7, 0.0, 1.0);
+
+        PARTICLE_FAVORABILITY_COLOR_ACCENT = builder
+                .comment("When true, accent color can shift with maid favorability (default: true)")
+                .define("favorabilityColorAccent", true);
+
+        PARTICLE_ACCENT_COLOR_MODE = builder
+                .comment("Accent color mode for DUST accent particles: FAVORABILITY | SOLID | GRADIENT (default: FAVORABILITY)")
+                .define("accentColorMode", ParticleAccentColorMode.FAVORABILITY.name());
+
+        builder.comment("Solid accent color RGBA (0..255)").push("accentSolidRgba");
+        PARTICLE_ACCENT_SOLID_R = builder.defineInRange("r", 255, 0, 255);
+        PARTICLE_ACCENT_SOLID_G = builder.defineInRange("g", 166, 0, 255);
+        PARTICLE_ACCENT_SOLID_B = builder.defineInRange("b", 204, 0, 255);
+        PARTICLE_ACCENT_SOLID_A = builder.defineInRange("a", 220, 0, 255);
+        builder.pop();
+
+        builder.comment("Gradient accent color start RGBA (0..255)").push("accentGradientStartRgba");
+        PARTICLE_ACCENT_GRADIENT_START_R = builder.defineInRange("r", 255, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_START_G = builder.defineInRange("g", 204, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_START_B = builder.defineInRange("b", 224, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_START_A = builder.defineInRange("a", 200, 0, 255);
+        builder.pop();
+
+        builder.comment("Gradient accent color end RGBA (0..255)").push("accentGradientEndRgba");
+        PARTICLE_ACCENT_GRADIENT_END_R = builder.defineInRange("r", 255, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_END_G = builder.defineInRange("g", 118, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_END_B = builder.defineInRange("b", 170, 0, 255);
+        PARTICLE_ACCENT_GRADIENT_END_A = builder.defineInRange("a", 230, 0, 255);
+        builder.pop();
+
         builder.pop();
 
         builder.comment("FOV zoom effect on kiss",
@@ -173,5 +299,57 @@ public class ModConfig {
         builder.pop();
 
         SPEC = builder.build();
+    }
+
+    public static ParticleShapeMode getParticleShapeMode() {
+        return parseEnum(PARTICLE_SHAPE_MODE.get(), ParticleShapeMode.SPIRAL);
+    }
+
+    public static ParticlePhaseRamp getParticlePhaseRamp() {
+        return parseEnum(PARTICLE_PHASE_RAMP.get(), ParticlePhaseRamp.EASE_IN);
+    }
+
+    public static ParticleAccentType getParticleAccentType() {
+        return parseEnum(PARTICLE_ACCENT_TYPE.get(), ParticleAccentType.GLOW);
+    }
+
+    public static ParticleAccentColorMode getParticleAccentColorMode() {
+        return parseEnum(PARTICLE_ACCENT_COLOR_MODE.get(), ParticleAccentColorMode.FAVORABILITY);
+    }
+
+    private static <E extends Enum<E>> E parseEnum(String raw, E fallback) {
+        if (raw == null || raw.isBlank()) {
+            return fallback;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Class<E> enumClass = (Class<E>) fallback.getDeclaringClass();
+            return Enum.valueOf(enumClass, raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return fallback;
+        }
+    }
+
+    public enum ParticleShapeMode {
+        RING,
+        HALO,
+        SPIRAL
+    }
+
+    public enum ParticlePhaseRamp {
+        EASE_IN,
+        UNIFORM
+    }
+
+    public enum ParticleAccentType {
+        NONE,
+        DUST,
+        GLOW
+    }
+
+    public enum ParticleAccentColorMode {
+        FAVORABILITY,
+        SOLID,
+        GRADIENT
     }
 }
