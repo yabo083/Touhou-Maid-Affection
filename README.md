@@ -21,6 +21,11 @@
 
 ---
 
+## 🆕 1.6.1 Fixes
+
+- Fixed an issue where kissing could be incorrectly blocked after switching to another save without restarting the game.
+- Kiss cooldown state is now isolated per world/server session, so saves no longer affect each other.
+
 ## ✨ Features
 
 ### 💋 Kiss System

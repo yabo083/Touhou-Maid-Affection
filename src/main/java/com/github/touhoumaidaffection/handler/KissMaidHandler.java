@@ -3,23 +3,26 @@ package com.github.touhoumaidaffection.handler;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.ModSounds;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
 
 public class KissMaidHandler {
 
-    private static final Map<UUID, Long> COOLDOWNS = new HashMap<>();
-    private static final Map<UUID, List<Long>> KISS_TIMESTAMPS = new HashMap<>();
+    private static final Map<MinecraftServer, SessionState> SESSION_STATES = new IdentityHashMap<>();
 
     private static Boolean carryOnLoaded = null;
 
@@ -80,19 +83,61 @@ public class KissMaidHandler {
         }
     }
 
-    private static boolean executeKiss(Player player, EntityMaid maid) {
-        // Tiered cooldown check based on maid's favorability level
-        long currentTick = player.level().getGameTime();
-        int favLevel = maid.getFavorabilityManager().getLevel();
-        long cooldown = getCooldownForLevel(favLevel);
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        Player player = event.getEntity();
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
 
-        Long lastKiss = COOLDOWNS.get(player.getUUID());
-        if (cooldown > 0 && lastKiss != null && (currentTick - lastKiss) < cooldown) {
+        SessionState sessionState = SESSION_STATES.get(server);
+        if (sessionState == null) {
+            return;
+        }
+
+        UUID playerId = player.getUUID();
+        sessionState.cooldowns.remove(playerId);
+        sessionState.kissTimestamps.remove(playerId);
+        if (sessionState.isEmpty()) {
+            SESSION_STATES.remove(server);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        SESSION_STATES.remove(event.getServer());
+    }
+
+    private static boolean executeKiss(Player player, EntityMaid maid) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
             return false;
         }
 
+        SessionState sessionState = SESSION_STATES.computeIfAbsent(server, k -> new SessionState());
+
+        // Tiered cooldown check based on maid's favorability level
+        long currentTick = server.getTickCount();
+        int favLevel = maid.getFavorabilityManager().getLevel();
+        long cooldown = getCooldownForLevel(favLevel);
+
+        UUID playerId = player.getUUID();
+        Long lastKiss = sessionState.cooldowns.get(playerId);
+        if (lastKiss != null) {
+            long delta = currentTick - lastKiss;
+            if (delta < 0) {
+                TouhouMaidAffection.LOGGER.debug("Detected tick rollback for player {} (current: {}, last: {}), resetting kiss state.",
+                        playerId, currentTick, lastKiss);
+                sessionState.cooldowns.remove(playerId);
+                sessionState.kissTimestamps.remove(playerId);
+            } else if (cooldown > 0 && delta < cooldown) {
+                return false;
+            }
+        }
+
         // Record cooldown
-        COOLDOWNS.put(player.getUUID(), currentTick);
+        sessionState.cooldowns.put(playerId, currentTick);
 
         // Apply favorability (dynamic Type with configured values)
         int favPoints = ModConfig.FAVORABILITY_POINTS.get();
@@ -117,7 +162,7 @@ public class KissMaidHandler {
 
         // Buff system: track kiss timestamps and check threshold
         if (ModConfig.BUFF_ENABLED.get()) {
-            handleBuffTrigger(player, maid, currentTick, favLevel);
+            handleBuffTrigger(sessionState, player, maid, currentTick, favLevel);
         }
         return true;
     }
@@ -131,12 +176,12 @@ public class KissMaidHandler {
         };
     }
 
-    private static void handleBuffTrigger(Player player, EntityMaid maid, long currentTick, int favLevel) {
+    private static void handleBuffTrigger(SessionState sessionState, Player player, EntityMaid maid, long currentTick, int favLevel) {
         UUID playerId = player.getUUID();
         int threshold = ModConfig.BUFF_KISS_THRESHOLD.get();
         long window = ModConfig.BUFF_KISS_WINDOW.get();
 
-        List<Long> timestamps = KISS_TIMESTAMPS.computeIfAbsent(playerId, k -> new ArrayList<>());
+        List<Long> timestamps = sessionState.kissTimestamps.computeIfAbsent(playerId, k -> new ArrayList<>());
         timestamps.add(currentTick);
 
         // Remove timestamps outside the window
@@ -154,6 +199,15 @@ public class KissMaidHandler {
                     ModEffects.MAIDS_PRAYER.getDelegate(), duration, amplifier, false, true, true));
             maid.addEffect(new MobEffectInstance(
                     ModEffects.MAIDS_PRAYER.getDelegate(), duration, amplifier, false, true, true));
+        }
+    }
+
+    private static final class SessionState {
+        private final Map<UUID, Long> cooldowns = new HashMap<>();
+        private final Map<UUID, List<Long>> kissTimestamps = new HashMap<>();
+
+        private boolean isEmpty() {
+            return cooldowns.isEmpty() && kissTimestamps.isEmpty();
         }
     }
 }

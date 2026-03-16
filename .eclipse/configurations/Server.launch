@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+    <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="touhou-maid-affection"></stringAttribute>
+    <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.neoforged.devlaunch.Main"></stringAttribute>
+    <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value=" &quot;@E:\\Codes\\MC\\Touhou Maid Affection\\build\\moddev\\serverRunProgramArgs.txt&quot;"></stringAttribute>
+    <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value=" &quot;@E:\\Codes\\MC\\Touhou Maid Affection\\build\\moddev\\serverRunVmArgs.txt&quot; &quot;-Dfml.modFolders=touhou_maid_affection%%E:\\Codes\\MC\\Touhou Maid Affection\\bin\\main&quot;"></stringAttribute>
+    <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="E:\Codes\MC\Touhou Maid Affection\run\server"></stringAttribute>
+    <booleanAttribute key="org.eclipse.jdt.launching.STOP_IN_MAIN" value="false"></booleanAttribute>
+    <booleanAttribute key="org.eclipse.jdt.launching.ATTR_ATTR_USE_ARGFILE" value="false"></booleanAttribute>
+</launchConfiguration>
