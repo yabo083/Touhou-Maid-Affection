@@ -33,3 +33,4 @@ desktop.ini
 # Source audio files (only OGG needed)
 src/main/resources/kissSound/
 .github/agent.md
+PLAN-1.7.0.md
