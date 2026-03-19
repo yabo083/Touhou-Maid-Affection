@@ -97,7 +97,7 @@ public class KissMaidHandler {
         }
 
         UUID playerId = player.getUUID();
-        sessionState.cooldowns.remove(playerId);
+        sessionState.cooldownsByPlayerAndMaid.remove(playerId);
         sessionState.kissTimestamps.remove(playerId);
         if (sessionState.isEmpty()) {
             SESSION_STATES.remove(server);
@@ -123,13 +123,15 @@ public class KissMaidHandler {
         long cooldown = getCooldownForLevel(favLevel);
 
         UUID playerId = player.getUUID();
-        Long lastKiss = sessionState.cooldowns.get(playerId);
+        UUID maidId = maid.getUUID();
+        Map<UUID, Long> playerCooldowns = sessionState.cooldownsByPlayerAndMaid.computeIfAbsent(playerId, k -> new HashMap<>());
+        Long lastKiss = playerCooldowns.get(maidId);
         if (lastKiss != null) {
             long delta = currentTick - lastKiss;
             if (delta < 0) {
-                TouhouMaidAffection.LOGGER.debug("Detected tick rollback for player {} (current: {}, last: {}), resetting kiss state.",
-                        playerId, currentTick, lastKiss);
-                sessionState.cooldowns.remove(playerId);
+                TouhouMaidAffection.LOGGER.debug("Detected tick rollback for player {} maid {} (current: {}, last: {}), resetting kiss state.",
+                        playerId, maidId, currentTick, lastKiss);
+                sessionState.cooldownsByPlayerAndMaid.remove(playerId);
                 sessionState.kissTimestamps.remove(playerId);
             } else if (cooldown > 0 && delta < cooldown) {
                 return false;
@@ -137,7 +139,7 @@ public class KissMaidHandler {
         }
 
         // Record cooldown
-        sessionState.cooldowns.put(playerId, currentTick);
+        playerCooldowns.put(maidId, currentTick);
 
         // Apply favorability (dynamic Type with configured values)
         int favPoints = ModConfig.FAVORABILITY_POINTS.get();
@@ -203,11 +205,11 @@ public class KissMaidHandler {
     }
 
     private static final class SessionState {
-        private final Map<UUID, Long> cooldowns = new HashMap<>();
+        private final Map<UUID, Map<UUID, Long>> cooldownsByPlayerAndMaid = new HashMap<>();
         private final Map<UUID, List<Long>> kissTimestamps = new HashMap<>();
 
         private boolean isEmpty() {
-            return cooldowns.isEmpty() && kissTimestamps.isEmpty();
+            return cooldownsByPlayerAndMaid.isEmpty() && kissTimestamps.isEmpty();
         }
     }
 }

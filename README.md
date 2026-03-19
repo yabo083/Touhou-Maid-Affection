@@ -25,6 +25,7 @@
 
 - Fixed an issue where kissing could be incorrectly blocked after switching to another save without restarting the game.
 - Kiss cooldown state is now isolated per world/server session, so saves no longer affect each other.
+- Kiss cooldown is now tracked per maid, so one maid's cooldown no longer blocks kissing other maids.
 
 ## ✨ Features
 
@@ -88,6 +89,7 @@ Sneak + Main Hand Empty + Offhand Holding Any Item + Right-click maid
 
 All values are tunable in `config/touhou_maid_affection-common.toml`:
 - Kiss cooldown per favorability level
+- Kiss camera timing: adjust only `fov.zoomInTicks`, `fov.holdTicks`, `fov.zoomOutTicks`
 - Favorability points and cooldown
 - Maid's Prayer thresholds, duration, regen amplifiers
 - FOV zoom strength and timing
