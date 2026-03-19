@@ -50,6 +50,18 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     }
 
     @Override
+    protected void init() {
+        if (maid == null || !isBondUnlocked()) {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (minecraft.player != null) {
+                minecraft.player.closeContainer();
+            }
+            return;
+        }
+        super.init();
+    }
+
+    @Override
     protected void renderBg(GuiGraphics graphics, float partialTicks, int x, int y) {
         super.renderBg(graphics, partialTicks, x, y);
         renderBondPageBackground(graphics);

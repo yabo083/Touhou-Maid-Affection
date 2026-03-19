@@ -9,6 +9,7 @@ import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.client.screen.BondMaidContainerScreen;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -35,13 +36,14 @@ public final class BondMaidGuiTabHandler {
             return;
         }
 
+        boolean unlocked = isBondUnlocked(maid);
         if (gui instanceof BondMaidContainerScreen) {
             BondTabButton tabButton = new BondTabButton(
                     event.getLeftPos() + TAB_X_OFFSET,
                     event.getTopPos() + TAB_Y_OFFSET,
                     TAB_ICON_U,
-                    button -> {
-                    }
+                    button -> { },
+                    true
             );
             tabButton.active = false;
             event.addButton(TAB_BUTTON_NAME, tabButton);
@@ -52,9 +54,9 @@ public final class BondMaidGuiTabHandler {
                 event.getLeftPos() + TAB_X_OFFSET,
                 event.getTopPos() + TAB_Y_OFFSET,
                 TAB_ICON_U,
-                button -> openBondTab(gui, maid)
+                button -> openBondTab(gui, maid),
+                unlocked
         );
-        tabButton.active = isBondUnlocked(maid);
         event.addButton(TAB_BUTTON_NAME, tabButton);
     }
 
@@ -77,14 +79,49 @@ public final class BondMaidGuiTabHandler {
     }
 
     private static final class BondTabButton extends MaidTabButton {
-        private BondTabButton(int x, int y, int left, OnPress onPress) {
+        private final boolean unlocked;
+
+        private BondTabButton(int x, int y, int left, OnPress onPress, boolean unlocked) {
             super(x, y, left, "bond", onPress);
+            this.unlocked = unlocked;
         }
 
         @Override
         public void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+            if (!unlocked) {
+                graphics.setColor(0.45f, 0.45f, 0.45f, 1.0f);
+                graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+                graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+                if (isHovered()) {
+                    graphics.fill(getX() + 1, getY() + 1, getX() + width - 1, getY() + height - 1, 0x18000000);
+                }
+                return;
+            }
+
             super.renderWidget(graphics, mouseX, mouseY, partialTicks);
             graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+        }
+
+        @Override
+        public boolean isTooltipHovered() {
+            return this.isHovered();
+        }
+
+        @Override
+        public void renderTooltip(net.minecraft.client.gui.GuiGraphics graphics, Minecraft mc, int mouseX, int mouseY) {
+            if (unlocked) {
+                super.renderTooltip(graphics, mc, mouseX, mouseY);
+                return;
+            }
+            graphics.renderComponentTooltip(
+                    mc.font,
+                    java.util.List.of(
+                            Component.translatable("gui.touhou_little_maid.button.bond"),
+                            Component.translatable("bond.unlock.requirement", BondConfig.DEFAULT_UNLOCK_LEVEL)
+                    ),
+                    mouseX,
+                    mouseY
+            );
         }
     }
 }
