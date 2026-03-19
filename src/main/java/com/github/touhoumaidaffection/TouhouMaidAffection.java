@@ -1,8 +1,11 @@
 package com.github.touhoumaidaffection;
 
+import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.client.KissClientHandler;
+import com.github.touhoumaidaffection.handler.BondAbilityActivateHandler;
 import com.github.touhoumaidaffection.handler.KissCarryRequestHandler;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
+import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
 import net.neoforged.bus.api.IEventBus;
@@ -35,6 +38,8 @@ public class TouhouMaidAffection {
         // Register game event handlers on NeoForge bus
         NeoForge.EVENT_BUS.register(KissMaidHandler.class);
 
+        BondAbilityManager.registerDefaults();
+
         LOGGER.info("Touhou Maid: Affection loaded! Now you can kiss your maid~");
     }
 
@@ -49,6 +54,11 @@ public class TouhouMaidAffection {
                 KissCarryRequestPayload.TYPE,
                 KissCarryRequestPayload.STREAM_CODEC,
                 KissCarryRequestHandler::handle
+        );
+        registrar.playToServer(
+                BondActivateAbilityPayload.TYPE,
+                BondActivateAbilityPayload.STREAM_CODEC,
+                BondAbilityActivateHandler::handle
         );
     }
 }

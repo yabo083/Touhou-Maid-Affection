@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.bond.ability;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.touhoumaidaffection.ModConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
@@ -11,13 +12,13 @@ public class AbilityRandomGift implements IBondAbility {
     }
 
     @Override
-    public int getGemCost() {
-        return 80;
+    public int getPowerPointCost() {
+        return ModConfig.BOND_COST_RANDOM_GIFT.get();
     }
 
     @Override
     public boolean canActivate(Player player, EntityMaid maid) {
-        return false;
+        return true;
     }
 
     @Override

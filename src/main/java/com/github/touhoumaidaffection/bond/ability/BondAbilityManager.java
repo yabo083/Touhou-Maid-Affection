@@ -12,7 +12,7 @@ public final class BondAbilityManager {
     }
 
     public static void register(IBondAbility ability) {
-        ABILITIES.put(ability.getId(), ability);
+        ABILITIES.putIfAbsent(ability.getId(), ability);
     }
 
     public static IBondAbility getAbility(String id) {

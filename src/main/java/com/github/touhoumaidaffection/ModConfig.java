@@ -17,6 +17,13 @@ public class ModConfig {
     public static final ModConfigSpec.IntValue FAVORABILITY_POINTS;
     public static final ModConfigSpec.IntValue FAVORABILITY_COOLDOWN;
 
+    // Bond ability costs
+    public static final ModConfigSpec.IntValue BOND_COST_LAP_PILLOW;
+    public static final ModConfigSpec.IntValue BOND_COST_EMERGENCY_HEAL;
+    public static final ModConfigSpec.IntValue BOND_COST_MORNING_KISS;
+    public static final ModConfigSpec.IntValue BOND_COST_YSM_ACTION;
+    public static final ModConfigSpec.IntValue BOND_COST_RANDOM_GIFT;
+
     // Buff
     public static final ModConfigSpec.BooleanValue BUFF_ENABLED;
     public static final ModConfigSpec.IntValue BUFF_KISS_THRESHOLD;
@@ -107,6 +114,32 @@ public class ModConfig {
                 .comment("Favorability gain cooldown in ticks (default: 600 = 30 seconds)",
                          "This is separate from the interaction cooldown - prevents favorability farming")
                 .defineInRange("cooldownTicks", 600, 0, 72000);
+
+        builder.pop();
+
+        builder.comment("Bond ability P point costs",
+                        "Defaults are tuned for Touhou Little Maid's normal P point acquisition pace")
+               .push("bondCosts");
+
+        BOND_COST_LAP_PILLOW = builder
+                .comment("P point cost for Lap Pillow")
+                .defineInRange("lapPillow", 8, 0, 9999);
+
+        BOND_COST_EMERGENCY_HEAL = builder
+                .comment("P point cost for Emergency Heal")
+                .defineInRange("emergencyHeal", 3, 0, 9999);
+
+        BOND_COST_MORNING_KISS = builder
+                .comment("P point cost for Morning Kiss")
+                .defineInRange("morningKiss", 12, 0, 9999);
+
+        BOND_COST_YSM_ACTION = builder
+                .comment("P point cost for YSM Action")
+                .defineInRange("ysmAction", 16, 0, 9999);
+
+        BOND_COST_RANDOM_GIFT = builder
+                .comment("P point cost for Random Gift")
+                .defineInRange("randomGift", 6, 0, 9999);
 
         builder.pop();
 

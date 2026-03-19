@@ -1,5 +1,6 @@
 package com.github.touhoumaidaffection.handler;
 
+import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.ModSounds;
@@ -12,6 +13,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -63,6 +65,13 @@ public class KissMaidHandler {
             event.setCanceled(true);
             return;
         }
+
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+
+        int favorabilityLevel = maid.getFavorabilityManager().getLevel();
+        BondManager.setBondLevel(serverPlayer, maid.getUUID(), favorabilityLevel);
 
         if (executeKiss(player, maid)) {
             // Cancel to prevent opening the maid GUI when kiss succeeds
