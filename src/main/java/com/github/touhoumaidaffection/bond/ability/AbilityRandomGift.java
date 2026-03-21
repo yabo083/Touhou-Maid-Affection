@@ -17,12 +17,24 @@ public class AbilityRandomGift implements IBondAbility {
     }
 
     @Override
-    public boolean canActivate(Player player, EntityMaid maid) {
+    public boolean canUnlock(Player player, EntityMaid maid) {
         return true;
     }
 
     @Override
-    public void activate(Player player, EntityMaid maid) {
+    public void unlock(Player player, EntityMaid maid) {
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.github.touhoumaidaffection.bond.BondManager.initializeRandomGiftState(
+                    serverPlayer,
+                    maid.getUUID(),
+                    System.currentTimeMillis()
+            );
+        }
+    }
+
+    @Override
+    public Component getUnlockedButtonLabel() {
+        return Component.translatable("bond.random_gift.status.running");
     }
 
     @Override

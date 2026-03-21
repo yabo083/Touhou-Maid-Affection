@@ -72,6 +72,7 @@ public class KissMaidHandler {
 
         int favorabilityLevel = maid.getFavorabilityManager().getLevel();
         BondManager.setBondLevel(serverPlayer, maid.getUUID(), favorabilityLevel);
+        BondManager.syncMaidProfile(serverPlayer, maid);
 
         if (executeKiss(player, maid)) {
             // Cancel to prevent opening the maid GUI when kiss succeeds
@@ -90,6 +91,10 @@ public class KissMaidHandler {
                 return;
             }
         }
+    }
+
+    public static boolean performKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid);
     }
 
     @SubscribeEvent

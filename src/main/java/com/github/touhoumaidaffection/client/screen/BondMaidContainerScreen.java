@@ -6,8 +6,10 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
+import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
+import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -16,6 +18,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import java.util.ArrayList;
@@ -59,6 +62,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             return;
         }
         super.init();
+        PacketDistributor.sendToServer(new BondStateRequestPayload(maid.getUUID()));
     }
 
     @Override
@@ -161,6 +165,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
         try {
+            Player player = Minecraft.getInstance().player;
             int powerPoints = getPowerPointCount();
             boolean unlocked = isBondUnlocked();
 
@@ -171,7 +176,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
                     if (rowY + ROW_HEIGHT > bottom - 2) {
                         break;
                     }
-                    renderAbilityRow(graphics, font, abilities.get(i), powerPoints, unlocked, left + 2, rowY, mouseX, mouseY);
+                    renderAbilityRow(graphics, font, abilities.get(i), player, powerPoints, unlocked, left + 2, rowY, mouseX, mouseY);
                 }
             } finally {
                 graphics.disableScissor();
@@ -182,29 +187,42 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         }
     }
 
-    private void renderAbilityRow(GuiGraphics graphics, Font font, IBondAbility ability, int powerPoints, boolean unlocked,
+    private void renderAbilityRow(GuiGraphics graphics, Font font, IBondAbility ability, Player player, int powerPoints, boolean unlocked,
                                   int x, int y, int mouseX, int mouseY) {
         int rowRight = leftPos + PANEL_X_OFFSET + PANEL_WIDTH - 4;
         int rowBottom = y + ROW_HEIGHT - 1;
         graphics.fill(x, y, rowRight, rowBottom, 0x7F2F2F2F);
 
+        boolean abilityUnlocked = maid != null && BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
         boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
-        Component status = getStatusText(unlocked, enoughPowerPoint);
+        boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
+        Component status = getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary);
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
             title.withStyle(ChatFormatting.RED);
         }
         graphics.drawString(font, title, x + 4, y + 2, 0xFFE0E0E0, false);
-        graphics.drawString(font, Component.translatable("bond.power_point_cost", ability.getPowerPointCost()), x + 4, y + 10, 0xFF7AD5FF, false);
+        if (isRandomGiftAbility(ability) && abilityUnlocked) {
+            graphics.drawString(font, Component.translatable(
+                    "bond.random_gift.status.queue",
+                    BondClientStateCache.getQueuedGiftCount(maid.getUUID()),
+                    BondClientStateCache.getMaxQueuedGiftCount(maid.getUUID())
+            ), x + 4, y + 10, 0xFF7AD5FF, false);
+        } else if (!abilityUnlocked) {
+            graphics.drawString(font, Component.translatable("bond.power_point_cost", ability.getPowerPointCost()), x + 4, y + 10, 0xFF7AD5FF, false);
+        } else {
+            graphics.drawString(font, ability.getDescription(), x + 4, y + 10, 0xFFAFAFAF, false);
+        }
 
         int buttonX = rowRight - BTN_WIDTH - 4;
         int buttonY = y + 3;
-        int buttonColor = unlocked && enoughPowerPoint ? 0xFF4B4B4B : 0xFF2E2E2E;
+        boolean clickable = isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary);
+        int buttonColor = clickable ? 0xFF4B4B4B : 0xFF2E2E2E;
         graphics.fill(buttonX, buttonY, buttonX + BTN_WIDTH, buttonY + BTN_HEIGHT, buttonColor);
         graphics.fill(buttonX + 1, buttonY + 1, buttonX + BTN_WIDTH - 1, buttonY + BTN_HEIGHT - 1, 0xFF1F1F1F);
 
-        int statusColor = unlocked && enoughPowerPoint ? 0xFF79F079 : 0xFFFFC970;
+        int statusColor = clickable ? 0xFF79F079 : 0xFFFFC970;
         int statusX = buttonX + (BTN_WIDTH - font.width(status)) / 2;
         graphics.drawString(font, status, statusX, buttonY + 2, statusColor, false);
 
@@ -217,6 +235,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         if (maid == null || !isMouseInsidePanel(mouseX, mouseY)) {
             return false;
         }
+        Player player = Minecraft.getInstance().player;
         int powerPoints = getPowerPointCount();
         boolean unlocked = isBondUnlocked();
         int rowRight = leftPos + PANEL_X_OFFSET + PANEL_WIDTH - 4;
@@ -230,7 +249,10 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             int buttonY = rowY + 3;
             if (mouseX >= buttonX && mouseX < buttonX + BTN_WIDTH && mouseY >= buttonY && mouseY < buttonY + BTN_HEIGHT) {
                 IBondAbility ability = abilities.get(i);
-                if (unlocked && powerPoints >= ability.getPowerPointCost()) {
+                boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
+                boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
+                boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
+                if (isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)) {
                     PacketDistributor.sendToServer(new BondActivateAbilityPayload(ability.getId(), maid.getUUID()));
                 }
                 return true;
@@ -244,6 +266,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             return List.of();
         }
         boolean unlocked = isBondUnlocked();
+        Player player = Minecraft.getInstance().player;
         int powerPoints = getPowerPointCount();
         for (int i = 0; i < abilities.size(); i++) {
             int rowY = topPos + PANEL_Y_OFFSET + ROW_START_Y + i * ROW_SPACING;
@@ -252,12 +275,36 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
                 continue;
             }
             IBondAbility ability = abilities.get(i);
+            boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
             boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
+            boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
             List<Component> result = new ArrayList<>();
             result.add(ability.getDisplayName());
-            result.add(ability.getDescription().copy().withStyle(ChatFormatting.GRAY));
-            result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
-            result.add(getStatusText(unlocked, enoughPowerPoint).copy().withStyle(enoughPowerPoint ? ChatFormatting.GREEN : ChatFormatting.RED));
+            if (isRandomGiftAbility(ability) && abilityUnlocked) {
+                result.add(Component.translatable("bond.random_gift.desc.auto").withStyle(ChatFormatting.GRAY));
+                result.add(Component.translatable(
+                        "bond.random_gift.status.queue",
+                        BondClientStateCache.getQueuedGiftCount(maid.getUUID()),
+                        BondClientStateCache.getMaxQueuedGiftCount(maid.getUUID())
+                ).withStyle(ChatFormatting.AQUA));
+                int nextGiftReadySeconds = BondClientStateCache.getNextGiftReadySeconds(maid.getUUID());
+                if (nextGiftReadySeconds > 0) {
+                    result.add(Component.translatable(
+                            "bond.random_gift.status.next",
+                            formatRemainingDuration(nextGiftReadySeconds)
+                    ).withStyle(ChatFormatting.YELLOW));
+                }
+            } else {
+                result.add(ability.getDescription().copy().withStyle(ChatFormatting.GRAY));
+            }
+            if (!abilityUnlocked) {
+                result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
+            }
+            result.add(getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)
+                    .copy()
+                    .withStyle(isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)
+                            ? ChatFormatting.GREEN
+                            : ChatFormatting.RED));
             return result;
         }
         return List.of();
@@ -287,13 +334,49 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         return count;
     }
 
-    private Component getStatusText(boolean unlocked, boolean enoughPowerPoint) {
+    private Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUseSecondary) {
         if (!unlocked) {
             return Component.translatable("bond.locked");
         }
-        if (!enoughPowerPoint) {
-            return Component.translatable("bond.insufficient_power_point");
+        if (!abilityUnlocked) {
+            if (!enoughPowerPoint) {
+                return Component.translatable("bond.insufficient_power_point");
+            }
+            return Component.translatable("bond.unlock");
         }
-        return Component.translatable("bond.activate");
+        if (ability.hasSecondaryAction()) {
+            if (canUseSecondary) {
+                return ability.getSecondaryActionButtonLabel();
+            }
+            return ability.getUnlockedButtonLabel();
+        }
+        return ability.getUnlockedButtonLabel();
+    }
+
+    private boolean isButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUseSecondary) {
+        if (!unlocked) {
+            return false;
+        }
+        if (!abilityUnlocked) {
+            return enoughPowerPoint;
+        }
+        if (ability.hasSecondaryAction()) {
+            return canUseSecondary;
+        }
+        if (!enoughPowerPoint) {
+            return false;
+        }
+        return false;
+    }
+
+    private boolean isRandomGiftAbility(IBondAbility ability) {
+        return "random_gift".equals(ability.getId());
+    }
+
+    private String formatRemainingDuration(int totalSeconds) {
+        long safeSeconds = Math.max(0L, totalSeconds);
+        long minutes = safeSeconds / 60L;
+        long seconds = safeSeconds % 60L;
+        return String.format("%02d:%02d", minutes, seconds);
     }
 }

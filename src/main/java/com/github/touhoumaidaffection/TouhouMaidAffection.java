@@ -1,13 +1,21 @@
 package com.github.touhoumaidaffection;
 
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
+import com.github.touhoumaidaffection.client.BondClientPayloadHandler;
 import com.github.touhoumaidaffection.client.KissClientHandler;
 import com.github.touhoumaidaffection.handler.BondAbilityActivateHandler;
+import com.github.touhoumaidaffection.handler.BondStateRequestHandler;
 import com.github.touhoumaidaffection.handler.KissCarryRequestHandler;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
+import com.github.touhoumaidaffection.handler.LapPillowHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
+import com.github.touhoumaidaffection.network.BondStateRequestPayload;
+import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.network.LapPillowExitPayload;
+import com.github.touhoumaidaffection.network.LapPillowStartPayload;
+import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -59,6 +67,31 @@ public class TouhouMaidAffection {
                 BondActivateAbilityPayload.TYPE,
                 BondActivateAbilityPayload.STREAM_CODEC,
                 BondAbilityActivateHandler::handle
+        );
+        registrar.playToServer(
+                BondStateRequestPayload.TYPE,
+                BondStateRequestPayload.STREAM_CODEC,
+                BondStateRequestHandler::handle
+        );
+        registrar.playToClient(
+                BondStateSyncPayload.TYPE,
+                BondStateSyncPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleBondStateSync
+        );
+        registrar.playToClient(
+                MaidRescuePopPayload.TYPE,
+                MaidRescuePopPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescuePop
+        );
+        registrar.playToServer(
+                LapPillowStartPayload.TYPE,
+                LapPillowStartPayload.STREAM_CODEC,
+                LapPillowHandler::handleStart
+        );
+        registrar.playToServer(
+                LapPillowExitPayload.TYPE,
+                LapPillowExitPayload.STREAM_CODEC,
+                LapPillowHandler::handleExit
         );
     }
 }

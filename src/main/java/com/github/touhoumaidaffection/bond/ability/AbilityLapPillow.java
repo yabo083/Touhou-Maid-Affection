@@ -17,12 +17,17 @@ public class AbilityLapPillow implements IBondAbility {
     }
 
     @Override
-    public boolean canActivate(Player player, EntityMaid maid) {
+    public boolean canUnlock(Player player, EntityMaid maid) {
         return true;
     }
 
     @Override
-    public void activate(Player player, EntityMaid maid) {
+    public void unlock(Player player, EntityMaid maid) {
+    }
+
+    @Override
+    public Component getUnlockedButtonLabel() {
+        return Component.translatable("bond.action.press_b");
     }
 
     @Override

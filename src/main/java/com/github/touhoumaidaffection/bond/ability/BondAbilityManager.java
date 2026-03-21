@@ -30,7 +30,6 @@ public final class BondAbilityManager {
         register(new AbilityLapPillow());
         register(new AbilityEmergencyHeal());
         register(new AbilityMorningKiss());
-        register(new AbilityYSMAction());
         register(new AbilityRandomGift());
     }
 }

@@ -9,9 +9,28 @@ public interface IBondAbility {
 
     int getPowerPointCost();
 
-    boolean canActivate(Player player, EntityMaid maid);
+    boolean canUnlock(Player player, EntityMaid maid);
 
-    void activate(Player player, EntityMaid maid);
+    void unlock(Player player, EntityMaid maid);
+
+    default boolean hasSecondaryAction() {
+        return false;
+    }
+
+    default boolean canPerformSecondaryAction(Player player, EntityMaid maid) {
+        return false;
+    }
+
+    default void performSecondaryAction(Player player, EntityMaid maid) {
+    }
+
+    default Component getUnlockedButtonLabel() {
+        return Component.translatable("bond.unlocked");
+    }
+
+    default Component getSecondaryActionButtonLabel() {
+        return Component.translatable("bond.use");
+    }
 
     Component getDisplayName();
 
