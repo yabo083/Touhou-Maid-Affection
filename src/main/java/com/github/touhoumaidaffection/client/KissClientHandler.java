@@ -18,7 +18,7 @@ public class KissClientHandler {
             if (maid == null || player == null) return;
 
             // Trigger FOV zoom if this is the local player
-            if (player == Minecraft.getInstance().player && ModConfig.FOV_ZOOM_ENABLED.get()) {
+            if (payload.allowFovZoom() && player == Minecraft.getInstance().player && ModConfig.FOV_ZOOM_ENABLED.get()) {
                 boolean carriedKiss = maid.getVehicle() == player;
                 KissFovHandler.trigger(maid.getId(), carriedKiss);
             }

@@ -97,6 +97,22 @@ public class KissMaidHandler {
         return executeKiss(player, maid);
     }
 
+    public static boolean performMorningKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid, true, false, false);
+    }
+
+    public static void applyMaidsPrayer(Player player, EntityMaid maid, int duration) {
+        if (!ModConfig.BUFF_ENABLED.get()) {
+            return;
+        }
+        int safeDuration = duration > 0 ? duration : ModConfig.BUFF_DURATION.get();
+        int amplifier = getAmplifierForLevel(maid.getFavorabilityManager().getLevel());
+        player.addEffect(new MobEffectInstance(
+                ModEffects.MAIDS_PRAYER.getDelegate(), safeDuration, amplifier, false, true, true));
+        maid.addEffect(new MobEffectInstance(
+                ModEffects.MAIDS_PRAYER.getDelegate(), safeDuration, amplifier, false, true, true));
+    }
+
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         Player player = event.getEntity();
@@ -124,6 +140,10 @@ public class KissMaidHandler {
     }
 
     private static boolean executeKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid, false, true, true);
+    }
+
+    private static boolean executeKiss(Player player, EntityMaid maid, boolean ignoreCooldown, boolean applyStandardBuffTracking, boolean allowFovZoom) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return false;
@@ -140,7 +160,7 @@ public class KissMaidHandler {
         UUID maidId = maid.getUUID();
         Map<UUID, Long> playerCooldowns = sessionState.cooldownsByPlayerAndMaid.computeIfAbsent(playerId, k -> new HashMap<>());
         Long lastKiss = playerCooldowns.get(maidId);
-        if (lastKiss != null) {
+        if (!ignoreCooldown && lastKiss != null) {
             long delta = currentTick - lastKiss;
             if (delta < 0) {
                 TouhouMaidAffection.LOGGER.debug("Detected tick rollback for player {} maid {} (current: {}, last: {}), resetting kiss state.",
@@ -173,12 +193,12 @@ public class KissMaidHandler {
                 1.0F, 1.0F);
 
         // Broadcast particle packet to all tracking clients
-        KissMaidPayload payload = new KissMaidPayload(maid.getId(), player.getId());
+        KissMaidPayload payload = new KissMaidPayload(maid.getId(), player.getId(), allowFovZoom);
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(maid, payload);
 
         // Buff system: track kiss timestamps and check threshold
-        if (ModConfig.BUFF_ENABLED.get()) {
-            handleBuffTrigger(sessionState, player, maid, currentTick, favLevel);
+        if (applyStandardBuffTracking && ModConfig.BUFF_ENABLED.get()) {
+            handleBuffTrigger(sessionState, player, maid, currentTick);
         }
         return true;
     }
@@ -192,7 +212,7 @@ public class KissMaidHandler {
         };
     }
 
-    private static void handleBuffTrigger(SessionState sessionState, Player player, EntityMaid maid, long currentTick, int favLevel) {
+    private static void handleBuffTrigger(SessionState sessionState, Player player, EntityMaid maid, long currentTick) {
         UUID playerId = player.getUUID();
         int threshold = ModConfig.BUFF_KISS_THRESHOLD.get();
         long window = ModConfig.BUFF_KISS_WINDOW.get();
@@ -207,14 +227,7 @@ public class KissMaidHandler {
             // Clear timestamps to reset counter
             timestamps.clear();
 
-            int duration = ModConfig.BUFF_DURATION.get();
-            int amplifier = getAmplifierForLevel(favLevel);
-
-            // Apply Maid's Prayer (custom effect with built-in regeneration) to both
-            player.addEffect(new MobEffectInstance(
-                    ModEffects.MAIDS_PRAYER.getDelegate(), duration, amplifier, false, true, true));
-            maid.addEffect(new MobEffectInstance(
-                    ModEffects.MAIDS_PRAYER.getDelegate(), duration, amplifier, false, true, true));
+            applyMaidsPrayer(player, maid, ModConfig.BUFF_DURATION.get());
         }
     }
 

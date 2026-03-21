@@ -6,6 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
+import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
@@ -195,8 +196,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
         boolean abilityUnlocked = maid != null && BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
         boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
+        boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
         boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
-        Component status = getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary);
+        Component status = getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
@@ -217,7 +219,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
         int buttonX = rowRight - BTN_WIDTH - 4;
         int buttonY = y + 3;
-        boolean clickable = isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary);
+        boolean clickable = isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
         int buttonColor = clickable ? 0xFF4B4B4B : 0xFF2E2E2E;
         graphics.fill(buttonX, buttonY, buttonX + BTN_WIDTH, buttonY + BTN_HEIGHT, buttonColor);
         graphics.fill(buttonX + 1, buttonY + 1, buttonX + BTN_WIDTH - 1, buttonY + BTN_HEIGHT - 1, 0xFF1F1F1F);
@@ -251,8 +253,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
                 IBondAbility ability = abilities.get(i);
                 boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
                 boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
+                boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
                 boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
-                if (isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)) {
+                if (isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)) {
                     PacketDistributor.sendToServer(new BondActivateAbilityPayload(ability.getId(), maid.getUUID()));
                 }
                 return true;
@@ -277,6 +280,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             IBondAbility ability = abilities.get(i);
             boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
             boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
+            boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
             boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
             List<Component> result = new ArrayList<>();
             result.add(ability.getDisplayName());
@@ -297,12 +301,18 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             } else {
                 result.add(ability.getDescription().copy().withStyle(ChatFormatting.GRAY));
             }
+            if (isMorningKissAbility(ability)) {
+                result.add(Component.translatable("bond.morning_kiss.tooltip.favorability", com.github.touhoumaidaffection.ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get()).withStyle(ChatFormatting.GRAY));
+                result.add(Component.translatable("bond.morning_kiss.tooltip.time", MorningKissService.getAllowedTimeRangesText()).withStyle(ChatFormatting.GRAY));
+                result.add(Component.translatable("bond.morning_kiss.tooltip.kisses", MorningKissService.getKissCountRangeText()).withStyle(ChatFormatting.GRAY));
+                result.add(Component.translatable("bond.morning_kiss.tooltip.buff").withStyle(ChatFormatting.GRAY));
+            }
             if (!abilityUnlocked) {
                 result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
             }
-            result.add(getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)
+            result.add(getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
                     .copy()
-                    .withStyle(isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUseSecondary)
+                    .withStyle(isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
                             ? ChatFormatting.GREEN
                             : ChatFormatting.RED));
             return result;
@@ -334,11 +344,14 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         return count;
     }
 
-    private Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUseSecondary) {
+    private Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
         if (!unlocked) {
             return Component.translatable("bond.locked");
         }
         if (!abilityUnlocked) {
+            if (!canUnlockNow) {
+                return Component.translatable("bond.requirements_unmet");
+            }
             if (!enoughPowerPoint) {
                 return Component.translatable("bond.insufficient_power_point");
             }
@@ -353,12 +366,12 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         return ability.getUnlockedButtonLabel();
     }
 
-    private boolean isButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUseSecondary) {
+    private boolean isButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
         if (!unlocked) {
             return false;
         }
         if (!abilityUnlocked) {
-            return enoughPowerPoint;
+            return enoughPowerPoint && canUnlockNow;
         }
         if (ability.hasSecondaryAction()) {
             return canUseSecondary;
@@ -371,6 +384,10 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     private boolean isRandomGiftAbility(IBondAbility ability) {
         return "random_gift".equals(ability.getId());
+    }
+
+    private boolean isMorningKissAbility(IBondAbility ability) {
+        return "morning_kiss".equals(ability.getId());
     }
 
     private String formatRemainingDuration(int totalSeconds) {

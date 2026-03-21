@@ -34,8 +34,23 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_RANDOM_GIFT_SHOW_ACTION_BAR;
     public static final ModConfigSpec.BooleanValue BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS;
     public static final ModConfigSpec.IntValue BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_ENABLED;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_REQUIRED_FAVORABILITY;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAX_DISTANCE;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_TIMEOUT_TICKS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BOND_MORNING_KISS_ALLOWED_TIME_RANGES;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MIN_KISS_COUNT;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAX_KISS_COUNT;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_KISS_INTERVAL_TICKS;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_APPLY_MAIDS_PRAYER;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAIDS_PRAYER_DURATION;
+    public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ENABLED;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AUTO_WINDOW_ATTEMPT_SPREAD_PERCENT;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SILENT_FAILURE;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD;
     public static final ModConfigSpec.IntValue BOND_LAP_PILLOW_MAX_DISTANCE;
 
@@ -205,13 +220,88 @@ public class ModConfig {
 
         builder.pop();
 
+        builder.comment("Morning Kiss behavior after unlock")
+                .push("morningKissBehavior");
+
+        BOND_MORNING_KISS_ENABLED = builder
+                .comment("Enable Morning Kiss after the ability is unlocked")
+                .define("enabled", true);
+
+        BOND_MORNING_KISS_REQUIRED_FAVORABILITY = builder
+                .comment("Required maid favorability level to use Morning Kiss")
+                .defineInRange("requiredFavorabilityLevel", 3, 0, 3);
+
         BOND_MORNING_KISS_MAX_DISTANCE = builder
                 .comment("Maximum distance to call a maid for Morning Kiss")
-                .defineInRange("morningKissMaxDistance", 16, 1, 128);
+                .defineInRange("maxDistance", 16, 1, 128);
 
         BOND_MORNING_KISS_TIMEOUT_TICKS = builder
                 .comment("Morning Kiss timeout in ticks")
-                .defineInRange("morningKissTimeoutTicks", 200, 20, 2400);
+                .defineInRange("timeoutTicks", 200, 20, 2400);
+
+        BOND_MORNING_KISS_ALLOWED_TIME_RANGES = builder
+                .comment("Allowed in-world time ranges for Morning Kiss, using 24-hour time",
+                        "Examples: 06:00-08:00, 18:00-20:00",
+                        "Optional dialogue bucket prefix is supported: morning@06:00-08:00, evening@18:00-20:00",
+                        "Legacy tick ranges like 0-2000 are still accepted for compatibility")
+                .defineListAllowEmpty(
+                        java.util.List.of("allowedTimeRanges"),
+                        java.util.List.of("06:00-08:00", "18:00-20:00"),
+                        () -> "",
+                        value -> value instanceof String string && !string.isBlank()
+                );
+
+        BOND_MORNING_KISS_MIN_KISS_COUNT = builder
+                .comment("Minimum number of kisses performed in one Morning Kiss sequence")
+                .defineInRange("minKissCount", 1, 1, 3);
+
+        BOND_MORNING_KISS_MAX_KISS_COUNT = builder
+                .comment("Maximum number of kisses performed in one Morning Kiss sequence")
+                .defineInRange("maxKissCount", 3, 1, 3);
+
+        BOND_MORNING_KISS_KISS_INTERVAL_TICKS = builder
+                .comment("Ticks between consecutive kisses in one Morning Kiss sequence")
+                .defineInRange("kissIntervalTicks", 16, 1, 200);
+
+        BOND_MORNING_KISS_APPLY_MAIDS_PRAYER = builder
+                .comment("Apply Maid's Prayer during Morning Kiss")
+                .define("applyMaidsPrayer", true);
+
+        BOND_MORNING_KISS_MAIDS_PRAYER_DURATION = builder
+                .comment("Maid's Prayer duration applied by Morning Kiss in ticks")
+                .defineInRange("maidsPrayerDurationTicks", 600, 20, 72000);
+
+        BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE = builder
+                .comment("Where Morning Kiss prompts and dialogue are shown",
+                        "Allowed values: action_bar, chat")
+                .define("messageDisplayMode", "action_bar");
+
+        BOND_MORNING_KISS_AUTO_ENABLED = builder
+                .comment("Allow maids to proactively trigger Morning Kiss during allowed time windows")
+                .define("autoEnabled", true);
+
+        BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS = builder
+                .comment("How often the server scans nearby loaded maids for proactive Morning Kiss")
+                .defineInRange("autoScanIntervalTicks", 40, 5, 1200);
+
+        BOND_MORNING_KISS_AUTO_WINDOW_ATTEMPT_SPREAD_PERCENT = builder
+                .comment("How much of the current time window can be used for random proactive attempt scheduling")
+                .defineInRange("autoWindowAttemptSpreadPercent", 70, 10, 100);
+
+        BOND_MORNING_KISS_AUTO_SILENT_FAILURE = builder
+                .comment("When true, proactive Morning Kiss failures stay silent instead of notifying the player")
+                .define("autoSilentFailure", true);
+
+        BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS = builder
+                .comment("When true, all eligible nearby maids may proactively trigger Morning Kiss in the same time window one after another",
+                        "When false, only one maid is selected for the whole time window")
+                .define("autoAllowAllEligibleMaids", true);
+
+        BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER = builder
+                .comment("Allow only one active Morning Kiss task per player at a time")
+                .define("autoSingleActiveTaskPerPlayer", true);
+
+        builder.pop();
 
         BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD = builder
                 .comment("Emergency rescue trigger threshold in health points")

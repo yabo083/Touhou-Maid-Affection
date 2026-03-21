@@ -19,7 +19,9 @@ public class AbilityMorningKiss implements IBondAbility {
 
     @Override
     public boolean canUnlock(Player player, EntityMaid maid) {
-        return true;
+        return maid != null
+                && maid.isAlive()
+                && maid.getFavorabilityManager().getLevel() >= ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get();
     }
 
     @Override
@@ -33,8 +35,7 @@ public class AbilityMorningKiss implements IBondAbility {
 
     @Override
     public boolean canPerformSecondaryAction(Player player, EntityMaid maid) {
-        double maxDistance = ModConfig.BOND_MORNING_KISS_MAX_DISTANCE.get();
-        return maid.isAlive() && player.distanceToSqr(maid) <= maxDistance * maxDistance;
+        return MorningKissService.canStart(player, maid);
     }
 
     @Override

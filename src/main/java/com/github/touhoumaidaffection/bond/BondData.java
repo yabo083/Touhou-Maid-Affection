@@ -167,6 +167,81 @@ public class BondData {
         save();
     }
 
+    public String getMorningKissLastSuccessfulWindowId(UUID maidUuid) {
+        return root.getString("MorningKissLastSuccessWindow_" + maidUuid);
+    }
+
+    public void setMorningKissLastSuccessfulWindowId(UUID maidUuid, String windowId) {
+        root.putString("MorningKissLastSuccessWindow_" + maidUuid, windowId == null ? "" : windowId);
+        save();
+    }
+
+    public String getMorningKissLastFailedWindowId(UUID maidUuid) {
+        return root.getString("MorningKissLastFailedWindow_" + maidUuid);
+    }
+
+    public void setMorningKissLastFailedWindowId(UUID maidUuid, String windowId) {
+        root.putString("MorningKissLastFailedWindow_" + maidUuid, windowId == null ? "" : windowId);
+        save();
+    }
+
+    public String getMorningKissScheduledWindowId(UUID maidUuid) {
+        return root.getString("MorningKissScheduledWindow_" + maidUuid);
+    }
+
+    public void setMorningKissScheduledWindowId(UUID maidUuid, String windowId) {
+        root.putString("MorningKissScheduledWindow_" + maidUuid, windowId == null ? "" : windowId);
+        save();
+    }
+
+    public long getMorningKissScheduledAttemptTick(UUID maidUuid) {
+        return root.getLong("MorningKissScheduledAttemptTick_" + maidUuid);
+    }
+
+    public void setMorningKissScheduledAttemptTick(UUID maidUuid, long tick) {
+        root.putLong("MorningKissScheduledAttemptTick_" + maidUuid, Math.max(0L, tick));
+        save();
+    }
+
+    public long getMorningKissLastAutoAttemptGameTime(UUID maidUuid) {
+        return root.getLong("MorningKissLastAutoAttemptGameTime_" + maidUuid);
+    }
+
+    public void setMorningKissLastAutoAttemptGameTime(UUID maidUuid, long tick) {
+        root.putLong("MorningKissLastAutoAttemptGameTime_" + maidUuid, Math.max(0L, tick));
+        save();
+    }
+
+    public void clearMorningKissSchedule(UUID maidUuid) {
+        root.putString("MorningKissScheduledWindow_" + maidUuid, "");
+        root.putLong("MorningKissScheduledAttemptTick_" + maidUuid, 0L);
+        save();
+    }
+
+    public String getMorningKissSelectedWindowId() {
+        return root.getString("MorningKissSelectedWindowId");
+    }
+
+    public void setMorningKissSelectedWindowId(String windowId) {
+        root.putString("MorningKissSelectedWindowId", windowId == null ? "" : windowId);
+        save();
+    }
+
+    public String getMorningKissSelectedMaidId() {
+        return root.getString("MorningKissSelectedMaidId");
+    }
+
+    public void setMorningKissSelectedMaidId(String maidId) {
+        root.putString("MorningKissSelectedMaidId", maidId == null ? "" : maidId);
+        save();
+    }
+
+    public void clearMorningKissSelectedMaid() {
+        root.putString("MorningKissSelectedWindowId", "");
+        root.putString("MorningKissSelectedMaidId", "");
+        save();
+    }
+
     private void migrateAbilityDataIfNeeded(UUID maidUuid) {
         String abilitiesKey = getAbilitiesKey(maidUuid);
         String versionKey = getAbilityVersionKey(maidUuid);

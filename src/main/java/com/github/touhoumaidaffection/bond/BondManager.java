@@ -145,4 +145,68 @@ public final class BondManager {
         }
         return lastWallClock + intervalMinutes * 60_000L;
     }
+
+    public static String getMorningKissLastSuccessfulWindowId(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissLastSuccessfulWindowId(maidUuid);
+    }
+
+    public static void setMorningKissLastSuccessfulWindowId(ServerPlayer player, UUID maidUuid, String windowId) {
+        BondData.of(player).setMorningKissLastSuccessfulWindowId(maidUuid, windowId);
+    }
+
+    public static String getMorningKissLastFailedWindowId(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissLastFailedWindowId(maidUuid);
+    }
+
+    public static void setMorningKissLastFailedWindowId(ServerPlayer player, UUID maidUuid, String windowId) {
+        BondData.of(player).setMorningKissLastFailedWindowId(maidUuid, windowId);
+    }
+
+    public static String getMorningKissScheduledWindowId(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissScheduledWindowId(maidUuid);
+    }
+
+    public static void setMorningKissScheduledWindowId(ServerPlayer player, UUID maidUuid, String windowId) {
+        BondData.of(player).setMorningKissScheduledWindowId(maidUuid, windowId);
+    }
+
+    public static long getMorningKissScheduledAttemptTick(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissScheduledAttemptTick(maidUuid);
+    }
+
+    public static void setMorningKissScheduledAttemptTick(ServerPlayer player, UUID maidUuid, long tick) {
+        BondData.of(player).setMorningKissScheduledAttemptTick(maidUuid, tick);
+    }
+
+    public static long getMorningKissLastAutoAttemptGameTime(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissLastAutoAttemptGameTime(maidUuid);
+    }
+
+    public static void setMorningKissLastAutoAttemptGameTime(ServerPlayer player, UUID maidUuid, long tick) {
+        BondData.of(player).setMorningKissLastAutoAttemptGameTime(maidUuid, tick);
+    }
+
+    public static void clearMorningKissSchedule(ServerPlayer player, UUID maidUuid) {
+        BondData.of(player).clearMorningKissSchedule(maidUuid);
+    }
+
+    public static String getMorningKissSelectedWindowId(ServerPlayer player) {
+        return BondData.of(player).getMorningKissSelectedWindowId();
+    }
+
+    public static void setMorningKissSelectedWindowId(ServerPlayer player, String windowId) {
+        BondData.of(player).setMorningKissSelectedWindowId(windowId);
+    }
+
+    public static String getMorningKissSelectedMaidId(ServerPlayer player) {
+        return BondData.of(player).getMorningKissSelectedMaidId();
+    }
+
+    public static void setMorningKissSelectedMaidId(ServerPlayer player, String maidId) {
+        BondData.of(player).setMorningKissSelectedMaidId(maidId);
+    }
+
+    public static void clearMorningKissSelectedMaid(ServerPlayer player) {
+        BondData.of(player).clearMorningKissSelectedMaid();
+    }
 }
