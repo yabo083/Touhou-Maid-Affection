@@ -11,4 +11,10 @@ public final class YSMActionBridge {
             YSMAnimationHelper.triggerAnimation(maid, animation);
         }
     }
+
+    public static void playIfAvailable(EntityMaid maid, String animationId) {
+        if (YSMCompatibility.isYSMLoaded()) {
+            YSMAnimationHelper.triggerAnimation(maid, animationId);
+        }
+    }
 }

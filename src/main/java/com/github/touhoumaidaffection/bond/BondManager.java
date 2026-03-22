@@ -2,6 +2,7 @@ package com.github.touhoumaidaffection.bond;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 
 import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,7 +22,19 @@ public final class BondManager {
     }
 
     public static void syncMaidProfile(ServerPlayer player, EntityMaid maid) {
-        BondData.of(player).setMaidModelId(maid.getUUID(), maid.getModelId().toString());
+        BondData data = BondData.of(player);
+        data.setMaidModelId(maid.getUUID(), maid.getModelId().toString());
+        data.setMaidDisplayName(maid.getUUID(), MaidDisplayNameResolver.resolvePlainDisplayName(maid));
+        if (maid.isYsmModel()) {
+            data.setMaidYsmProfile(
+                    maid.getUUID(),
+                    maid.getYsmModelId(),
+                    maid.getYsmModelTexture(),
+                    maid.getYsmModelName().getString()
+            );
+        } else {
+            data.setMaidYsmProfile(maid.getUUID(), "", "", "");
+        }
     }
 
     public static boolean isBondUnlocked(ServerPlayer player, UUID maidUuid) {
@@ -43,6 +56,26 @@ public final class BondManager {
 
     public static List<String> getUnlockedMaidModelIdsForAbility(ServerPlayer player, String abilityId) {
         return BondData.of(player).getUnlockedMaidModelIdsForAbility(abilityId);
+    }
+
+    public static List<UUID> getUnlockedMaidIdsForAbility(ServerPlayer player, String abilityId) {
+        return BondData.of(player).getUnlockedMaidIdsForAbility(abilityId);
+    }
+
+    public static String getMaidModelId(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMaidModelId(maidUuid);
+    }
+
+    public static BondData.MaidProfileSnapshot findMaidProfileByModelId(ServerPlayer player, String modelId) {
+        return BondData.of(player).findMaidProfileByModelId(modelId);
+    }
+
+    public static String getMaidRescueAction(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMaidRescueAction(maidUuid);
+    }
+
+    public static void setMaidRescueAction(ServerPlayer player, UUID maidUuid, String actionId) {
+        BondData.of(player).setMaidRescueAction(maidUuid, actionId);
     }
 
     public static int getQueuedGiftCount(ServerPlayer player, UUID maidUuid) {
@@ -208,5 +241,13 @@ public final class BondManager {
 
     public static void clearMorningKissSelectedMaid(ServerPlayer player) {
         BondData.of(player).clearMorningKissSelectedMaid();
+    }
+
+    public static MorningKissVoiceSettings getMorningKissVoiceSettings(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMorningKissVoiceSettings(maidUuid);
+    }
+
+    public static void setMorningKissVoiceSettings(ServerPlayer player, UUID maidUuid, MorningKissVoiceSettings settings) {
+        BondData.of(player).setMorningKissVoiceSettings(maidUuid, settings);
     }
 }

@@ -52,6 +52,11 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD;
+    public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME;
+    public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID;
+    public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET;
+    public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET;
+    public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET;
     public static final ModConfigSpec.IntValue BOND_LAP_PILLOW_MAX_DISTANCE;
 
     // Buff
@@ -303,9 +308,41 @@ public class ModConfig {
 
         builder.pop();
 
+        builder.comment("Emergency rescue behaviour after unlock")
+                .push("emergencyRescueBehavior");
+
         BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD = builder
                 .comment("Emergency rescue trigger threshold in health points")
-                .defineInRange("emergencyRescueHealthThreshold", 4, 1, 20);
+                .defineInRange("healthThreshold", 4, 1, 20);
+
+        BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME = builder
+                .comment("Refresh rescue charges by Minecraft date/daytime progression instead of total game uptime",
+                        "When enabled, sleeping to the next day or /time add 24000 can refresh charges")
+                .define("refreshByDayTime", true);
+
+        BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID = builder
+                .comment("How many rescue charges each unlocked maid contributes on daily refresh")
+                .defineInRange("chargesPerMaid", 1, 1, 16);
+
+        BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET = builder
+                .comment("Additional X-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Negative tilts backward, positive tilts forward",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewPitchOffset", 0.0, -180.0, 180.0);
+
+        BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET = builder
+                .comment("Additional Y-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Useful when you want the maid to face the screen more directly",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewYawOffset", 0.0, -180.0, 180.0);
+
+        BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET = builder
+                .comment("Additional Z-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Negative rolls left, positive rolls right",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewRollOffset", 0.0, -180.0, 180.0);
+
+        builder.pop();
 
         BOND_LAP_PILLOW_MAX_DISTANCE = builder
                 .comment("Maximum distance to start lap pillow")

@@ -8,6 +8,8 @@ import com.github.touhoumaidaffection.handler.BondStateRequestHandler;
 import com.github.touhoumaidaffection.handler.KissCarryRequestHandler;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
 import com.github.touhoumaidaffection.handler.LapPillowHandler;
+import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
+import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -16,6 +18,9 @@ import com.github.touhoumaidaffection.network.KissMaidPayload;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
+import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -39,6 +44,9 @@ public class TouhouMaidAffection {
 
         // Register mob effects
         ModEffects.MOB_EFFECTS.register(modEventBus);
+
+        // Register data attachments
+        ModAttachments.ATTACHMENTS.register(modEventBus);
 
         // Register network packets on mod bus
         modEventBus.addListener(this::registerPayloads);
@@ -82,6 +90,21 @@ public class TouhouMaidAffection {
                 MaidRescuePopPayload.TYPE,
                 MaidRescuePopPayload.STREAM_CODEC,
                 BondClientPayloadHandler::handleRescuePop
+        );
+        registrar.playToServer(
+                RescueActionConfigPayload.TYPE,
+                RescueActionConfigPayload.STREAM_CODEC,
+                RescueActionConfigHandler::handle
+        );
+        registrar.playToServer(
+                MorningKissVoiceConfigPayload.TYPE,
+                MorningKissVoiceConfigPayload.STREAM_CODEC,
+                MorningKissVoiceConfigHandler::handle
+        );
+        registrar.playToClient(
+                MorningKissVoicePlayPayload.TYPE,
+                MorningKissVoicePlayPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleMorningKissVoicePlay
         );
         registrar.playToServer(
                 LapPillowStartPayload.TYPE,

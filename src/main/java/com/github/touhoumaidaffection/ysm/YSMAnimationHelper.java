@@ -7,9 +7,24 @@ public final class YSMAnimationHelper {
     }
 
     public static void triggerAnimation(EntityMaid maid, YSMMaidAnimation animation) {
+        if (animation == null) {
+            return;
+        }
+        triggerAnimation(maid, animation.animationName());
+    }
+
+    public static void triggerAnimation(EntityMaid maid, String animationId) {
         if (!YSMCompatibility.isYSMLoaded()) {
             return;
         }
-        // Placeholder: resolve concrete YSM API in Phase 6.
+        if (maid == null || animationId == null || animationId.isBlank()) {
+            return;
+        }
+        try {
+            maid.playRouletteAnim(animationId.trim());
+        } catch (Exception ignored) {
+            // Best-effort bridge. If a model does not support this roulette animation,
+            // the caller should gracefully fall back to non-YSM visuals.
+        }
     }
 }

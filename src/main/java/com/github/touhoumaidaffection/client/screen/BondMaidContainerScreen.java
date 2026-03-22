@@ -8,6 +8,14 @@ import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
 import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
+import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
+import com.github.touhoumaidaffection.client.YsmModelActionIndex;
+import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
+import com.github.touhoumaidaffection.client.screen.page.BondAbilityPrimaryPage;
+import com.github.touhoumaidaffection.client.screen.page.BondPrimaryPageHost;
+import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPage;
+import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageHost;
+import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageRegistry;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
@@ -17,15 +25,17 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
-import java.util.ArrayList;
-import java.util.List;
 
-public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContainer> {
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContainer> implements BondSecondaryPageHost, BondPrimaryPageHost {
+    private static final float SECONDARY_PAGE_Z = 240.0F;
     private static final int PAGE_X_OFFSET = 80;
     private static final int PAGE_Y_OFFSET = 28;
     private static final int PAGE_WIDTH = 176;
@@ -37,13 +47,20 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     private static final int PANEL_HEIGHT = 114;
 
     private static final int ROW_START_Y = 9;
-    private static final int ROW_HEIGHT = 18;
-    private static final int ROW_SPACING = 18;
+    private static final int ROW_HEIGHT = 24;
+    private static final int ROW_SPACING = 24;
     private static final int BTN_WIDTH = 44;
-    private static final int BTN_HEIGHT = 12;
+    private static final int BTN_HEIGHT = 14;
+    private static final int SECONDARY_BUTTON_WIDTH = 30;
+    private static final int SECONDARY_BUTTON_GAP = 4;
 
     private final EntityMaid maid;
     private final List<IBondAbility> abilities;
+    private String cachedRescueActionModelId = "";
+    private String cachedRescueActionTextureId = "";
+    private Map<String, String> cachedRescueActionLabels = Map.of();
+    private BondAbilityPrimaryPage primaryPage;
+    private BondSecondaryPage secondaryPage;
 
     public BondMaidContainerScreen(BondContainer container, Inventory inv, Component titleIn) {
         super(container, inv, titleIn);
@@ -51,6 +68,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         this.imageWidth = 256;
         this.maid = menu.getMaid();
         this.abilities = List.copyOf(BondAbilityManager.getAllAbilities());
+        BondSecondaryPageRegistry.registerDefaults();
     }
 
     @Override
@@ -64,6 +82,20 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         }
         super.init();
         PacketDistributor.sendToServer(new BondStateRequestPayload(maid.getUUID()));
+        primaryPage = new BondAbilityPrimaryPage(
+                this,
+                leftPos + PANEL_X_OFFSET,
+                topPos + PANEL_Y_OFFSET,
+                PANEL_WIDTH,
+                PANEL_HEIGHT,
+                ROW_START_Y,
+                ROW_HEIGHT,
+                ROW_SPACING,
+                BTN_WIDTH,
+                SECONDARY_BUTTON_WIDTH,
+                BTN_HEIGHT,
+                SECONDARY_BUTTON_GAP
+        );
     }
 
     @Override
@@ -74,35 +106,89 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     @Override
     protected void renderAddition(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
-        renderBondPanel(graphics, mouseX, mouseY);
+        if (!hasActiveSecondaryPage()) {
+            renderBondPanel(graphics, mouseX, mouseY);
+        }
+        renderSecondaryPage(graphics, mouseX, mouseY);
     }
 
     @Override
     protected void renderAdditionTransTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        List<Component> tooltip = getTooltipAt(mouseX, mouseY);
-        if (!tooltip.isEmpty()) {
-            graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+        if (hasActiveSecondaryPage()) {
+            return;
         }
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && isMouseInsideBondPage(mouseX, mouseY)) {
-            return handleAbilityClick(mouseX, mouseY);
+        if (hasActiveSecondaryPage()) {
+            return handleSecondaryPageClick(mouseX, mouseY, button);
+        }
+        if (button == 0 && isMouseInsideBondPage(mouseX, mouseY) && primaryPage != null) {
+            return primaryPage.mouseClicked(mouseX, mouseY);
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (hasActiveSecondaryPage()) {
+            List<Component> modalTooltip = getSecondaryPageTooltip(mouseX, mouseY);
+            if (!modalTooltip.isEmpty()) {
+                graphics.pose().pushPose();
+                try {
+                    graphics.pose().translate(0.0F, 0.0F, SECONDARY_PAGE_Z + 20.0F);
+                    graphics.renderComponentTooltip(font, modalTooltip, mouseX, mouseY);
+                } finally {
+                    graphics.pose().popPose();
+                }
+            }
+            return;
+        }
         if (isMouseInsideBondPage(mouseX, mouseY)) {
-            List<Component> tooltip = getTooltipAt(mouseX, mouseY);
+            List<Component> tooltip = primaryPage == null ? List.of() : primaryPage.getTooltip(mouseX, mouseY);
             if (!tooltip.isEmpty()) {
                 graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
             }
             return;
         }
         super.renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (secondaryPage != null && secondaryPage.mouseScrolled(mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (hasActiveSecondaryPage() && keyCode == 256) {
+            closeSecondaryPage();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private void renderBondPageBackground(GuiGraphics graphics) {
@@ -119,31 +205,83 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         graphics.fill(left + 6, bottom - 7, right - 6, bottom - 6, 0xFF101010);
         graphics.fill(left + 6, top + 22, left + 7, bottom - 6, 0xFF707070);
         graphics.fill(right - 7, top + 22, right - 6, bottom - 6, 0xFF101010);
-        graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, 0xFFFFFF);
+        if (!hasActiveSecondaryPage()) {
+            graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, 0xFFFFFF);
+        }
+    }
+
+    private void renderBondPanel(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (maid == null || primaryPage == null) {
+            return;
+        }
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        try {
+            primaryPage.render(graphics, mouseX, mouseY);
+        } finally {
+            RenderSystem.enableDepthTest();
+            RenderSystem.disableBlend();
+        }
+    }
+
+    private void renderSecondaryPage(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (!hasActiveSecondaryPage()) {
+            return;
+        }
+        graphics.pose().pushPose();
+        try {
+            graphics.pose().translate(0.0F, 0.0F, SECONDARY_PAGE_Z);
+            secondaryPage.render(graphics, mouseX, mouseY);
+        } finally {
+            graphics.pose().popPose();
+        }
+    }
+
+    private boolean handleSecondaryPageClick(double mouseX, double mouseY, int button) {
+        if (button != 0) {
+            return true;
+        }
+        return secondaryPage != null && secondaryPage.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private List<Component> getSecondaryPageTooltip(int mouseX, int mouseY) {
+        return secondaryPage == null ? List.of() : secondaryPage.getTooltip(mouseX, mouseY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (isMouseInsideBondPage(mouseX, mouseY)) {
-            return true;
+    public void openSecondaryPageForAbility(IBondAbility ability) {
+        BondSecondaryPage nextPage = BondSecondaryPageRegistry.createPage(this, ability);
+        if (nextPage != null) {
+            closeSecondaryPage();
+            secondaryPage = nextPage;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (isMouseInsideBondPage(mouseX, mouseY)) {
-            return true;
+    public void closeSecondaryPage() {
+        if (secondaryPage != null) {
+            secondaryPage.onClose();
+            secondaryPage = null;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        invalidateRescueActionLabelCache();
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (isMouseInsideBondPage(mouseX, mouseY)) {
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    public BondModalPage createModal(int width, int height, Component title) {
+        return new BondModalPage(leftPos + PAGE_X_OFFSET, topPos + PAGE_Y_OFFSET, PAGE_WIDTH, PAGE_HEIGHT, width, height, title);
+    }
+
+    @Override
+    public boolean isSecondaryPageUnlocked(IBondAbility ability) {
+        return maid != null
+                && ability != null
+                && BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
+    }
+
+    private boolean hasActiveSecondaryPage() {
+        return secondaryPage != null;
     }
 
     private boolean isMouseInsideBondPage(double mouseX, double mouseY) {
@@ -152,191 +290,26 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         return mouseX >= left && mouseX < left + PAGE_WIDTH && mouseY >= top && mouseY < top + PAGE_HEIGHT;
     }
 
-    private void renderBondPanel(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (maid == null) {
-            return;
-        }
-        Font font = Minecraft.getInstance().font;
-        int left = leftPos + PANEL_X_OFFSET;
-        int top = topPos + PANEL_Y_OFFSET;
-        int right = left + PANEL_WIDTH;
-        int bottom = top + PANEL_HEIGHT;
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        try {
-            Player player = Minecraft.getInstance().player;
-            int powerPoints = getPowerPointCount();
-            boolean unlocked = isBondUnlocked();
-
-            graphics.enableScissor(left + 1, top + 1, right - 1, bottom - 1);
-            try {
-                for (int i = 0; i < abilities.size(); i++) {
-                    int rowY = top + ROW_START_Y + i * ROW_SPACING;
-                    if (rowY + ROW_HEIGHT > bottom - 2) {
-                        break;
-                    }
-                    renderAbilityRow(graphics, font, abilities.get(i), player, powerPoints, unlocked, left + 2, rowY, mouseX, mouseY);
-                }
-            } finally {
-                graphics.disableScissor();
-            }
-        } finally {
-            RenderSystem.enableDepthTest();
-            RenderSystem.disableBlend();
-        }
-    }
-
-    private void renderAbilityRow(GuiGraphics graphics, Font font, IBondAbility ability, Player player, int powerPoints, boolean unlocked,
-                                  int x, int y, int mouseX, int mouseY) {
-        int rowRight = leftPos + PANEL_X_OFFSET + PANEL_WIDTH - 4;
-        int rowBottom = y + ROW_HEIGHT - 1;
-        graphics.fill(x, y, rowRight, rowBottom, 0x7F2F2F2F);
-
-        boolean abilityUnlocked = maid != null && BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
-        boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
-        boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
-        boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
-        Component status = getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
-
-        MutableComponent title = ability.getDisplayName().copy();
-        if (!unlocked) {
-            title.withStyle(ChatFormatting.RED);
-        }
-        graphics.drawString(font, title, x + 4, y + 2, 0xFFE0E0E0, false);
-        if (isRandomGiftAbility(ability) && abilityUnlocked) {
-            graphics.drawString(font, Component.translatable(
-                    "bond.random_gift.status.queue",
-                    BondClientStateCache.getQueuedGiftCount(maid.getUUID()),
-                    BondClientStateCache.getMaxQueuedGiftCount(maid.getUUID())
-            ), x + 4, y + 10, 0xFF7AD5FF, false);
-        } else if (!abilityUnlocked) {
-            graphics.drawString(font, Component.translatable("bond.power_point_cost", ability.getPowerPointCost()), x + 4, y + 10, 0xFF7AD5FF, false);
-        } else {
-            graphics.drawString(font, ability.getDescription(), x + 4, y + 10, 0xFFAFAFAF, false);
-        }
-
-        int buttonX = rowRight - BTN_WIDTH - 4;
-        int buttonY = y + 3;
-        boolean clickable = isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
-        int buttonColor = clickable ? 0xFF4B4B4B : 0xFF2E2E2E;
-        graphics.fill(buttonX, buttonY, buttonX + BTN_WIDTH, buttonY + BTN_HEIGHT, buttonColor);
-        graphics.fill(buttonX + 1, buttonY + 1, buttonX + BTN_WIDTH - 1, buttonY + BTN_HEIGHT - 1, 0xFF1F1F1F);
-
-        int statusColor = clickable ? 0xFF79F079 : 0xFFFFC970;
-        int statusX = buttonX + (BTN_WIDTH - font.width(status)) / 2;
-        graphics.drawString(font, status, statusX, buttonY + 2, statusColor, false);
-
-        if (mouseX >= buttonX && mouseX < buttonX + BTN_WIDTH && mouseY >= buttonY && mouseY < buttonY + BTN_HEIGHT) {
-            graphics.fill(buttonX, buttonY, buttonX + BTN_WIDTH, buttonY + BTN_HEIGHT, 0x33FFFFFF);
-        }
-    }
-
-    private boolean handleAbilityClick(double mouseX, double mouseY) {
-        if (maid == null || !isMouseInsidePanel(mouseX, mouseY)) {
-            return false;
-        }
-        Player player = Minecraft.getInstance().player;
-        int powerPoints = getPowerPointCount();
-        boolean unlocked = isBondUnlocked();
-        int rowRight = leftPos + PANEL_X_OFFSET + PANEL_WIDTH - 4;
-        int buttonX = rowRight - BTN_WIDTH - 4;
-
-        for (int i = 0; i < abilities.size(); i++) {
-            int rowY = topPos + PANEL_Y_OFFSET + ROW_START_Y + i * ROW_SPACING;
-            if (rowY + ROW_HEIGHT > topPos + PANEL_Y_OFFSET + PANEL_HEIGHT - 2) {
-                break;
-            }
-            int buttonY = rowY + 3;
-            if (mouseX >= buttonX && mouseX < buttonX + BTN_WIDTH && mouseY >= buttonY && mouseY < buttonY + BTN_HEIGHT) {
-                IBondAbility ability = abilities.get(i);
-                boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
-                boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
-                boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
-                boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
-                if (isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)) {
-                    PacketDistributor.sendToServer(new BondActivateAbilityPayload(ability.getId(), maid.getUUID()));
-                }
-                return true;
-            }
-        }
-        return true;
-    }
-
-    private List<Component> getTooltipAt(int mouseX, int mouseY) {
-        if (!isMouseInsidePanel(mouseX, mouseY) || maid == null) {
-            return List.of();
-        }
-        boolean unlocked = isBondUnlocked();
-        Player player = Minecraft.getInstance().player;
-        int powerPoints = getPowerPointCount();
-        for (int i = 0; i < abilities.size(); i++) {
-            int rowY = topPos + PANEL_Y_OFFSET + ROW_START_Y + i * ROW_SPACING;
-            int rowBottom = rowY + ROW_HEIGHT - 1;
-            if (mouseY < rowY || mouseY > rowBottom) {
-                continue;
-            }
-            IBondAbility ability = abilities.get(i);
-            boolean abilityUnlocked = BondClientStateCache.isAbilityUnlocked(maid.getUUID(), ability.getId());
-            boolean enoughPowerPoint = powerPoints >= ability.getPowerPointCost();
-            boolean canUnlockNow = player != null && ability.canUnlock(player, maid);
-            boolean canUseSecondary = player != null && abilityUnlocked && ability.hasSecondaryAction() && ability.canPerformSecondaryAction(player, maid);
-            List<Component> result = new ArrayList<>();
-            result.add(ability.getDisplayName());
-            if (isRandomGiftAbility(ability) && abilityUnlocked) {
-                result.add(Component.translatable("bond.random_gift.desc.auto").withStyle(ChatFormatting.GRAY));
-                result.add(Component.translatable(
-                        "bond.random_gift.status.queue",
-                        BondClientStateCache.getQueuedGiftCount(maid.getUUID()),
-                        BondClientStateCache.getMaxQueuedGiftCount(maid.getUUID())
-                ).withStyle(ChatFormatting.AQUA));
-                int nextGiftReadySeconds = BondClientStateCache.getNextGiftReadySeconds(maid.getUUID());
-                if (nextGiftReadySeconds > 0) {
-                    result.add(Component.translatable(
-                            "bond.random_gift.status.next",
-                            formatRemainingDuration(nextGiftReadySeconds)
-                    ).withStyle(ChatFormatting.YELLOW));
-                }
-            } else {
-                result.add(ability.getDescription().copy().withStyle(ChatFormatting.GRAY));
-            }
-            if (isMorningKissAbility(ability)) {
-                result.add(Component.translatable("bond.morning_kiss.tooltip.favorability", com.github.touhoumaidaffection.ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get()).withStyle(ChatFormatting.GRAY));
-                result.add(Component.translatable("bond.morning_kiss.tooltip.time", MorningKissService.getAllowedTimeRangesText()).withStyle(ChatFormatting.GRAY));
-                result.add(Component.translatable("bond.morning_kiss.tooltip.kisses", MorningKissService.getKissCountRangeText()).withStyle(ChatFormatting.GRAY));
-                result.add(Component.translatable("bond.morning_kiss.tooltip.buff").withStyle(ChatFormatting.GRAY));
-            }
-            if (!abilityUnlocked) {
-                result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
-            }
-            result.add(getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
-                    .copy()
-                    .withStyle(isButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
-                            ? ChatFormatting.GREEN
-                            : ChatFormatting.RED));
-            return result;
-        }
-        return List.of();
-    }
-
     private boolean isMouseInsidePanel(double mouseX, double mouseY) {
         int left = leftPos + PANEL_X_OFFSET;
         int top = topPos + PANEL_Y_OFFSET;
         return mouseX >= left && mouseX < left + PANEL_WIDTH && mouseY >= top && mouseY < top + PANEL_HEIGHT;
     }
 
-    private boolean isBondUnlocked() {
+    @Override
+    public boolean isBondUnlocked() {
         return maid != null && maid.getFavorabilityManager().getLevel() >= BondConfig.DEFAULT_UNLOCK_LEVEL;
     }
 
-    private int getPowerPointCount() {
-        if (Minecraft.getInstance().player == null) {
+    @Override
+    public int getPowerPointCount() {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) {
             return 0;
         }
         int count = 0;
-        for (int i = 0; i < Minecraft.getInstance().player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = Minecraft.getInstance().player.getInventory().getItem(i);
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
             if (stack.is(InitItems.POWER_POINT.get())) {
                 count += stack.getCount();
             }
@@ -344,7 +317,8 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         return count;
     }
 
-    private Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
+    @Override
+    public Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
         if (!unlocked) {
             return Component.translatable("bond.locked");
         }
@@ -361,12 +335,16 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             if (canUseSecondary) {
                 return ability.getSecondaryActionButtonLabel();
             }
+            return Component.translatable("bond.requirements_unmet");
+        }
+        if (isEmergencyHealAbility(ability) && isRescueActionConfigAvailable()) {
             return ability.getUnlockedButtonLabel();
         }
         return ability.getUnlockedButtonLabel();
     }
 
-    private boolean isButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
+    @Override
+    public boolean isMainButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary) {
         if (!unlocked) {
             return false;
         }
@@ -376,24 +354,136 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         if (ability.hasSecondaryAction()) {
             return canUseSecondary;
         }
-        if (!enoughPowerPoint) {
-            return false;
-        }
         return false;
     }
 
-    private boolean isRandomGiftAbility(IBondAbility ability) {
+    @Override
+    public boolean hasSecondaryPageButton(IBondAbility ability, boolean abilityUnlocked) {
+        return abilityUnlocked && BondSecondaryPageRegistry.hasPage(this, ability);
+    }
+
+    @Override
+    public Component getSecondaryPageButtonLabel(IBondAbility ability) {
+        if (isEmergencyHealAbility(ability)) {
+            return Component.translatable("bond.emergency_rescue.action.button");
+        }
+        if (isMorningKissAbility(ability)) {
+            return Component.translatable("bond.action.voice");
+        }
+        return Component.empty();
+    }
+
+    @Override
+    public boolean isRandomGiftAbility(IBondAbility ability) {
         return "random_gift".equals(ability.getId());
     }
 
-    private boolean isMorningKissAbility(IBondAbility ability) {
+    @Override
+    public boolean isMorningKissAbility(IBondAbility ability) {
         return "morning_kiss".equals(ability.getId());
     }
 
-    private String formatRemainingDuration(int totalSeconds) {
+    @Override
+    public boolean isEmergencyHealAbility(IBondAbility ability) {
+        return "emergency_heal".equals(ability.getId());
+    }
+
+    @Override
+    public String formatRemainingDuration(int totalSeconds) {
         long safeSeconds = Math.max(0L, totalSeconds);
         long minutes = safeSeconds / 60L;
         long seconds = safeSeconds % 60L;
         return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    @Override
+    public boolean isRescueActionConfigAvailable() {
+        return maid != null && maid.isYsmModel() && !getRescueActionModelId().isBlank();
+    }
+
+    @Override
+    public String getRescueActionModelId() {
+        if (maid == null) {
+            return "";
+        }
+        String ysmModelId = maid.getYsmModelId();
+        return ysmModelId == null ? "" : ysmModelId;
+    }
+
+    @Override
+    public String getRescueActionTextureId() {
+        if (maid == null) {
+            return "";
+        }
+        String ysmTexture = maid.getYsmModelTexture();
+        return ysmTexture == null ? "" : ysmTexture;
+    }
+
+    private String getCurrentSoundPackId() {
+        if (maid == null) {
+            return "";
+        }
+        String soundPackId = maid.getSoundPackId();
+        return soundPackId == null ? "" : soundPackId;
+    }
+
+    @Override
+    public String resolveSelectedRescueActionLabel(String actionId) {
+        if (actionId == null || actionId.isBlank()) {
+            return "";
+        }
+        ensureRescueActionLabelCache();
+        return cachedRescueActionLabels.getOrDefault(actionId, actionId);
+    }
+
+    private void ensureRescueActionLabelCache() {
+        String modelId = getRescueActionModelId();
+        String textureId = getRescueActionTextureId();
+        if (modelId.equals(cachedRescueActionModelId) && textureId.equals(cachedRescueActionTextureId)) {
+            return;
+        }
+
+        LinkedHashMap<String, String> labels = new LinkedHashMap<>();
+        for (YsmModelActionIndex.DetectedYsmAction action : YsmModelActionIndex.getActions(modelId, textureId)) {
+            labels.put(action.actionId(), action.displayName());
+        }
+        cachedRescueActionModelId = modelId;
+        cachedRescueActionTextureId = textureId;
+        cachedRescueActionLabels = Map.copyOf(labels);
+    }
+
+    private void invalidateRescueActionLabelCache() {
+        cachedRescueActionModelId = "";
+        cachedRescueActionTextureId = "";
+        cachedRescueActionLabels = Map.of();
+    }
+
+    private boolean isInsideRect(double mouseX, double mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+    }
+
+    @Override
+    public Font getFont() {
+        return font;
+    }
+
+    @Override
+    public EntityMaid getMaid() {
+        return maid;
+    }
+
+    @Override
+    public Player getLocalPlayer() {
+        return Minecraft.getInstance().player;
+    }
+
+    @Override
+    public List<IBondAbility> getAbilities() {
+        return abilities;
+    }
+
+    @Override
+    public void activateAbility(IBondAbility ability) {
+        PacketDistributor.sendToServer(new BondActivateAbilityPayload(ability.getId(), maid.getUUID()));
     }
 }

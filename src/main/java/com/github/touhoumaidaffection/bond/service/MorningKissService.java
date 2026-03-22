@@ -3,7 +3,10 @@ package com.github.touhoumaidaffection.bond.service;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
+import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
 import net.minecraft.network.chat.Component;
@@ -18,6 +21,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -184,7 +188,7 @@ public final class MorningKissService {
 
             BondManager.setMorningKissLastAutoAttemptGameTime(player, maidUuid, player.serverLevel().getGameTime());
             if (start(player, maid, TriggerSource.AUTO_WINDOW, activeWindow.windowId(), false)) {
-                showMorningKissMessage(player, Component.translatable("bond.morning_kiss.auto_started", maid.getName()));
+                showMorningKissMessage(player, startMessage("bond.morning_kiss.auto_started", "bond.morning_kiss.auto_started.chat", maid));
             } else {
                 markAutoFailure(player, maidUuid, activeWindow.windowId(), null);
             }
@@ -266,6 +270,7 @@ public final class MorningKissService {
 
             if (!task.dialogueShown()) {
                 maybeShowDialogue(player, maid, task.dialoguePool());
+                playConfiguredVoice(player, maid);
                 task = task.withDialogueShown(true);
             }
             YSMActionBridge.playIfAvailable(maid, YSMMaidAnimation.MORNING_KISS);
@@ -318,7 +323,7 @@ public final class MorningKissService {
         TASKS.put(serverPlayer.getUUID(), task);
         maid.getNavigation().moveTo(serverPlayer, 1.0D);
         if (showStartMessage) {
-            showMorningKissMessage(serverPlayer, Component.translatable("bond.morning_kiss.started", maid.getName()));
+            showMorningKissMessage(serverPlayer, startMessage("bond.morning_kiss.started", "bond.morning_kiss.started.chat", maid));
         }
         return true;
     }
@@ -468,16 +473,45 @@ public final class MorningKissService {
     private static void maybeShowDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
         String[] pool = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL));
         String key = pool[player.getRandom().nextInt(pool.length)];
-        showMorningKissMessage(player, Component.translatable(key, maid.getName()));
+        showMorningKissMessage(player, Component.translatable(key, getResolvedNameForMode(maid, isChatMode())));
+    }
+
+    private static void playConfiguredVoice(ServerPlayer player, EntityMaid maid) {
+        String soundPackId = maid.getSoundPackId();
+        if (soundPackId == null || soundPackId.isBlank()) {
+            return;
+        }
+        MorningKissVoiceSettings settings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID()).withSoundPackId(soundPackId);
+        PacketDistributor.sendToPlayer(player, new MorningKissVoicePlayPayload(
+                maid.getId(),
+                maid.getUUID(),
+                soundPackId,
+                settings.mode().serializedName(),
+                settings.selectedGroup(),
+                settings.selectedClip()
+        ));
     }
 
     private static void showMorningKissMessage(ServerPlayer player, Component message) {
-        String mode = ModConfig.BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE.get();
-        if ("chat".equalsIgnoreCase(mode)) {
+        if (isChatMode()) {
             player.sendSystemMessage(message);
             return;
         }
         player.displayClientMessage(message, true);
+    }
+
+    private static Component startMessage(String actionBarKey, String chatKey, EntityMaid maid) {
+        boolean chatMode = isChatMode();
+        return Component.translatable(chatMode ? chatKey : actionBarKey, getResolvedNameForMode(maid, chatMode));
+    }
+
+    private static Component getResolvedNameForMode(EntityMaid maid, boolean chatMode) {
+        return chatMode ? MaidDisplayNameResolver.resolveChatSafeDisplayName(maid) : MaidDisplayNameResolver.resolveDisplayName(maid);
+    }
+
+    private static boolean isChatMode() {
+        String mode = ModConfig.BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE.get();
+        return "chat".equalsIgnoreCase(mode);
     }
 
     private record PendingMorningKiss(

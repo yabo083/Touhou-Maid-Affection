@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.handler;
 
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -34,12 +35,18 @@ public final class BondStateRequestHandler {
             int nextGiftReadySeconds = nextGiftReadyAtMs > nowMs
                     ? (int) Math.min(Integer.MAX_VALUE, (nextGiftReadyAtMs - nowMs + 999L) / 1000L)
                     : 0;
+            MorningKissVoiceSettings voiceSettings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID())
+                    .withSoundPackId(maid.getSoundPackId());
             PacketDistributor.sendToPlayer(player, new BondStateSyncPayload(
                     maid.getUUID(),
                     BondManager.getUnlockedAbilityIds(player, maid.getUUID()),
                     queuedGiftCount,
                     Math.max(1, com.github.touhoumaidaffection.ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get()),
-                    nextGiftReadySeconds
+                    nextGiftReadySeconds,
+                    voiceSettings.mode().serializedName(),
+                    voiceSettings.selectedGroup(),
+                    voiceSettings.selectedClip(),
+                    voiceSettings.soundPackId()
             ));
         });
     }

@@ -5,6 +5,7 @@ import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
+import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
 import net.minecraft.ChatFormatting;
@@ -197,7 +198,7 @@ public final class RandomGiftService {
         if (ModConfig.BOND_RANDOM_GIFT_SHOW_ACTION_BAR.get()) {
             player.displayClientMessage(Component.translatable(
                     "bond.random_gift.received",
-                    maid.getName(),
+                    MaidDisplayNameResolver.resolveDisplayName(maid),
                     gift.getHoverName(),
                     gift.getCount()
             ), true);
@@ -388,7 +389,11 @@ public final class RandomGiftService {
                 BondManager.getUnlockedAbilityIds(player, maid.getUUID()),
                 queuedGiftCount,
                 Math.max(1, ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get()),
-                nextGiftReadySeconds
+                nextGiftReadySeconds,
+                "",
+                "",
+                "",
+                ""
         ));
     }
 

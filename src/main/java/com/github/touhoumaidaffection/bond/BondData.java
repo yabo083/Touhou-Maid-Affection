@@ -1,13 +1,18 @@
 package com.github.touhoumaidaffection.bond;
 
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
+import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
 public class BondData {
     private static final String ROOT_KEY = "touhou_maid_affection.bond";
     private static final int CURRENT_ABILITY_DATA_VERSION = 2;
@@ -82,6 +87,46 @@ public class BondData {
         save();
     }
 
+    public void setMaidDisplayName(UUID maidUuid, String displayName) {
+        if (displayName == null || displayName.isBlank()) {
+            return;
+        }
+        root.putString("BondMaidDisplayName_" + maidUuid, displayName);
+        save();
+    }
+
+    public String getMaidDisplayName(UUID maidUuid) {
+        return root.getString("BondMaidDisplayName_" + maidUuid);
+    }
+
+    public void setMaidYsmProfile(UUID maidUuid, String ysmModelId, String ysmTexture, String ysmDisplayName) {
+        root.putString("BondMaidYsmModelId_" + maidUuid, ysmModelId == null ? "" : ysmModelId);
+        root.putString("BondMaidYsmTexture_" + maidUuid, ysmTexture == null ? "" : ysmTexture);
+        root.putString("BondMaidYsmDisplayName_" + maidUuid, ysmDisplayName == null ? "" : ysmDisplayName);
+        save();
+    }
+
+    public void setMaidRescueAction(UUID maidUuid, String actionId) {
+        root.putString("BondMaidRescueAction_" + maidUuid, actionId == null ? "" : actionId);
+        save();
+    }
+
+    public String getMaidRescueAction(UUID maidUuid) {
+        return root.getString("BondMaidRescueAction_" + maidUuid);
+    }
+
+    public String getMaidYsmModelId(UUID maidUuid) {
+        return root.getString("BondMaidYsmModelId_" + maidUuid);
+    }
+
+    public String getMaidYsmTexture(UUID maidUuid) {
+        return root.getString("BondMaidYsmTexture_" + maidUuid);
+    }
+
+    public String getMaidYsmDisplayName(UUID maidUuid) {
+        return root.getString("BondMaidYsmDisplayName_" + maidUuid);
+    }
+
     public String getMaidModelId(UUID maidUuid) {
         return root.getString("BondMaidModel_" + maidUuid);
     }
@@ -105,6 +150,60 @@ public class BondData {
             }
         }
         return result;
+    }
+
+    public List<UUID> getUnlockedMaidIdsForAbility(String abilityId) {
+        List<UUID> result = new ArrayList<>();
+        for (String key : root.getAllKeys()) {
+            if (!key.startsWith("BondUnlocked_") || !root.getBoolean(key)) {
+                continue;
+            }
+            String uuidPart = key.substring("BondUnlocked_".length());
+            UUID maidUuid;
+            try {
+                maidUuid = UUID.fromString(uuidPart);
+            } catch (IllegalArgumentException ex) {
+                continue;
+            }
+            if (isAbilityUnlocked(maidUuid, abilityId)) {
+                result.add(maidUuid);
+            }
+        }
+        return result;
+    }
+
+    public MaidProfileSnapshot findMaidProfileByModelId(String modelId) {
+        if (modelId == null || modelId.isBlank()) {
+            return MaidProfileSnapshot.empty();
+        }
+        for (String key : root.getAllKeys()) {
+            if (!key.startsWith("BondMaidModel_")) {
+                continue;
+            }
+            String storedModelId = root.getString(key);
+            if (!modelId.equals(storedModelId)) {
+                continue;
+            }
+            String uuidPart = key.substring("BondMaidModel_".length());
+            try {
+                UUID maidUuid = UUID.fromString(uuidPart);
+                return getMaidProfile(maidUuid);
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed legacy keys.
+            }
+        }
+        return MaidProfileSnapshot.empty();
+    }
+
+    public MaidProfileSnapshot getMaidProfile(UUID maidUuid) {
+        return new MaidProfileSnapshot(
+                getMaidModelId(maidUuid),
+                getMaidDisplayName(maidUuid),
+                getMaidYsmModelId(maidUuid),
+                getMaidYsmTexture(maidUuid),
+                getMaidYsmDisplayName(maidUuid),
+                getMaidRescueAction(maidUuid)
+        );
     }
 
     public int getQueuedGiftCount(UUID maidUuid) {
@@ -242,6 +341,24 @@ public class BondData {
         save();
     }
 
+    public MorningKissVoiceSettings getMorningKissVoiceSettings(UUID maidUuid) {
+        return MorningKissVoiceSettings.of(
+                root.getString("MorningKissVoiceMode_" + maidUuid),
+                root.getString("MorningKissVoiceGroup_" + maidUuid),
+                root.getString("MorningKissVoiceClip_" + maidUuid),
+                root.getString("MorningKissVoicePack_" + maidUuid)
+        );
+    }
+
+    public void setMorningKissVoiceSettings(UUID maidUuid, MorningKissVoiceSettings settings) {
+        MorningKissVoiceSettings safe = settings == null ? MorningKissVoiceSettings.DEFAULT : settings;
+        root.putString("MorningKissVoiceMode_" + maidUuid, safe.mode().serializedName());
+        root.putString("MorningKissVoiceGroup_" + maidUuid, safe.selectedGroup());
+        root.putString("MorningKissVoiceClip_" + maidUuid, safe.selectedClip());
+        root.putString("MorningKissVoicePack_" + maidUuid, safe.soundPackId());
+        save();
+    }
+
     private void migrateAbilityDataIfNeeded(UUID maidUuid) {
         String abilitiesKey = getAbilitiesKey(maidUuid);
         String versionKey = getAbilityVersionKey(maidUuid);
@@ -266,5 +383,27 @@ public class BondData {
 
     private void save() {
         persistent.put(ROOT_KEY, root);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        CompoundTag originalPersistent = event.getOriginal().getPersistentData();
+        if (!originalPersistent.contains(ROOT_KEY)) {
+            return;
+        }
+        event.getEntity().getPersistentData().put(ROOT_KEY, originalPersistent.getCompound(ROOT_KEY).copy());
+    }
+
+    public record MaidProfileSnapshot(
+            String modelId,
+            String displayName,
+            String ysmModelId,
+            String ysmTexture,
+            String ysmDisplayName,
+            String rescueActionId
+    ) {
+        private static MaidProfileSnapshot empty() {
+            return new MaidProfileSnapshot("", "", "", "", "", "");
+        }
     }
 }

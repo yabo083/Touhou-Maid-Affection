@@ -5,7 +5,11 @@
   "minVersion": "0.8",
   "mixins": [
     "MaidBegTaskMixin",
-    "MaidRideBegTaskMixin"
+    "MaidRideBegTaskMixin",
+    "EntityMaidAccessorMixin"
+  ],
+  "client": [
+    "AbstractMaidContainerGuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1

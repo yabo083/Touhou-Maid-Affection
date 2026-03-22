@@ -1,9 +1,9 @@
 package com.github.touhoumaidaffection.client;
 
+import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
+import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.LinkedHashSet;
@@ -18,19 +18,21 @@ public final class BondClientPayloadHandler {
                 new LinkedHashSet<>(payload.unlockedAbilityIds()),
                 payload.queuedGiftCount(),
                 payload.maxQueuedGiftCount(),
-                payload.nextGiftReadySeconds()
+                payload.nextGiftReadySeconds(),
+                MorningKissVoiceSettings.of(
+                        payload.morningKissVoiceMode(),
+                        payload.morningKissVoiceGroup(),
+                        payload.morningKissVoiceClip(),
+                        payload.morningKissVoicePack()
+                )
         ));
     }
 
     public static void handleRescuePop(MaidRescuePopPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.player != null) {
-                minecraft.player.displayClientMessage(
-                        Component.translatable("bond.emergency_rescue.triggered", payload.maidModelId()),
-                        true
-                );
-            }
-        });
+        context.enqueueWork(() -> EmergencyRescueVisualHandler.play(payload));
+    }
+
+    public static void handleMorningKissVoicePlay(MorningKissVoicePlayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> MorningKissVoicePlayback.play(payload));
     }
 }

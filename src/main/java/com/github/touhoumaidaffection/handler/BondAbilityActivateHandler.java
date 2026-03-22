@@ -3,6 +3,8 @@ package com.github.touhoumaidaffection.handler;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
+import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
+import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -48,6 +50,10 @@ public final class BondAbilityActivateHandler {
                 consumePowerPoints(player, cost);
                 BondManager.unlockAbility(player, maid.getUUID(), ability.getId());
                 ability.unlock(player, maid);
+                if ("emergency_heal".equals(ability.getId())) {
+                    EmergencyHealListener.ensureRescueChargesUpToDate(player);
+                    EmergencyRescueData.grantImmediateRescueIfEligible(player, maid.getUUID());
+                }
             } else if (ability.hasSecondaryAction()) {
                 if (!ability.canPerformSecondaryAction(player, maid)) {
                     return;
@@ -72,7 +78,11 @@ public final class BondAbilityActivateHandler {
                     BondManager.getUnlockedAbilityIds(player, maid.getUUID()),
                     queuedGiftCount,
                     Math.max(1, com.github.touhoumaidaffection.ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get()),
-                    nextGiftReadySeconds
+                    nextGiftReadySeconds,
+                    "",
+                    "",
+                    "",
+                    ""
             ));
         });
     }

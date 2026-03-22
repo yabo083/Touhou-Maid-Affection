@@ -1,5 +1,7 @@
 package com.github.touhoumaidaffection.client;
 
+import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -12,12 +14,14 @@ public final class BondClientStateCache {
     private BondClientStateCache() {
     }
 
-    public static void update(UUID maidUuid, Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds) {
+    public static void update(UUID maidUuid, Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
+                              MorningKissVoiceSettings morningKissVoiceSettings) {
         STATES.put(maidUuid, new MaidBondClientState(
                 new LinkedHashSet<>(unlockedAbilityIds),
                 Math.max(0, queuedGiftCount),
                 Math.max(1, maxQueuedGiftCount),
-                Math.max(0, nextGiftReadySeconds)
+                Math.max(0, nextGiftReadySeconds),
+                morningKissVoiceSettings == null ? MorningKissVoiceSettings.DEFAULT : morningKissVoiceSettings
         ));
     }
 
@@ -37,11 +41,24 @@ public final class BondClientStateCache {
         return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).nextGiftReadySeconds();
     }
 
+    public static MorningKissVoiceSettings getMorningKissVoiceSettings(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).morningKissVoiceSettings();
+    }
+
+    public static void updateMorningKissVoiceSettings(UUID maidUuid, MorningKissVoiceSettings settings) {
+        STATES.compute(maidUuid, (ignored, current) -> {
+            MaidBondClientState base = current == null ? MaidBondClientState.EMPTY : current;
+            return new MaidBondClientState(base.unlockedAbilityIds(), base.queuedGiftCount(), base.maxQueuedGiftCount(), base.nextGiftReadySeconds(),
+                    settings == null ? MorningKissVoiceSettings.DEFAULT : settings);
+        });
+    }
+
     public static void clear() {
         STATES.clear();
     }
 
-    private record MaidBondClientState(Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds) {
-        private static final MaidBondClientState EMPTY = new MaidBondClientState(Set.of(), 0, 1, 0);
+    private record MaidBondClientState(Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
+                                       MorningKissVoiceSettings morningKissVoiceSettings) {
+        private static final MaidBondClientState EMPTY = new MaidBondClientState(Set.of(), 0, 1, 0, MorningKissVoiceSettings.DEFAULT);
     }
 }
