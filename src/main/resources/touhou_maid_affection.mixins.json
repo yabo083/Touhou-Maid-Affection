@@ -9,7 +9,11 @@
     "EntityMaidAccessorMixin"
   ],
   "client": [
-    "AbstractMaidContainerGuiMixin"
+    "AbstractMaidContainerGuiMixin",
+    "client.LapPillowSeatRenderMixin",
+    "client.EntityLapPillowPassengerMixin",
+    "client.EntityRenderDispatcherLapPillowMixin",
+    "client.LivingEntityLapPillowSleepMixin"
   ],
   "injectors": {
     "defaultRequire": 1

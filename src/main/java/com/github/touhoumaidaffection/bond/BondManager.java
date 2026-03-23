@@ -2,6 +2,7 @@ package com.github.touhoumaidaffection.bond;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 
 import java.util.List;
@@ -76,6 +77,14 @@ public final class BondManager {
 
     public static void setMaidRescueAction(ServerPlayer player, UUID maidUuid, String actionId) {
         BondData.of(player).setMaidRescueAction(maidUuid, actionId);
+    }
+
+    public static LapPillowPoseSnapshot getMaidLapPillowPose(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMaidLapPillowPose(maidUuid);
+    }
+
+    public static void setMaidLapPillowPose(ServerPlayer player, UUID maidUuid, LapPillowPoseSnapshot pose) {
+        BondData.of(player).setMaidLapPillowPose(maidUuid, pose);
     }
 
     public static int getQueuedGiftCount(ServerPlayer player, UUID maidUuid) {

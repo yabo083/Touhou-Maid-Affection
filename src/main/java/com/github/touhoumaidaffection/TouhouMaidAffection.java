@@ -7,7 +7,9 @@ import com.github.touhoumaidaffection.handler.BondAbilityActivateHandler;
 import com.github.touhoumaidaffection.handler.BondStateRequestHandler;
 import com.github.touhoumaidaffection.handler.KissCarryRequestHandler;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
+import com.github.touhoumaidaffection.handler.LapPillowAngleLockHandler;
 import com.github.touhoumaidaffection.handler.LapPillowHandler;
+import com.github.touhoumaidaffection.handler.LapPillowPoseConfigHandler;
 import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
@@ -15,7 +17,9 @@ import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.network.LapPillowAngleLockPayload;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
+import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
@@ -44,6 +48,9 @@ public class TouhouMaidAffection {
 
         // Register mob effects
         ModEffects.MOB_EFFECTS.register(modEventBus);
+
+        // Register entities
+        ModEntityTypes.ENTITY_TYPES.register(modEventBus);
 
         // Register data attachments
         ModAttachments.ATTACHMENTS.register(modEventBus);
@@ -115,6 +122,16 @@ public class TouhouMaidAffection {
                 LapPillowExitPayload.TYPE,
                 LapPillowExitPayload.STREAM_CODEC,
                 LapPillowHandler::handleExit
+        );
+        registrar.playToServer(
+                LapPillowPoseConfigPayload.TYPE,
+                LapPillowPoseConfigPayload.STREAM_CODEC,
+                LapPillowPoseConfigHandler::handle
+        );
+        registrar.playToServer(
+                LapPillowAngleLockPayload.TYPE,
+                LapPillowAngleLockPayload.STREAM_CODEC,
+                LapPillowAngleLockHandler::handle
         );
     }
 }

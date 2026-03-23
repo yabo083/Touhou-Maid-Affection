@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.network;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -21,7 +22,16 @@ public record BondStateSyncPayload(
         String morningKissVoiceMode,
         String morningKissVoiceGroup,
         String morningKissVoiceClip,
-        String morningKissVoicePack
+        String morningKissVoicePack,
+        String lapPillowMode,
+        double lapPillowMaidOffsetX,
+        double lapPillowMaidOffsetY,
+        double lapPillowMaidOffsetZ,
+        double lapPillowPlayerOffsetX,
+        double lapPillowPlayerOffsetY,
+        double lapPillowPlayerOffsetZ,
+        String lapPillowMaidAction,
+        String lapPillowPlayerAction
 ) implements CustomPacketPayload {
     public static final Type<BondStateSyncPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "bond_state_sync"));
@@ -47,6 +57,15 @@ public record BondStateSyncPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceGroup());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceClip());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoicePack());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.lapPillowMode());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetX());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetY());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetZ());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowPlayerOffsetX());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowPlayerOffsetY());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowPlayerOffsetZ());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.lapPillowMaidAction());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.lapPillowPlayerAction());
     }
 
     private static BondStateSyncPayload decode(ByteBuf buf) {
@@ -58,6 +77,15 @@ public record BondStateSyncPayload(
                 ByteBufCodecs.INT.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                LapPillowMode.fromName(ByteBufCodecs.STRING_UTF8.decode(buf)).serializedName(),
+                ByteBufCodecs.DOUBLE.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf)
         );

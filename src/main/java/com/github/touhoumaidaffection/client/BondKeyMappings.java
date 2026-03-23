@@ -7,12 +7,21 @@ import org.lwjgl.glfw.GLFW;
 
 public final class BondKeyMappings {
     public static final String KEY_LAP_PILLOW = "key.touhou_maid_affection.lap_pillow";
+    public static final String KEY_LAP_PILLOW_ANGLE_LOCK = "key.touhou_maid_affection.lap_pillow_angle_lock";
 
     public static final KeyMapping LAP_PILLOW = new KeyMapping(
             KEY_LAP_PILLOW,
             KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_B,
+            KissKeyMappings.KEY_CATEGORY
+    );
+
+    public static final KeyMapping LAP_PILLOW_ANGLE_LOCK = new KeyMapping(
+            KEY_LAP_PILLOW_ANGLE_LOCK,
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_V,
             KissKeyMappings.KEY_CATEGORY
     );
 

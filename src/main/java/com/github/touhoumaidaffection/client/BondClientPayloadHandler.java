@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.client;
 
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
@@ -24,6 +25,17 @@ public final class BondClientPayloadHandler {
                         payload.morningKissVoiceGroup(),
                         payload.morningKissVoiceClip(),
                         payload.morningKissVoicePack()
+                ),
+                new LapPillowPoseSnapshot(
+                        com.github.touhoumaidaffection.bond.lap.LapPillowMode.fromName(payload.lapPillowMode()),
+                        payload.lapPillowMaidOffsetX(),
+                        payload.lapPillowMaidOffsetY(),
+                        payload.lapPillowMaidOffsetZ(),
+                        payload.lapPillowPlayerOffsetX(),
+                        payload.lapPillowPlayerOffsetY(),
+                        payload.lapPillowPlayerOffsetZ(),
+                        payload.lapPillowMaidAction(),
+                        payload.lapPillowPlayerAction()
                 )
         ));
     }

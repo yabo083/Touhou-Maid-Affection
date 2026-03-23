@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 
 public final class BondClientStateCache {
     private static final Map<UUID, MaidBondClientState> STATES = new ConcurrentHashMap<>();
@@ -15,13 +16,15 @@ public final class BondClientStateCache {
     }
 
     public static void update(UUID maidUuid, Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
-                              MorningKissVoiceSettings morningKissVoiceSettings) {
+                              MorningKissVoiceSettings morningKissVoiceSettings,
+                              LapPillowPoseSnapshot lapPillowPose) {
         STATES.put(maidUuid, new MaidBondClientState(
                 new LinkedHashSet<>(unlockedAbilityIds),
                 Math.max(0, queuedGiftCount),
                 Math.max(1, maxQueuedGiftCount),
                 Math.max(0, nextGiftReadySeconds),
-                morningKissVoiceSettings == null ? MorningKissVoiceSettings.DEFAULT : morningKissVoiceSettings
+                morningKissVoiceSettings == null ? MorningKissVoiceSettings.DEFAULT : morningKissVoiceSettings,
+                lapPillowPose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : lapPillowPose.clamp()
         ));
     }
 
@@ -45,11 +48,29 @@ public final class BondClientStateCache {
         return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).morningKissVoiceSettings();
     }
 
+    public static LapPillowPoseSnapshot getLapPillowPose(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).lapPillowPose();
+    }
+
     public static void updateMorningKissVoiceSettings(UUID maidUuid, MorningKissVoiceSettings settings) {
         STATES.compute(maidUuid, (ignored, current) -> {
             MaidBondClientState base = current == null ? MaidBondClientState.EMPTY : current;
             return new MaidBondClientState(base.unlockedAbilityIds(), base.queuedGiftCount(), base.maxQueuedGiftCount(), base.nextGiftReadySeconds(),
-                    settings == null ? MorningKissVoiceSettings.DEFAULT : settings);
+                    settings == null ? MorningKissVoiceSettings.DEFAULT : settings, base.lapPillowPose());
+        });
+    }
+
+    public static void updateLapPillowPose(UUID maidUuid, LapPillowPoseSnapshot pose) {
+        STATES.compute(maidUuid, (ignored, current) -> {
+            MaidBondClientState base = current == null ? MaidBondClientState.EMPTY : current;
+            return new MaidBondClientState(
+                    base.unlockedAbilityIds(),
+                    base.queuedGiftCount(),
+                    base.maxQueuedGiftCount(),
+                    base.nextGiftReadySeconds(),
+                    base.morningKissVoiceSettings(),
+                    pose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : pose.clamp()
+            );
         });
     }
 
@@ -58,7 +79,8 @@ public final class BondClientStateCache {
     }
 
     private record MaidBondClientState(Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
-                                       MorningKissVoiceSettings morningKissVoiceSettings) {
-        private static final MaidBondClientState EMPTY = new MaidBondClientState(Set.of(), 0, 1, 0, MorningKissVoiceSettings.DEFAULT);
+                                       MorningKissVoiceSettings morningKissVoiceSettings,
+                                       LapPillowPoseSnapshot lapPillowPose) {
+        private static final MaidBondClientState EMPTY = new MaidBondClientState(Set.of(), 0, 1, 0, MorningKissVoiceSettings.DEFAULT, LapPillowPoseSnapshot.maidSitPlayerLieDefault());
     }
 }

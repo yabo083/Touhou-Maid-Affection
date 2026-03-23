@@ -2,6 +2,8 @@ package com.github.touhoumaidaffection.bond;
 
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
+import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -113,6 +115,47 @@ public class BondData {
 
     public String getMaidRescueAction(UUID maidUuid) {
         return root.getString("BondMaidRescueAction_" + maidUuid);
+    }
+
+    public LapPillowPoseSnapshot getMaidLapPillowPose(UUID maidUuid) {
+        String prefix = "BondMaidLapPillow_";
+        String mode = root.getString(prefix + "Mode_" + maidUuid);
+        if (mode.isBlank()) {
+            return LapPillowPoseSnapshot.maidSitPlayerLieDefault();
+        }
+        return new LapPillowPoseSnapshot(
+                LapPillowMode.fromName(mode),
+                root.getDouble(prefix + "MaidOffsetX_" + maidUuid),
+                root.getDouble(prefix + "MaidOffsetY_" + maidUuid),
+                root.getDouble(prefix + "MaidOffsetZ_" + maidUuid),
+                readPlayerOffset(root, prefix + "PlayerOffsetX_" + maidUuid, prefix + "OffsetX_" + maidUuid),
+                readPlayerOffset(root, prefix + "PlayerOffsetY_" + maidUuid, prefix + "OffsetY_" + maidUuid),
+                readPlayerOffset(root, prefix + "PlayerOffsetZ_" + maidUuid, prefix + "OffsetZ_" + maidUuid),
+                root.getString(prefix + "MaidAction_" + maidUuid),
+                root.getString(prefix + "PlayerAction_" + maidUuid)
+        ).clamp();
+    }
+
+    public void setMaidLapPillowPose(UUID maidUuid, LapPillowPoseSnapshot pose) {
+        LapPillowPoseSnapshot safe = pose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : pose.clamp();
+        String prefix = "BondMaidLapPillow_";
+        root.putString(prefix + "Mode_" + maidUuid, safe.mode().serializedName());
+        root.putDouble(prefix + "MaidOffsetX_" + maidUuid, safe.maidOffsetX());
+        root.putDouble(prefix + "MaidOffsetY_" + maidUuid, safe.maidOffsetY());
+        root.putDouble(prefix + "MaidOffsetZ_" + maidUuid, safe.maidOffsetZ());
+        root.putDouble(prefix + "PlayerOffsetX_" + maidUuid, safe.playerOffsetX());
+        root.putDouble(prefix + "PlayerOffsetY_" + maidUuid, safe.playerOffsetY());
+        root.putDouble(prefix + "PlayerOffsetZ_" + maidUuid, safe.playerOffsetZ());
+        root.putString(prefix + "MaidAction_" + maidUuid, safe.maidActionId());
+        root.putString(prefix + "PlayerAction_" + maidUuid, safe.playerActionId());
+        save();
+    }
+
+    private double readPlayerOffset(CompoundTag tag, String currentKey, String legacyKey) {
+        if (tag.contains(currentKey)) {
+            return tag.getDouble(currentKey);
+        }
+        return tag.getDouble(legacyKey);
     }
 
     public String getMaidYsmModelId(UUID maidUuid) {

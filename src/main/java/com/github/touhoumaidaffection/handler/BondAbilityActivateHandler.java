@@ -6,13 +6,11 @@ import com.github.touhoumaidaffection.bond.ability.IBondAbility;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
-import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class BondAbilityActivateHandler {
@@ -63,27 +61,7 @@ public final class BondAbilityActivateHandler {
                 return;
             }
 
-            long nowMs = System.currentTimeMillis();
-            int queuedGiftCount = BondManager.isAbilityUnlocked(player, maid.getUUID(), "random_gift")
-                    ? BondManager.reconcileRandomGiftQueue(player, maid.getUUID(), nowMs)
-                    : 0;
-            long nextGiftReadyAtMs = BondManager.isAbilityUnlocked(player, maid.getUUID(), "random_gift")
-                    ? BondManager.getNextRandomGiftReadyAtMs(player, maid.getUUID(), nowMs)
-                    : 0L;
-            int nextGiftReadySeconds = nextGiftReadyAtMs > nowMs
-                    ? (int) Math.min(Integer.MAX_VALUE, (nextGiftReadyAtMs - nowMs + 999L) / 1000L)
-                    : 0;
-            PacketDistributor.sendToPlayer(player, new BondStateSyncPayload(
-                    maid.getUUID(),
-                    BondManager.getUnlockedAbilityIds(player, maid.getUUID()),
-                    queuedGiftCount,
-                    Math.max(1, com.github.touhoumaidaffection.ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get()),
-                    nextGiftReadySeconds,
-                    "",
-                    "",
-                    "",
-                    ""
-            ));
+            BondSyncHelper.sendBondState(player, maid);
         });
     }
 

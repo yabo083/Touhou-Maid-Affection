@@ -4,7 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondManager;
-import com.github.touhoumaidaffection.network.BondStateSyncPayload;
+import com.github.touhoumaidaffection.handler.BondSyncHelper;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
@@ -29,7 +29,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -374,27 +373,7 @@ public final class RandomGiftService {
     }
 
     private static void sendStateSync(ServerPlayer player, EntityMaid maid) {
-        long nowMs = System.currentTimeMillis();
-        int queuedGiftCount = BondManager.isAbilityUnlocked(player, maid.getUUID(), "random_gift")
-                ? BondManager.reconcileRandomGiftQueue(player, maid.getUUID(), nowMs)
-                : 0;
-        long nextGiftReadyAtMs = BondManager.isAbilityUnlocked(player, maid.getUUID(), "random_gift")
-                ? BondManager.getNextRandomGiftReadyAtMs(player, maid.getUUID(), nowMs)
-                : 0L;
-        int nextGiftReadySeconds = nextGiftReadyAtMs > nowMs
-                ? (int) Math.min(Integer.MAX_VALUE, (nextGiftReadyAtMs - nowMs + 999L) / 1000L)
-                : 0;
-        PacketDistributor.sendToPlayer(player, new BondStateSyncPayload(
-                maid.getUUID(),
-                BondManager.getUnlockedAbilityIds(player, maid.getUUID()),
-                queuedGiftCount,
-                Math.max(1, ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get()),
-                nextGiftReadySeconds,
-                "",
-                "",
-                "",
-                ""
-        ));
+        BondSyncHelper.sendBondState(player, maid);
     }
 
     private record PendingDeliveryTask(ResourceKey<Level> dimension, UUID playerUuid, UUID maidUuid, long startTick, long timeoutTick) {

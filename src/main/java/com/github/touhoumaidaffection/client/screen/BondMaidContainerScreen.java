@@ -157,6 +157,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (secondaryPage != null && secondaryPage.mouseReleased(mouseX, mouseY, button)) {
+            return true;
+        }
         if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
             return true;
         }
@@ -165,6 +168,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (secondaryPage != null && secondaryPage.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
         if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
             return true;
         }
@@ -364,6 +370,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     @Override
     public Component getSecondaryPageButtonLabel(IBondAbility ability) {
+        if ("lap_pillow".equals(ability.getId())) {
+            return Component.translatable("bond.action.settings");
+        }
         if (isEmergencyHealAbility(ability)) {
             return Component.translatable("bond.emergency_rescue.action.button");
         }
