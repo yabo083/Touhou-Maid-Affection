@@ -1,8 +1,8 @@
 package com.github.touhoumaidaffection.client.screen.page;
 
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
+import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
-import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityRowLayout;
 import net.minecraft.ChatFormatting;
@@ -148,13 +148,14 @@ public final class BondAbilityPrimaryPage {
             }
         }
         if (host.isEmergencyHealAbility(ability) && abilityUnlocked && hasSecondaryButton) {
-            String selectedAction = RescueYsmActionConfig.getSelectedAction(host.getRescueActionModelId(), host.getRescueActionTextureId());
-            if (selectedAction.isBlank()) {
-                result.add(Component.translatable("bond.emergency_rescue.action.none").withStyle(ChatFormatting.GRAY));
-            } else {
-                result.add(Component.translatable("bond.emergency_rescue.action.selected", host.resolveSelectedRescueActionLabel(selectedAction)).withStyle(ChatFormatting.GRAY));
-            }
-            result.add(Component.translatable("bond.emergency_rescue.action.tip").withStyle(ChatFormatting.DARK_AQUA));
+            EmergencyRescueVoiceSettings rescueVoiceSettings = BondClientStateCache.getEmergencyRescueVoiceSettings(host.getMaid().getUUID());
+            result.add(Component.translatable(
+                    "bond.emergency_rescue.voice.selected_source",
+                    Component.translatable(rescueVoiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK
+                            ? "bond.emergency_rescue.voice.source.tlm"
+                            : "bond.emergency_rescue.voice.source.custom")
+            ).withStyle(ChatFormatting.GRAY));
+            result.add(Component.translatable("bond.emergency_rescue.voice.tip").withStyle(ChatFormatting.DARK_AQUA));
         }
         if (!abilityUnlocked) {
             result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
@@ -200,10 +201,13 @@ public final class BondAbilityPrimaryPage {
         } else if (!abilityUnlocked) {
             secondaryText = Component.translatable("bond.power_point_cost", ability.getPowerPointCost());
         } else if (host.isEmergencyHealAbility(ability) && hasSecondaryButton) {
-            String selectedAction = RescueYsmActionConfig.getSelectedAction(host.getRescueActionModelId(), host.getRescueActionTextureId());
-            secondaryText = selectedAction.isBlank()
-                    ? Component.translatable("bond.emergency_rescue.action.default")
-                    : Component.translatable("bond.emergency_rescue.action.selected_compact", host.resolveSelectedRescueActionLabel(selectedAction));
+            EmergencyRescueVoiceSettings rescueVoiceSettings = BondClientStateCache.getEmergencyRescueVoiceSettings(host.getMaid().getUUID());
+            secondaryText = Component.translatable(
+                    "bond.emergency_rescue.voice.selected_source_compact",
+                    Component.translatable(rescueVoiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK
+                            ? "bond.emergency_rescue.voice.source.tlm"
+                            : "bond.emergency_rescue.voice.source.custom")
+            );
         } else {
             secondaryText = ability.getDescription();
         }

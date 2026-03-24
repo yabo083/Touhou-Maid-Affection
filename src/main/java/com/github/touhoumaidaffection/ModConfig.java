@@ -55,6 +55,9 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_ENABLED;
     public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID;
+    public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT;
+    public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_SYNC_SCAN_INTERVAL_SECONDS;
+    public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG;
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET;
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET;
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET;
@@ -329,6 +332,18 @@ public class ModConfig {
         BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID = builder
                 .comment("How many rescue charges each unlocked maid contributes on daily refresh")
                 .defineInRange("chargesPerMaid", 1, 1, 16);
+
+        BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT = builder
+                .comment("Default value of common voice fallback for rescue custom voice profiles")
+                .define("commonFallbackDefault", true);
+
+        BOND_EMERGENCY_RESCUE_SYNC_SCAN_INTERVAL_SECONDS = builder
+                .comment("Seconds between server rescue predefined sound folder scans")
+                .defineInRange("syncScanIntervalSeconds", 30, 5, 3600);
+
+        BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG = builder
+                .comment("Verbose logs for rescue sound sync and playback fallback")
+                .define("syncVerboseLog", true);
 
         BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET = builder
                 .comment("Additional X-axis rotation offset for the rescue overlay maid shown in front of the player",

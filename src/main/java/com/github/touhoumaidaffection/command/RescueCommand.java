@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.command;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
+import com.github.touhoumaidaffection.bond.rescue.RescueSoundSyncService;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -31,7 +32,13 @@ public final class RescueCommand {
                         .then(Commands.literal("off")
                                 .executes(context -> setEnabled(context.getSource(), false)))
                         .then(Commands.literal("toggle")
-                                .executes(context -> toggleEnabled(context.getSource())))));
+                                .executes(context -> toggleEnabled(context.getSource())))
+                        .then(Commands.literal("sound")
+                                .then(Commands.literal("sync")
+                                        .requires(source -> source.hasPermission(2))
+                                        .executes(context -> forceSoundSync(context.getSource())))
+                                .then(Commands.literal("reload")
+                                        .executes(context -> reloadClientSoundConfig(context.getSource()))))));
     }
 
     private static int executeSelfQuery(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -91,5 +98,21 @@ public final class RescueCommand {
                         : "command.touhou_maid_affection.rescue.personal.set_off"
         ), false);
         return next ? 1 : 0;
+    }
+
+    private static int forceSoundSync(CommandSourceStack source) {
+        if (source.getServer() == null) {
+            return 0;
+        }
+        RescueSoundSyncService.forceResync(source.getServer());
+        source.sendSuccess(() -> Component.translatable("command.touhou_maid_affection.rescue.sound.sync"), true);
+        return 1;
+    }
+
+    private static int reloadClientSoundConfig(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        RescueSoundSyncService.requestClientReload(player, "command_reload");
+        source.sendSuccess(() -> Component.translatable("command.touhou_maid_affection.rescue.sound.reload"), false);
+        return 1;
     }
 }

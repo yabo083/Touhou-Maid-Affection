@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.handler;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -26,6 +27,7 @@ public final class BondSyncHelper {
                 : 0;
         MorningKissVoiceSettings voiceSettings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID())
                 .withSoundPackId(maid.getSoundPackId());
+        EmergencyRescueVoiceSettings rescueVoiceSettings = BondManager.getEmergencyRescueVoiceSettings(player, maid.getUUID());
         LapPillowPoseSnapshot lapPillowPose = BondManager.getMaidLapPillowPose(player, maid.getUUID()).clamp();
 
         PacketDistributor.sendToPlayer(player, new BondStateSyncPayload(
@@ -38,6 +40,13 @@ public final class BondSyncHelper {
                 voiceSettings.selectedGroup(),
                 voiceSettings.selectedClip(),
                 voiceSettings.soundPackId(),
+                rescueVoiceSettings.sourceMode().serializedName(),
+                rescueVoiceSettings.tlmPlayMode().serializedName(),
+                rescueVoiceSettings.tlmSelectedGroup(),
+                rescueVoiceSettings.tlmSelectedClip(),
+                rescueVoiceSettings.customPlayMode().serializedName(),
+                rescueVoiceSettings.fixedFile(),
+                rescueVoiceSettings.useCommonFallback(),
                 lapPillowPose.mode().serializedName(),
                 lapPillowPose.maidOffsetX(),
                 lapPillowPose.maidOffsetY(),

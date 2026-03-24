@@ -2,23 +2,32 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.SoundData;
+import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.mojang.blaze3d.audio.SoundBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.RandomSource;
 import org.apache.logging.log4j.MarkerManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class EmergencyRescueSoundPlayer {
     private static final SoundEvent STREAM_ANCHOR_SOUND_EVENT =
             SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("music.menu"));
+    private static final Map<String, Integer> SEQUENCE_INDEX_CACHE = new HashMap<>();
 
     private EmergencyRescueSoundPlayer() {
     }
@@ -29,7 +38,7 @@ public final class EmergencyRescueSoundPlayer {
             return;
         }
 
-        if (payload.allowClientCustomSound() && tryPlayClientOverride(payload, minecraft)) {
+        if (tryPlayByConfiguredSource(payload, minecraft)) {
             return;
         }
 
@@ -38,53 +47,242 @@ public final class EmergencyRescueSoundPlayer {
         minecraft.player.playSound(soundEvent, 1.0F, 1.0F);
     }
 
-    private static boolean tryPlayClientOverride(MaidRescuePopPayload payload, Minecraft minecraft) {
-        EmergencyRescueLocalSoundConfig.LocalSoundSettings settings = EmergencyRescueLocalSoundConfig.getSettings();
-        if (!settings.enabled()) {
+    public static void invalidateCaches() {
+        SEQUENCE_INDEX_CACHE.clear();
+    }
+
+    private static boolean tryPlayByConfiguredSource(MaidRescuePopPayload payload, Minecraft minecraft) {
+        EmergencyRescueVoiceSettings voiceSettings = EmergencyRescueVoiceSettings.of(
+                payload.rescueVoiceSourceMode(),
+                payload.rescueVoiceTlmMode(),
+                payload.rescueVoiceTlmGroup(),
+                payload.rescueVoiceTlmClip(),
+                payload.rescueVoiceCustomPlayMode(),
+                payload.rescueVoiceFixedFile(),
+                payload.rescueVoiceUseCommonFallback()
+        );
+        if (voiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK) {
+            if (tryPlayTlmPackVoice(payload, voiceSettings, minecraft)) {
+                return true;
+            }
+            if (payload.allowClientCustomSound() && tryPlayCustomFileVoice(payload, voiceSettings, minecraft)) {
+                return true;
+            }
             return false;
         }
+        if (payload.allowClientCustomSound() && tryPlayCustomFileVoice(payload, voiceSettings, minecraft)) {
+            return true;
+        }
+        return false;
+    }
 
-        Path soundPath = EmergencyRescueLocalSoundConfig.resolveSoundFile(settings);
+    private static boolean tryPlayTlmPackVoice(MaidRescuePopPayload payload, EmergencyRescueVoiceSettings settings, Minecraft minecraft) {
+        String soundPackId = payload.maidSoundPackId();
+        if (soundPackId == null || soundPackId.isBlank()) {
+            debugLog("Emergency rescue TLM voice skipped: empty sound pack id");
+            return false;
+        }
+        List<RescueTlmVoiceIndex.VoiceEntry> pool = selectTlmVoicePool(soundPackId, settings);
+        if (pool.isEmpty()) {
+            debugLog("Emergency rescue TLM voice skipped: no entries in pack {}", soundPackId);
+            return false;
+        }
+        RandomSource random = minecraft.level != null ? minecraft.level.random : RandomSource.create();
+        RescueTlmVoiceIndex.VoiceEntry entry = pool.get(random.nextInt(pool.size()));
+        SoundBuffer soundBuffer = RescueTlmVoiceIndex.loadSoundBuffer(soundPackId, entry.clipKey());
+        if (soundBuffer == null) {
+            debugLog("Emergency rescue TLM voice buffer missing: pack={}, clip={}", soundPackId, entry.clipKey());
+            return false;
+        }
+        try {
+            minecraft.getSoundManager().play(new EmergencyRescueCustomSoundInstance(
+                    SoundEvent.createVariableRangeEvent(entry.soundEventId()),
+                    soundBuffer,
+                    minecraft.player.getX(),
+                    minecraft.player.getY(),
+                    minecraft.player.getZ(),
+                    1.0F,
+                    1.0F
+            ));
+            debugLog("Emergency rescue TLM voice played: pack={}, clip={}", soundPackId, entry.clipKey());
+            return true;
+        } catch (Exception ex) {
+            TouhouMaidAffection.LOGGER.warn("Failed to play emergency rescue TLM voice entry '{}'", entry.clipKey(), ex);
+            return false;
+        }
+    }
+
+    private static List<RescueTlmVoiceIndex.VoiceEntry> selectTlmVoicePool(String soundPackId, EmergencyRescueVoiceSettings settings) {
+        List<RescueTlmVoiceIndex.VoiceEntry> pool = switch (settings.tlmPlayMode()) {
+            case RANDOM_ALL -> RescueTlmVoiceIndex.getEntries(soundPackId);
+            case RANDOM_GROUP -> RescueTlmVoiceIndex.getEntriesForGroup(soundPackId, settings.tlmSelectedGroup());
+            case SPECIFIC_CLIP -> {
+                RescueTlmVoiceIndex.VoiceEntry entry = RescueTlmVoiceIndex.getEntry(soundPackId, settings.tlmSelectedClip());
+                yield entry == null ? List.of() : List.of(entry);
+            }
+        };
+        if (pool.isEmpty()) {
+            pool = RescueTlmVoiceIndex.getEntries(soundPackId);
+        }
+        return pool;
+    }
+
+    private static boolean tryPlayCustomFileVoice(MaidRescuePopPayload payload, EmergencyRescueVoiceSettings settings, Minecraft minecraft) {
+        String requiredFormat = normalizeRequiredFormat(payload.requiredClientCustomSoundFormat());
+        double maxDuration = sanitizeMaxDuration(payload.maxClientCustomSoundDurationSeconds());
+        float volume = sanitizeVolume(EmergencyRescueLocalSoundConfig.getSettings().volume());
+        float pitch = sanitizePitch(EmergencyRescueLocalSoundConfig.getSettings().pitch());
+
+        Path localMaidDir = EmergencyRescueCustomVoiceConfig.localMaidDir(payload.maidUuid(), payload.maidDisplayName());
+        EmergencyRescueVoiceSettings defaults = new EmergencyRescueVoiceSettings(
+                settings.sourceMode(),
+                settings.tlmPlayMode(),
+                settings.tlmSelectedGroup(),
+                settings.tlmSelectedClip(),
+                settings.customPlayMode(),
+                settings.fixedFile(),
+                settings.useCommonFallback()
+        );
+        EmergencyRescueCustomVoiceConfig.MaidCustomSettings localSettings =
+                EmergencyRescueCustomVoiceConfig.loadOrCreateMaidSettings(localMaidDir, defaults);
+        boolean fallbackToCommon = localSettings.useCommonFallback();
+        if (!settings.useCommonFallback() && fallbackToCommon) {
+            fallbackToCommon = false;
+        }
+
+        String serverId = EmergencyRescueServerSoundSyncClient.getActiveServerId();
+        List<Path> localMaidFiles = listAudioFiles(localMaidDir);
+        if (tryPlayFromPool("local_maid", payload.maidUuid(), localSettings, localMaidFiles, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+            return true;
+        }
+
+        if (fallbackToCommon) {
+            List<Path> localCommonFiles = listAudioFiles(EmergencyRescueCustomVoiceConfig.localCommonDir());
+            if (tryPlayFromPool("local_common", payload.maidUuid(), localSettings, localCommonFiles, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+                return true;
+            }
+        }
+
+        List<Path> syncedMaidFiles = listAudioFiles(EmergencyRescueCustomVoiceConfig.syncedMaidDir(serverId, payload.maidUuid(), payload.maidDisplayName()));
+        if (tryPlayFromPool("synced_maid", payload.maidUuid(), localSettings, syncedMaidFiles, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+            return true;
+        }
+
+        if (fallbackToCommon) {
+            List<Path> syncedCommonFiles = listAudioFiles(EmergencyRescueCustomVoiceConfig.syncedCommonDir(serverId));
+            if (tryPlayFromPool("synced_common", payload.maidUuid(), localSettings, syncedCommonFiles, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+                return true;
+            }
+        }
+
+        Path legacyFile = EmergencyRescueCustomVoiceConfig.legacyCustomFile();
+        if (Files.isRegularFile(legacyFile) && tryPlaySingleFile("legacy", legacyFile, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean tryPlayFromPool(
+            String scope,
+            String maidId,
+            EmergencyRescueCustomVoiceConfig.MaidCustomSettings settings,
+            List<Path> pool,
+            String requiredFormat,
+            double maxDuration,
+            float volume,
+            float pitch,
+            Minecraft minecraft
+    ) {
+        if (pool.isEmpty()) {
+            return false;
+        }
+        List<Path> ordered = orderPool(scope, maidId, settings, pool);
+        for (Path candidate : ordered) {
+            if (tryPlaySingleFile(scope, candidate, requiredFormat, maxDuration, volume, pitch, minecraft)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<Path> orderPool(
+            String scope,
+            String maidId,
+            EmergencyRescueCustomVoiceConfig.MaidCustomSettings settings,
+            List<Path> pool
+    ) {
+        List<Path> sorted = pool.stream()
+                .sorted(Comparator.comparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (sorted.isEmpty()) {
+            return sorted;
+        }
+        String key = scope + "|" + maidId;
+        switch (settings.playMode()) {
+            case RANDOM -> {
+                java.util.Collections.shuffle(sorted);
+                return sorted;
+            }
+            case FIXED -> {
+                if (!settings.fixedFile().isBlank()) {
+                    for (int i = 0; i < sorted.size(); i++) {
+                        if (settings.fixedFile().equalsIgnoreCase(sorted.get(i).getFileName().toString())) {
+                            Path fixed = sorted.remove(i);
+                            sorted.add(0, fixed);
+                            return sorted;
+                        }
+                    }
+                }
+                return sorted;
+            }
+            case SEQUENTIAL -> {
+                int current = SEQUENCE_INDEX_CACHE.getOrDefault(key, 0);
+                if (current < 0) {
+                    current = 0;
+                }
+                int offset = sorted.isEmpty() ? 0 : current % sorted.size();
+                List<Path> rotated = new ArrayList<>(sorted.size());
+                for (int i = 0; i < sorted.size(); i++) {
+                    rotated.add(sorted.get((offset + i) % sorted.size()));
+                }
+                SEQUENCE_INDEX_CACHE.put(key, offset + 1);
+                return rotated;
+            }
+            default -> {
+                return sorted;
+            }
+        }
+    }
+
+    private static boolean tryPlaySingleFile(
+            String scope,
+            Path soundPath,
+            String requiredFormat,
+            double maxDuration,
+            float volume,
+            float pitch,
+            Minecraft minecraft
+    ) {
         if (soundPath == null || !Files.isRegularFile(soundPath)) {
             return false;
         }
-
-        String requiredFormat = normalizeRequiredFormat(payload.requiredClientCustomSoundFormat());
         if (!isFormatCompatible(soundPath, requiredFormat)) {
-            TouhouMaidAffection.LOGGER.warn(
-                    "Emergency rescue custom sound '{}' does not match required format '{}'",
-                    soundPath,
-                    requiredFormat
-            );
+            debugLog("Emergency rescue custom sound skipped (format mismatch): {}", soundPath);
             return false;
         }
-
         DecodedSound decoded = decodeLocalSound(soundPath);
         if (decoded == null) {
             return false;
         }
-
-        double maxDuration = sanitizeMaxDuration(payload.maxClientCustomSoundDurationSeconds());
         if (decoded.durationSeconds() > maxDuration) {
-            TouhouMaidAffection.LOGGER.warn(
-                    "Emergency rescue custom sound '{}' is too long ({}s > {}s), fallback to server sound",
-                    soundPath,
+            debugLog(
+                    "Emergency rescue custom sound skipped (duration {}s > {}s): {}",
                     String.format(Locale.ROOT, "%.2f", decoded.durationSeconds()),
-                    String.format(Locale.ROOT, "%.2f", maxDuration)
+                    String.format(Locale.ROOT, "%.2f", maxDuration),
+                    soundPath
             );
             return false;
         }
-
-        float volume = sanitizeVolume(settings.volume());
-        float pitch = sanitizePitch(settings.pitch());
-        TouhouMaidAffection.LOGGER.info(
-                "Emergency rescue custom sound stream play: file='{}', type={}, duration={}s, volume={}, pitch={}",
-                soundPath,
-                decoded.oggType(),
-                String.format(Locale.ROOT, "%.2f", decoded.durationSeconds()),
-                String.format(Locale.ROOT, "%.2f", volume),
-                String.format(Locale.ROOT, "%.2f", pitch)
-        );
         try {
             minecraft.getSoundManager().play(new EmergencyRescueStreamSoundInstance(
                     STREAM_ANCHOR_SOUND_EVENT,
@@ -93,6 +291,15 @@ public final class EmergencyRescueSoundPlayer {
                     volume,
                     pitch
             ));
+            TouhouMaidAffection.LOGGER.info(
+                    "Emergency rescue custom sound stream play: scope='{}', file='{}', type={}, duration={}s, volume={}, pitch={}",
+                    scope,
+                    soundPath,
+                    decoded.oggType(),
+                    String.format(Locale.ROOT, "%.2f", decoded.durationSeconds()),
+                    String.format(Locale.ROOT, "%.2f", volume),
+                    String.format(Locale.ROOT, "%.2f", pitch)
+            );
             return true;
         } catch (Exception ex) {
             TouhouMaidAffection.LOGGER.warn(
@@ -101,6 +308,20 @@ public final class EmergencyRescueSoundPlayer {
                     ex
             );
             return false;
+        }
+    }
+
+    private static List<Path> listAudioFiles(Path directory) {
+        if (directory == null || !Files.isDirectory(directory)) {
+            return List.of();
+        }
+        try (var stream = Files.list(directory)) {
+            return stream.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".ogg"))
+                    .toList();
+        } catch (IOException ex) {
+            TouhouMaidAffection.LOGGER.warn("Failed to list rescue custom voice files in '{}'", directory, ex);
+            return List.of();
         }
     }
 
@@ -140,6 +361,12 @@ public final class EmergencyRescueSoundPlayer {
         }
         // OpenAL pitch must be positive; keep a small guard above zero.
         return Math.max(0.01F, Math.min(2.0F, raw));
+    }
+
+    private static void debugLog(String message, Object... args) {
+        if (ModConfig.BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG != null && ModConfig.BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG.get()) {
+            TouhouMaidAffection.LOGGER.info(message, args);
+        }
     }
 
     private static DecodedSound decodeLocalSound(Path soundPath) {

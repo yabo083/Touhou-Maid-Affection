@@ -45,8 +45,8 @@ public final class BondSecondaryPageRegistry {
                 (host, ability) -> host.getMaid() != null,
                 (host, ability) -> new LapPillowPoseSecondaryPage(host));
         register("emergency_heal",
-                (host, ability) -> host.getMaid() != null && host.getMaid().isYsmModel() && !host.getMaid().getYsmModelId().isBlank(),
-                (host, ability) -> new RescueActionSecondaryPage(host));
+                (host, ability) -> host.getMaid() != null,
+                (host, ability) -> new EmergencyRescueVoiceSecondaryPage(host));
         register("morning_kiss",
                 (host, ability) -> host.getMaid() != null,
                 (host, ability) -> new MorningKissVoiceSecondaryPage(host));

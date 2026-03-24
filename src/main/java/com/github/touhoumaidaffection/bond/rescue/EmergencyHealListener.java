@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.bond.rescue;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -56,15 +57,26 @@ public final class EmergencyHealListener {
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0));
 
         BondData.MaidProfileSnapshot profile = resolveRescueProfile(player, consumedRescuerId);
+        EmergencyRescueVoiceSettings rescueVoiceSettings = profile.rescueVoiceSettings() == null
+                ? EmergencyRescueVoiceSettings.DEFAULT
+                : profile.rescueVoiceSettings();
         EmergencyRescueSoundProfileData.EmergencyRescueSoundProfile soundProfile = EmergencyRescueSoundProfileData.getActiveProfile();
         PacketDistributor.sendToPlayer(player, new MaidRescuePopPayload(
                 consumedRescuerId,
                 profile.modelId().isBlank() ? consumedRescuerId : profile.modelId(),
                 profile.displayName(),
+                profile.soundPackId(),
                 profile.ysmModelId(),
                 profile.ysmTexture(),
                 profile.ysmDisplayName(),
                 profile.rescueActionId(),
+                rescueVoiceSettings.sourceMode().serializedName(),
+                rescueVoiceSettings.tlmPlayMode().serializedName(),
+                rescueVoiceSettings.tlmSelectedGroup(),
+                rescueVoiceSettings.tlmSelectedClip(),
+                rescueVoiceSettings.customPlayMode().serializedName(),
+                rescueVoiceSettings.fixedFile(),
+                rescueVoiceSettings.useCommonFallback(),
                 soundProfile.soundEventId(),
                 soundProfile.allowClientOverride(),
                 soundProfile.maxClientSoundDurationSeconds(),
@@ -92,7 +104,8 @@ public final class EmergencyHealListener {
                 && profile.ysmModelId().isBlank()
                 && profile.ysmTexture().isBlank()
                 && profile.ysmDisplayName().isBlank()
-                && profile.rescueActionId().isBlank();
+                && profile.rescueActionId().isBlank()
+                && profile.soundPackId().isBlank();
     }
 
     public static void ensureRescueChargesUpToDate(ServerPlayer player) {

@@ -361,7 +361,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             return Component.translatable("bond.action.settings");
         }
         if (isEmergencyHealAbility(ability)) {
-            return Component.translatable("bond.emergency_rescue.action.button");
+            return Component.translatable("bond.action.voice");
         }
         if (isMorningKissAbility(ability)) {
             return Component.translatable("bond.action.voice");

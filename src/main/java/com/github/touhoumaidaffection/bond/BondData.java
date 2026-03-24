@@ -101,6 +101,15 @@ public class BondData {
         return root.getString("BondMaidDisplayName_" + maidUuid);
     }
 
+    public void setMaidSoundPackId(UUID maidUuid, String soundPackId) {
+        root.putString("BondMaidSoundPack_" + maidUuid, soundPackId == null ? "" : soundPackId);
+        save();
+    }
+
+    public String getMaidSoundPackId(UUID maidUuid) {
+        return root.getString("BondMaidSoundPack_" + maidUuid);
+    }
+
     public void setMaidYsmProfile(UUID maidUuid, String ysmModelId, String ysmTexture, String ysmDisplayName) {
         root.putString("BondMaidYsmModelId_" + maidUuid, ysmModelId == null ? "" : ysmModelId);
         root.putString("BondMaidYsmTexture_" + maidUuid, ysmTexture == null ? "" : ysmTexture);
@@ -280,10 +289,12 @@ public class BondData {
         return new MaidProfileSnapshot(
                 getMaidModelId(maidUuid),
                 getMaidDisplayName(maidUuid),
+                getMaidSoundPackId(maidUuid),
                 getMaidYsmModelId(maidUuid),
                 getMaidYsmTexture(maidUuid),
                 getMaidYsmDisplayName(maidUuid),
-                getMaidRescueAction(maidUuid)
+                getMaidRescueAction(maidUuid),
+                getEmergencyRescueVoiceSettings(maidUuid)
         );
     }
 
@@ -440,6 +451,32 @@ public class BondData {
         save();
     }
 
+    public EmergencyRescueVoiceSettings getEmergencyRescueVoiceSettings(UUID maidUuid) {
+        return EmergencyRescueVoiceSettings.of(
+                root.getString("EmergencyRescueVoiceSourceMode_" + maidUuid),
+                root.getString("EmergencyRescueVoiceTlmMode_" + maidUuid),
+                root.getString("EmergencyRescueVoiceTlmGroup_" + maidUuid),
+                root.getString("EmergencyRescueVoiceTlmClip_" + maidUuid),
+                root.getString("EmergencyRescueVoiceCustomMode_" + maidUuid),
+                root.getString("EmergencyRescueVoiceFixedFile_" + maidUuid),
+                root.contains("EmergencyRescueVoiceCommonFallback_" + maidUuid)
+                        ? root.getBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid)
+                        : com.github.touhoumaidaffection.ModConfig.BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT.get()
+        );
+    }
+
+    public void setEmergencyRescueVoiceSettings(UUID maidUuid, EmergencyRescueVoiceSettings settings) {
+        EmergencyRescueVoiceSettings safe = settings == null ? EmergencyRescueVoiceSettings.DEFAULT : settings;
+        root.putString("EmergencyRescueVoiceSourceMode_" + maidUuid, safe.sourceMode().serializedName());
+        root.putString("EmergencyRescueVoiceTlmMode_" + maidUuid, safe.tlmPlayMode().serializedName());
+        root.putString("EmergencyRescueVoiceTlmGroup_" + maidUuid, safe.tlmSelectedGroup());
+        root.putString("EmergencyRescueVoiceTlmClip_" + maidUuid, safe.tlmSelectedClip());
+        root.putString("EmergencyRescueVoiceCustomMode_" + maidUuid, safe.customPlayMode().serializedName());
+        root.putString("EmergencyRescueVoiceFixedFile_" + maidUuid, safe.fixedFile());
+        root.putBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid, safe.useCommonFallback());
+        save();
+    }
+
     private void migrateAbilityDataIfNeeded(UUID maidUuid) {
         String abilitiesKey = getAbilitiesKey(maidUuid);
         String versionKey = getAbilityVersionKey(maidUuid);
@@ -478,13 +515,15 @@ public class BondData {
     public record MaidProfileSnapshot(
             String modelId,
             String displayName,
+            String soundPackId,
             String ysmModelId,
             String ysmTexture,
             String ysmDisplayName,
-            String rescueActionId
+            String rescueActionId,
+            EmergencyRescueVoiceSettings rescueVoiceSettings
     ) {
         private static MaidProfileSnapshot empty() {
-            return new MaidProfileSnapshot("", "", "", "", "", "");
+            return new MaidProfileSnapshot("", "", "", "", "", "", "", EmergencyRescueVoiceSettings.DEFAULT);
         }
     }
 }

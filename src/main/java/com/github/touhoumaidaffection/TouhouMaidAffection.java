@@ -12,6 +12,7 @@ import com.github.touhoumaidaffection.handler.LapPillowHandler;
 import com.github.touhoumaidaffection.handler.LapPillowPoseConfigHandler;
 import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
+import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -25,6 +26,12 @@ import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
+import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
+import com.github.touhoumaidaffection.network.rescue.RescueSoundReloadPayload;
+import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncChunkPayload;
+import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncClearPayload;
+import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncCompletePayload;
+import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncManifestPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -104,6 +111,11 @@ public class TouhouMaidAffection {
                 RescueActionConfigHandler::handle
         );
         registrar.playToServer(
+                RescueVoiceConfigPayload.TYPE,
+                RescueVoiceConfigPayload.STREAM_CODEC,
+                RescueVoiceConfigHandler::handle
+        );
+        registrar.playToServer(
                 MorningKissVoiceConfigPayload.TYPE,
                 MorningKissVoiceConfigPayload.STREAM_CODEC,
                 MorningKissVoiceConfigHandler::handle
@@ -112,6 +124,31 @@ public class TouhouMaidAffection {
                 MorningKissVoicePlayPayload.TYPE,
                 MorningKissVoicePlayPayload.STREAM_CODEC,
                 BondClientPayloadHandler::handleMorningKissVoicePlay
+        );
+        registrar.playToClient(
+                RescueSoundSyncManifestPayload.TYPE,
+                RescueSoundSyncManifestPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescueSoundSyncManifest
+        );
+        registrar.playToClient(
+                RescueSoundSyncClearPayload.TYPE,
+                RescueSoundSyncClearPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescueSoundSyncClear
+        );
+        registrar.playToClient(
+                RescueSoundSyncChunkPayload.TYPE,
+                RescueSoundSyncChunkPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescueSoundSyncChunk
+        );
+        registrar.playToClient(
+                RescueSoundSyncCompletePayload.TYPE,
+                RescueSoundSyncCompletePayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescueSoundSyncComplete
+        );
+        registrar.playToClient(
+                RescueSoundReloadPayload.TYPE,
+                RescueSoundReloadPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleRescueSoundReload
         );
         registrar.playToServer(
                 LapPillowStartPayload.TYPE,

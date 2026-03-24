@@ -27,6 +27,7 @@ public final class BondManager {
         BondData data = BondData.of(player);
         data.setMaidModelId(maid.getUUID(), maid.getModelId().toString());
         data.setMaidDisplayName(maid.getUUID(), MaidDisplayNameResolver.resolvePlainDisplayName(maid));
+        data.setMaidSoundPackId(maid.getUUID(), maid.getSoundPackId());
         String rescueProviderId = MaidRescueContributorId.ensure(maid);
         if (!rescueProviderId.isBlank()) {
             data.setMaidRescueProviderId(maid.getUUID(), rescueProviderId);
@@ -271,5 +272,13 @@ public final class BondManager {
 
     public static void setMorningKissVoiceSettings(ServerPlayer player, UUID maidUuid, MorningKissVoiceSettings settings) {
         BondData.of(player).setMorningKissVoiceSettings(maidUuid, settings);
+    }
+
+    public static EmergencyRescueVoiceSettings getEmergencyRescueVoiceSettings(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getEmergencyRescueVoiceSettings(maidUuid);
+    }
+
+    public static void setEmergencyRescueVoiceSettings(ServerPlayer player, UUID maidUuid, EmergencyRescueVoiceSettings settings) {
+        BondData.of(player).setEmergencyRescueVoiceSettings(maidUuid, settings);
     }
 }

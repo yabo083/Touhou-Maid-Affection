@@ -138,7 +138,7 @@
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
   - 该目录额外维护“救援贡献者稳定标识（provider id）”与女仆-物品互转同步逻辑，避免女仆复活后重复贡献次数。
-  - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）与玩家个人开关状态。
+  - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）、预定义语音自动下发服务（`RescueSoundSyncService`）与玩家个人开关状态。
 
 - `bond/lap/`
   - 负责：膝枕姿态配置、会话状态与中间锚点实体抽象。
@@ -153,7 +153,7 @@
 
 - `KissMaidHandler`：直接基于 TLM 事件处理亲吻。
 - `BondAbilityActivateHandler` / `BondStateRequestHandler`：处理羁绊页按钮与状态同步请求。
-- `LapPillowHandler` / `MorningKissVoiceConfigHandler` / `RescueActionConfigHandler`：处理特定子功能配置或动作触发。
+- `LapPillowHandler` / `MorningKissVoiceConfigHandler` / `RescueActionConfigHandler` / `RescueVoiceConfigHandler`：处理特定子功能配置或动作触发。
 - `MaidPayloadResolver`：统一处理 payload 中的女仆解析与 owner 校验，减少重复判断和漏检风险。
 
 #### `network/`：协议层
@@ -162,6 +162,9 @@
 - 不负责：业务逻辑。
 
 设计上很干净：每个消息一个 `record`，字段即协议本体。
+紧急救援音频链路目前包含两类协议：
+- 触发与播放参数：`MaidRescuePopPayload`
+- 资源同步：`RescueSoundSyncManifestPayload` / `RescueSoundSyncClearPayload` / `RescueSoundSyncChunkPayload` / `RescueSoundSyncCompletePayload` / `RescueSoundReloadPayload`
 
 #### `client/`：客户端展示与缓存层
 
@@ -175,7 +178,9 @@
 
 - `Kiss*` / `EmergencyRescue*` / `MorningKissVoice*`
   - 负责：镜头、粒子、按键、救援弹出、语音检索与播放。
-  - `EmergencyRescue*` 额外负责“客户端本地救援音效覆盖”：按服务端下发约束校验本地文件格式与时长。
+  - `EmergencyRescue*` 额外负责“客户端本地救援音效覆盖 + 服务端预定义语音落盘”：
+    - 自定义文件优先级：女仆本地目录 -> 本地通用目录 -> 服务器同步女仆目录 -> 服务器同步通用目录 -> 旧版 `custom_rescue.ogg` -> 服务端事件音效。
+    - 女仆本地目录使用 `名字_短ID` 生成，目录内 `voice.json` 持久化 `source_mode / play_mode / fixed_file / use_common_fallback`。
   - 不负责：服务端状态存储。
 
 - `screen/` 与 `screen/component/`
@@ -371,7 +376,7 @@
   - 保存最后补充日
   - 保存玩家个人残血救护开关
 - `BondData`
-  - 保存女仆模型、显示名、YSM 配置、救援动作等档案信息
+  - 保存女仆模型、显示名、语音包 ID、YSM 配置、救援动作、救护语音来源设置等档案信息
   - 额外保存 `maidUuid -> rescue provider id` 映射，用于跨复活维持“同一女仆”语义
   - 客户端展示时依赖这些信息还原救援者形象
 - 数据包 `data/touhou_maid_affection/rescue_sound/profile.json`
@@ -379,11 +384,12 @@
 
 #### 模块交互
 
-- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData`
-- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer`
+- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData` + `RescueSoundSyncService`
+- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer` + `EmergencyRescueServerSoundSyncClient`
 - YSM：若女仆模型支持，则在 overlay 中播放预设动作
 - overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
-- 音效播放默认回退到 `minecraft:entity.player.levelup`；若玩家启用本地覆盖，则需满足服务端下发的格式/时长约束。
+- 音效来源支持 `TLM语音包` 与 `自定义文件` 两种模式；TLM 模式改为使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安），自定义模式按 `voice.json` 的播放模式选曲。
+- 服务端预定义语音目录按 `server_predefined/{maids,common}` 扫描，按 `size + mtime + sha1` 做增量同步，客户端落盘到 `rescue/server_synced/<serverId>/...`。
 
 #### 架构意义
 
@@ -443,6 +449,7 @@
 - 进入页面时立刻向服务端请求 `BondStateRequestPayload`。
 - 服务端回包后更新 `BondClientStateCache`。
 - 页面根据缓存决定按钮状态、已解锁能力、礼物队列、晨安吻语音配置与膝枕姿态配置等。
+- 残血救护二级页已升级为“语音来源页”：支持 `TLM语音包 / 自定义文件` 下拉切换；TLM 分支复用晨安吻列表选择，自定义分支提供 `随机/顺序/固定`、固定文件选择与通用池回退开关，并在保存时同步写回女仆目录 `voice.json`。
 - 膝枕二级页已从单点偏移页演进为“双坐标点编辑页”：左侧同屏展示玩家/女仆在锚点坐标系下的二维相对位置，点击坐标点即可切换当前编辑对象，滚轮单独修改该对象的 Y 高度。
 - 膝枕页顶部不再保留独立的“四模式”下拉，而是改成“女仆动作 + 玩家动作”两个短下拉；默认坐/躺组合会反推出四种基础模式，自定义动作则建立在这个基础姿态之上。
 - 配置操作再回发新的 payload 给服务端保存。
@@ -456,7 +463,7 @@
   - tooltip 生成
   - 弹窗逻辑
   - 语音配置构建
-  - 救援动作配置构建
+  - 救援语音来源配置构建
 
 它是当前代码库第二个明显的复杂度中心。
 

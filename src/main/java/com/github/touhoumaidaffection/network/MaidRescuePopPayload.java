@@ -11,10 +11,18 @@ public record MaidRescuePopPayload(
         String maidUuid,
         String maidModelId,
         String maidDisplayName,
+        String maidSoundPackId,
         String ysmModelId,
         String ysmModelTexture,
         String ysmDisplayName,
         String rescueActionId,
+        String rescueVoiceSourceMode,
+        String rescueVoiceTlmMode,
+        String rescueVoiceTlmGroup,
+        String rescueVoiceTlmClip,
+        String rescueVoiceCustomPlayMode,
+        String rescueVoiceFixedFile,
+        boolean rescueVoiceUseCommonFallback,
         String rescueSoundEventId,
         boolean allowClientCustomSound,
         double maxClientCustomSoundDurationSeconds,
@@ -37,10 +45,18 @@ public record MaidRescuePopPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.maidUuid());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.maidModelId());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.maidDisplayName());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.maidSoundPackId());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.ysmModelId());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.ysmModelTexture());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.ysmDisplayName());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueActionId());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceSourceMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmGroup());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmClip());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceCustomPlayMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceFixedFile());
+        ByteBufCodecs.BOOL.encode(buf, payload.rescueVoiceUseCommonFallback());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueSoundEventId());
         ByteBufCodecs.BOOL.encode(buf, payload.allowClientCustomSound());
         ByteBufCodecs.DOUBLE.encode(buf, payload.maxClientCustomSoundDurationSeconds());
@@ -56,6 +72,14 @@ public record MaidRescuePopPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.BOOL.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.BOOL.decode(buf),
                 ByteBufCodecs.DOUBLE.decode(buf),

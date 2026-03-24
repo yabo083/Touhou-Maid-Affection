@@ -23,6 +23,13 @@ public record BondStateSyncPayload(
         String morningKissVoiceGroup,
         String morningKissVoiceClip,
         String morningKissVoicePack,
+        String rescueVoiceSourceMode,
+        String rescueVoiceTlmMode,
+        String rescueVoiceTlmGroup,
+        String rescueVoiceTlmClip,
+        String rescueVoiceCustomPlayMode,
+        String rescueVoiceFixedFile,
+        boolean rescueVoiceUseCommonFallback,
         String lapPillowMode,
         double lapPillowMaidOffsetX,
         double lapPillowMaidOffsetY,
@@ -57,6 +64,13 @@ public record BondStateSyncPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceGroup());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceClip());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoicePack());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceSourceMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmGroup());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmClip());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceCustomPlayMode());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceFixedFile());
+        ByteBufCodecs.BOOL.encode(buf, payload.rescueVoiceUseCommonFallback());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.lapPillowMode());
         ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetX());
         ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetY());
@@ -79,6 +93,13 @@ public record BondStateSyncPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.BOOL.decode(buf),
                 LapPillowMode.fromName(ByteBufCodecs.STRING_UTF8.decode(buf)).serializedName(),
                 ByteBufCodecs.DOUBLE.decode(buf),
                 ByteBufCodecs.DOUBLE.decode(buf),
