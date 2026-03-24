@@ -11,6 +11,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
@@ -30,6 +31,10 @@ public final class EmergencyRescueData {
         return get(player).getAvailableRescuers();
     }
 
+    public static List<String> getRegisteredRescuerIds(ServerPlayer player) {
+        return get(player).getRegisteredRescuers();
+    }
+
     public static void setAvailableRescuerIds(ServerPlayer player, List<String> rescuerIds) {
         get(player).replenish(rescuerIds);
     }
@@ -38,20 +43,28 @@ public final class EmergencyRescueData {
         get(player).addRescuer(id);
     }
 
+    public static boolean hasRegisteredRescuer(ServerPlayer player, String rescuerId) {
+        return get(player).hasRegisteredRescuer(rescuerId);
+    }
+
+    public static void markRegisteredRescuer(ServerPlayer player, String rescuerId) {
+        get(player).markRegisteredRescuer(rescuerId);
+    }
+
     public static boolean hasRegisteredRescuer(ServerPlayer player, UUID maidUuid) {
-        return get(player).hasRegisteredRescuer(maidUuid.toString());
+        return hasRegisteredRescuer(player, maidUuid.toString());
     }
 
     public static void markRegisteredRescuer(ServerPlayer player, UUID maidUuid) {
-        get(player).markRegisteredRescuer(maidUuid.toString());
+        markRegisteredRescuer(player, maidUuid.toString());
     }
 
     public static void setRegisteredRescuers(ServerPlayer player, List<UUID> maidIds) {
-        List<String> ids = new java.util.ArrayList<>(maidIds.size());
+        Set<String> providerIds = new java.util.LinkedHashSet<>(maidIds.size());
         for (UUID maidId : maidIds) {
-            ids.add(maidId.toString());
+            providerIds.add(resolveRescuerId(player, maidId));
         }
-        get(player).setRegisteredRescuers(ids);
+        get(player).setRegisteredRescuers(new java.util.ArrayList<>(providerIds));
     }
 
     public static int getChargeCount(ServerPlayer player) {
@@ -78,26 +91,33 @@ public final class EmergencyRescueData {
     public static List<String> buildDailyRescuerList(ServerPlayer player) {
         List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, "emergency_heal");
         int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
-        List<String> expanded = new java.util.ArrayList<>(unlockedIds.size() * chargesPerMaid);
+        Set<String> providerIds = new java.util.LinkedHashSet<>(unlockedIds.size());
         for (UUID maidUuid : unlockedIds) {
-            String rescuerId = maidUuid.toString();
+            providerIds.add(resolveRescuerId(player, maidUuid));
+        }
+        List<String> expanded = new java.util.ArrayList<>(providerIds.size() * chargesPerMaid);
+        for (String providerId : providerIds) {
             for (int i = 0; i < chargesPerMaid; i++) {
-                expanded.add(rescuerId);
+                expanded.add(providerId);
             }
         }
         return expanded;
     }
 
     public static void grantImmediateRescueIfEligible(ServerPlayer player, UUID maidUuid) {
-        if (hasRegisteredRescuer(player, maidUuid)) {
+        String legacyId = maidUuid.toString();
+        String rescuerId = resolveRescuerId(player, maidUuid);
+        if (hasRegisteredAlias(player, rescuerId) || hasRegisteredRescuer(player, legacyId)) {
             return;
         }
         int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
-        String rescuerId = maidUuid.toString();
         for (int i = 0; i < chargesPerMaid; i++) {
             addRescuer(player, rescuerId);
         }
-        markRegisteredRescuer(player, maidUuid);
+        markRegisteredRescuer(player, rescuerId);
+        if (!legacyId.equals(rescuerId)) {
+            markRegisteredRescuer(player, legacyId);
+        }
     }
 
     public static EmergencyRescueAttachment get(ServerPlayer player) {
@@ -105,12 +125,41 @@ public final class EmergencyRescueData {
     }
 
     private static boolean hasYsmProfile(BondData data, String rescuerId) {
+        BondData.MaidProfileSnapshot byProvider = data.findMaidProfileByRescueProviderId(rescuerId);
+        if (!byProvider.ysmModelId().isBlank()) {
+            return true;
+        }
         try {
             UUID maidUuid = UUID.fromString(rescuerId);
             return !data.getMaidYsmModelId(maidUuid).isBlank();
         } catch (IllegalArgumentException ignored) {
+            return !data.findMaidProfileByModelId(rescuerId).ysmModelId().isBlank();
+        }
+    }
+
+    private static String resolveRescuerId(ServerPlayer player, UUID maidUuid) {
+        String providerId = BondManager.getMaidRescueProviderId(player, maidUuid);
+        return providerId.isBlank() ? maidUuid.toString() : providerId;
+    }
+
+    private static boolean hasRegisteredAlias(ServerPlayer player, String rescuerId) {
+        if (rescuerId == null || rescuerId.isBlank()) {
             return false;
         }
+        for (String registered : getRegisteredRescuerIds(player)) {
+            if (rescuerId.equals(registered)) {
+                return true;
+            }
+            try {
+                UUID maidUuid = UUID.fromString(registered);
+                if (rescuerId.equals(resolveRescuerId(player, maidUuid))) {
+                    return true;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Ignore non-UUID legacy ids.
+            }
+        }
+        return false;
     }
 
     @SubscribeEvent

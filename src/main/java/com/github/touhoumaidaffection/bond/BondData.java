@@ -117,6 +117,22 @@ public class BondData {
         return root.getString("BondMaidRescueAction_" + maidUuid);
     }
 
+    public void setMaidRescueProviderId(UUID maidUuid, String providerId) {
+        if (providerId == null || providerId.isBlank()) {
+            return;
+        }
+        String key = "BondMaidRescueProvider_" + maidUuid;
+        if (providerId.equals(root.getString(key))) {
+            return;
+        }
+        root.putString(key, providerId);
+        save();
+    }
+
+    public String getMaidRescueProviderId(UUID maidUuid) {
+        return root.getString("BondMaidRescueProvider_" + maidUuid);
+    }
+
     public LapPillowPoseSnapshot getMaidLapPillowPose(UUID maidUuid) {
         String prefix = "BondMaidLapPillow_";
         String mode = root.getString(prefix + "Mode_" + maidUuid);
@@ -228,6 +244,28 @@ public class BondData {
                 continue;
             }
             String uuidPart = key.substring("BondMaidModel_".length());
+            try {
+                UUID maidUuid = UUID.fromString(uuidPart);
+                return getMaidProfile(maidUuid);
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed legacy keys.
+            }
+        }
+        return MaidProfileSnapshot.empty();
+    }
+
+    public MaidProfileSnapshot findMaidProfileByRescueProviderId(String providerId) {
+        if (providerId == null || providerId.isBlank()) {
+            return MaidProfileSnapshot.empty();
+        }
+        for (String key : root.getAllKeys()) {
+            if (!key.startsWith("BondMaidRescueProvider_")) {
+                continue;
+            }
+            if (!providerId.equals(root.getString(key))) {
+                continue;
+            }
+            String uuidPart = key.substring("BondMaidRescueProvider_".length());
             try {
                 UUID maidUuid = UUID.fromString(uuidPart);
                 return getMaidProfile(maidUuid);

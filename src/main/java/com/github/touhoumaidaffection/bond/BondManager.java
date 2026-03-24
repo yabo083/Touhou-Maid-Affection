@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.bond;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
+import com.github.touhoumaidaffection.bond.rescue.MaidRescueContributorId;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 
 import java.util.List;
@@ -26,6 +27,10 @@ public final class BondManager {
         BondData data = BondData.of(player);
         data.setMaidModelId(maid.getUUID(), maid.getModelId().toString());
         data.setMaidDisplayName(maid.getUUID(), MaidDisplayNameResolver.resolvePlainDisplayName(maid));
+        String rescueProviderId = MaidRescueContributorId.ensure(maid);
+        if (!rescueProviderId.isBlank()) {
+            data.setMaidRescueProviderId(maid.getUUID(), rescueProviderId);
+        }
         if (maid.isYsmModel()) {
             data.setMaidYsmProfile(
                     maid.getUUID(),
@@ -71,12 +76,20 @@ public final class BondManager {
         return BondData.of(player).findMaidProfileByModelId(modelId);
     }
 
+    public static BondData.MaidProfileSnapshot findMaidProfileByRescueProviderId(ServerPlayer player, String providerId) {
+        return BondData.of(player).findMaidProfileByRescueProviderId(providerId);
+    }
+
     public static String getMaidRescueAction(ServerPlayer player, UUID maidUuid) {
         return BondData.of(player).getMaidRescueAction(maidUuid);
     }
 
     public static void setMaidRescueAction(ServerPlayer player, UUID maidUuid, String actionId) {
         BondData.of(player).setMaidRescueAction(maidUuid, actionId);
+    }
+
+    public static String getMaidRescueProviderId(ServerPlayer player, UUID maidUuid) {
+        return BondData.of(player).getMaidRescueProviderId(maidUuid);
     }
 
     public static LapPillowPoseSnapshot getMaidLapPillowPose(ServerPlayer player, UUID maidUuid) {

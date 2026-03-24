@@ -66,12 +66,25 @@ public final class EmergencyHealListener {
 
 
     private static BondData.MaidProfileSnapshot resolveRescueProfile(ServerPlayer player, String rescuerId) {
+        BondData.MaidProfileSnapshot byProvider = BondManager.findMaidProfileByRescueProviderId(player, rescuerId);
+        if (!isEmptyProfile(byProvider)) {
+            return byProvider;
+        }
         try {
             java.util.UUID maidUuid = java.util.UUID.fromString(rescuerId);
             return BondData.of(player).getMaidProfile(maidUuid);
         } catch (IllegalArgumentException ignored) {
             return BondManager.findMaidProfileByModelId(player, rescuerId);
         }
+    }
+
+    private static boolean isEmptyProfile(BondData.MaidProfileSnapshot profile) {
+        return profile.modelId().isBlank()
+                && profile.displayName().isBlank()
+                && profile.ysmModelId().isBlank()
+                && profile.ysmTexture().isBlank()
+                && profile.ysmDisplayName().isBlank()
+                && profile.rescueActionId().isBlank();
     }
 
     public static void ensureRescueChargesUpToDate(ServerPlayer player) {

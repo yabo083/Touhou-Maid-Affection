@@ -14,7 +14,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
@@ -44,8 +43,7 @@ public final class EmergencyRescueOverlayRenderer {
         }
 
         try {
-            OverlayMaid overlayMaid = buildOverlayMaid(level, payload);
-            EntityMaid maid = overlayMaid.maid();
+            EntityMaid maid = buildOverlayMaid(level, payload);
             clearMaidDataResidue(maid, true);
             maid.setNoAi(true);
             maid.setSilent(true);
@@ -70,10 +68,7 @@ public final class EmergencyRescueOverlayRenderer {
             );
             activeOverlay = new ActiveOverlay(
                     maid,
-                    overlayMaid.liveEntity(),
                     hasCustomAction,
-                    payload.maidModelId(),
-                    payload.maidDisplayName(),
                     DURATION_TICKS,
                     false
             );
@@ -329,50 +324,11 @@ public final class EmergencyRescueOverlayRenderer {
         return Mth.sin(progress * (float) Math.PI * frequency) * amplitude;
     }
 
-    private static OverlayMaid buildOverlayMaid(ClientLevel level, MaidRescuePopPayload payload) {
-        EntityMaid liveMaid = findLoadedMaid(level, payload.maidUuid());
+    private static EntityMaid buildOverlayMaid(ClientLevel level, MaidRescuePopPayload payload) {
         EntityMaid maid = new EntityMaid(level);
-        if (liveMaid != null) {
-            CompoundTag snapshot = new CompoundTag();
-            liveMaid.saveWithoutId(snapshot);
-            maid.load(snapshot);
-            applyPayloadYsmIdentity(maid, payload);
-            return new OverlayMaid(maid, false);
-        }
-
         maid.setModelId(payload.maidModelId());
         applyPayloadYsmIdentity(maid, payload);
-        return new OverlayMaid(maid, false);
-    }
-
-    private static void applyPayloadYsmIdentity(EntityMaid maid, MaidRescuePopPayload payload) {
-        if (!payload.ysmModelId().isBlank() && !payload.ysmModelTexture().isBlank()) {
-            maid.setIsYsmModel(true);
-            Component ysmName = payload.ysmDisplayName().isBlank()
-                    ? Component.empty()
-                    : Component.literal(payload.ysmDisplayName());
-            maid.setYsmModel(payload.ysmModelId(), payload.ysmModelTexture(), ysmName);
-            return;
-        }
-        maid.setIsYsmModel(false);
-    }
-
-    private static EntityMaid findLoadedMaid(ClientLevel level, String maidUuid) {
-        if (maidUuid == null || maidUuid.isBlank()) {
-            return null;
-        }
-        java.util.UUID targetUuid;
-        try {
-            targetUuid = java.util.UUID.fromString(maidUuid);
-        } catch (IllegalArgumentException ignored) {
-            return null;
-        }
-        for (var entity : level.entitiesForRendering()) {
-            if (entity instanceof EntityMaid maid && targetUuid.equals(maid.getUUID())) {
-                return maid;
-            }
-        }
-        return null;
+        return maid;
     }
 
     private static float easeOutCubic(float x) {
@@ -391,18 +347,27 @@ public final class EmergencyRescueOverlayRenderer {
         return 1.0f + c3 * p * p * p + c1 * p * p;
     }
 
-    private record ActiveOverlay(EntityMaid maid, boolean liveEntity, boolean hasCustomAction, String modelId, String displayName, int remainingTicks, boolean tickLogEmitted) {
+    private static void applyPayloadYsmIdentity(EntityMaid maid, MaidRescuePopPayload payload) {
+        if (!payload.ysmModelId().isBlank() && !payload.ysmModelTexture().isBlank()) {
+            maid.setIsYsmModel(true);
+            Component ysmName = payload.ysmDisplayName().isBlank()
+                    ? Component.empty()
+                    : Component.literal(payload.ysmDisplayName());
+            maid.setYsmModel(payload.ysmModelId(), payload.ysmModelTexture(), ysmName);
+            return;
+        }
+        maid.setIsYsmModel(false);
+    }
+
+    private record ActiveOverlay(EntityMaid maid, boolean hasCustomAction, int remainingTicks, boolean tickLogEmitted) {
         private ActiveOverlay tickDown() {
-            return new ActiveOverlay(maid, liveEntity, hasCustomAction, modelId, displayName, remainingTicks - 1, true);
+            return new ActiveOverlay(maid, hasCustomAction, remainingTicks - 1, true);
         }
 
         private float progress(float partialTick) {
             float remaining = Math.max(0.0f, remainingTicks - partialTick);
             return 1.0f - remaining / DURATION_TICKS;
         }
-    }
-
-    private record OverlayMaid(EntityMaid maid, boolean liveEntity) {
     }
 
     private record EntityRenderState(

@@ -135,6 +135,7 @@
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
+  - 该目录额外维护“救援贡献者稳定标识（provider id）”与女仆-物品互转同步逻辑，避免女仆复活后重复贡献次数。
 
 - `bond/lap/`
   - 负责：膝枕姿态配置、会话状态与中间锚点实体抽象。
@@ -352,6 +353,7 @@
 #### 生命周期
 
 - 玩家 tick 时由 `EmergencyHealListener.ensureRescueChargesUpToDate` 检查是否跨日并补满次数。
+- 女仆解锁 `emergency_heal` 时，会基于稳定 `provider id` 执行“当日即时补充”，并防止同一女仆复活后重复入池。
 - 玩家受到致命或濒死伤害时，监听器尝试消耗一个救援名额。
 - 若成功，则取消伤害、回复生命并施加再生/伤害吸收/抗火。
 - 随后发送 `MaidRescuePopPayload` 到客户端播放弹出表现。
@@ -359,23 +361,26 @@
 #### 数据流向
 
 - `EmergencyRescueAttachment`
-  - 保存每日剩余可用救援者列表
-  - 保存已注册过的救援者列表
+  - 保存每日剩余可用救援者列表（列表元素为 `provider id`，不依赖实体是否加载）
+  - 保存已注册过的救援者列表（同样按 `provider id` / 兼容别名判定）
   - 保存最后补充日
 - `BondData`
   - 保存女仆模型、显示名、YSM 配置、救援动作等档案信息
+  - 额外保存 `maidUuid -> rescue provider id` 映射，用于跨复活维持“同一女仆”语义
   - 客户端展示时依赖这些信息还原救援者形象
 
 #### 模块交互
 
-- 服务端：`EmergencyHealListener` + `EmergencyRescueData`
+- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler`
 - 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer`
 - YSM：若女仆模型支持，则在 overlay 中播放预设动作
+- overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
 
 #### 架构意义
 
 - `Attachment` 在这里承载的是“运行中的玩家能力槽位”。
 - `BondData` 承载的是“可展示、可回放的女仆身份档案”。
+- `provider id` 把“能力贡献身份”从实体 UUID 中解耦，使死亡/复活不再改变贡献归属。
 - 这两层分工是合理的，也说明项目已经开始出现多种状态容器并存的趋势。
 
 ### 4.7 膝枕姿态系统
