@@ -22,7 +22,8 @@ public abstract class LivingEntityLapPillowSleepMixin {
 
     @Inject(method = "getBedOrientation", at = @At("HEAD"), cancellable = true)
     private void touhou_maid_affection$bridgeLapPillowBedOrientation(CallbackInfoReturnable<Direction> cir) {
-        if ((Object) this instanceof AbstractClientPlayer player && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
+        if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
             cir.setReturnValue(LapPillowClientState.resolveSleepDirection(player));
         }
     }

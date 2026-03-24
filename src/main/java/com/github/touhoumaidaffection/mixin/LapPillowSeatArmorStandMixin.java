@@ -2,8 +2,8 @@
 // 
 // The lap pillow system handles rider pose through:
 // 1. LapPillowHandler.applyPlayerSleepingState() - Sets player pose to SLEEPING
-// 2. LivingEntityLapPillowSleepMixin - Configures correct bed orientation for sleeping
+// 2. LapPillowSeatRenderMixin - Render-only passenger-state override on LivingEntityRenderer
 // 3. LapPillowState - Maintains client/server state synchronization
 //
-// The player's SLEEPING pose automatically overrides the sitting animation,
-// making the shouldRiderSit() override unnecessary.
+// Avoid global entity state spoofing (isPassenger/getVehicle/isSleeping),
+// which can interfere with ClientboundSetPassengersPacket handling.

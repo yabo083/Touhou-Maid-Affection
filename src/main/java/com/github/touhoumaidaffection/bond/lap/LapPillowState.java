@@ -23,6 +23,14 @@ public final class LapPillowState {
         return readUuid(getRoot(player), "anchor_uuid");
     }
 
+    public static boolean isSessionMaid(ServerPlayer player, UUID maidUuid) {
+        if (!isActive(player) || maidUuid == null) {
+            return false;
+        }
+        UUID activeMaid = getMaidUuid(player);
+        return maidUuid.equals(activeMaid);
+    }
+
     public static LapPillowPoseSnapshot getPose(ServerPlayer player) {
         CompoundTag root = getRoot(player);
         if (!root.contains("pose")) {
@@ -50,13 +58,18 @@ public final class LapPillowState {
         return getRoot(player).getBoolean("maid_was_sleeping");
     }
 
+    public static boolean wasPlayerNoGravity(ServerPlayer player) {
+        return getRoot(player).getBoolean("player_was_no_gravity");
+    }
+
     public static void activate(ServerPlayer player,
                                 UUID maidUuid,
                                 UUID anchorUuid,
                                 long gameTime,
                                 LapPillowPoseSnapshot pose,
                                 boolean maidWasSitting,
-                                boolean maidWasSleeping) {
+                                boolean maidWasSleeping,
+                                boolean playerWasNoGravity) {
         CompoundTag root = getRoot(player);
         root.putBoolean("active", true);
         root.putString("maid_uuid", maidUuid.toString());
@@ -64,6 +77,7 @@ public final class LapPillowState {
         root.putLong("start_time", gameTime);
         root.putBoolean("maid_was_sitting", maidWasSitting);
         root.putBoolean("maid_was_sleeping", maidWasSleeping);
+        root.putBoolean("player_was_no_gravity", playerWasNoGravity);
         root.putBoolean("angle_lock_enabled", false);
         root.putFloat("angle_lock_yaw", 0.0F);
         root.putString("applied_maid_action", "");

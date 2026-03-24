@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.handler.BondSyncHelper;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
@@ -78,6 +79,20 @@ public final class RandomGiftService {
         return BondManager.getNextRandomGiftReadyAtMs(player, maid.getUUID(), System.currentTimeMillis());
     }
 
+    public static void cancelForMaid(UUID maidUuid) {
+        if (maidUuid == null) {
+            return;
+        }
+        DELIVERY_TASKS.remove(maidUuid);
+    }
+
+    public static void cancelForPlayer(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        DELIVERY_TASKS.values().removeIf(task -> player.getUUID().equals(task.playerUuid()));
+    }
+
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
@@ -97,6 +112,9 @@ public final class RandomGiftService {
 
     private static void tickNearbyGiftMaids(ServerPlayer player) {
         if (!ModConfig.BOND_RANDOM_GIFT_ENABLED.get()) {
+            return;
+        }
+        if (LapPillowState.isActive(player)) {
             return;
         }
         ServerLevel level = player.serverLevel();
@@ -145,6 +163,10 @@ public final class RandomGiftService {
             }
             Entity entity = level.getEntity(task.maidUuid());
             if (!(entity instanceof EntityMaid maid) || !maid.isAlive() || !maid.isOwnedBy(player)) {
+                iterator.remove();
+                continue;
+            }
+            if (LapPillowState.isSessionMaid(player, maid.getUUID())) {
                 iterator.remove();
                 continue;
             }

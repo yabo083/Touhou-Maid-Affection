@@ -2,6 +2,7 @@ package com.github.touhoumaidaffection.mixin.client;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.client.LapPillowClientState;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.AnimatableEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -15,12 +16,13 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class GeoReplacedEntityRendererLapPillowSitMixin {
     @Redirect(
             method = "render(Lnet/minecraft/world/entity/LivingEntity;Lcom/github/tartaricacid/touhoulittlemaid/geckolib3/core/AnimatableEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;shouldRiderSit()Z")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;shouldRiderSit()Z"),
+            require = 0
     )
     private boolean touhou_maid_affection$preferSleepPoseDuringLapPillowInGeoRenderer(
             Entity vehicle,
             LivingEntity entity,
-            Object animatable,
+            AnimatableEntity animatable,
             float entityYaw,
             float partialTick,
             PoseStack poseStack,

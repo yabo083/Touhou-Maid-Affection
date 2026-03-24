@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.bond.service;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.service.MorningKissScheduleRules.DialoguePool;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
@@ -83,6 +84,11 @@ public final class MorningKissService {
         if (maid.getFavorabilityManager().getLevel() < ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get()) {
             return "bond.morning_kiss.failed_favorability";
         }
+        if (player instanceof ServerPlayer serverPlayer
+                && LapPillowState.isActive(serverPlayer)
+                && !LapPillowState.isSessionMaid(serverPlayer, maid.getUUID())) {
+            return "bond.morning_kiss.failed_invalid";
+        }
         double maxDistance = ModConfig.BOND_MORNING_KISS_MAX_DISTANCE.get();
         if (player.distanceToSqr(maid) > maxDistance * maxDistance) {
             return "bond.morning_kiss.failed_distance";
@@ -122,6 +128,19 @@ public final class MorningKissService {
         return min == max ? String.valueOf(min) : min + "-" + max;
     }
 
+    public static void cancelForPlayerExcept(ServerPlayer player, UUID allowedMaidUuid) {
+        if (player == null) {
+            return;
+        }
+        PendingMorningKiss task = TASKS.get(player.getUUID());
+        if (task == null) {
+            return;
+        }
+        if (allowedMaidUuid == null || !allowedMaidUuid.equals(task.maidUuid())) {
+            TASKS.remove(player.getUUID());
+        }
+    }
+
     private static void tickAutoScheduling(MinecraftServer server) {
         if (!ModConfig.BOND_MORNING_KISS_ENABLED.get() || !ModConfig.BOND_MORNING_KISS_AUTO_ENABLED.get()) {
             return;
@@ -158,6 +177,12 @@ public final class MorningKissService {
                         && maid.getFavorabilityManager().getLevel() >= ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get()
         );
         nearbyMaids.sort(Comparator.comparingDouble(maid -> maid.distanceToSqr(player)));
+        if (LapPillowState.isActive(player)) {
+            UUID activeMaidUuid = LapPillowState.getMaidUuid(player);
+            if (activeMaidUuid != null) {
+                nearbyMaids.removeIf(maid -> !activeMaidUuid.equals(maid.getUUID()));
+            }
+        }
         if (nearbyMaids.isEmpty()) {
             return;
         }
@@ -234,6 +259,10 @@ public final class MorningKissService {
                 failTask(iterator, task, player, "bond.morning_kiss.failed_invalid");
                 continue;
             }
+            if (LapPillowState.isActive(player) && !LapPillowState.isSessionMaid(player, maid.getUUID())) {
+                iterator.remove();
+                continue;
+            }
 
             long gameTime = player.serverLevel().getGameTime();
             if (gameTime > task.timeoutTick()) {
@@ -253,7 +282,12 @@ public final class MorningKissService {
 
             maid.getLookControl().setLookAt(player, 30.0F, 30.0F);
 
+            boolean lapPillowSessionMaid = LapPillowState.isSessionMaid(player, maid.getUUID());
             if (!isReadyToKiss(task, player, maid, gameTime)) {
+                if (lapPillowSessionMaid) {
+                    maid.getNavigation().stop();
+                    continue;
+                }
                 maid.getNavigation().moveTo(player, 1.0D);
                 continue;
             }
@@ -274,7 +308,9 @@ public final class MorningKissService {
                 playConfiguredVoice(player, maid);
                 task = task.withDialogueShown(true);
             }
-            YSMActionBridge.playIfAvailable(maid, YSMMaidAnimation.MORNING_KISS);
+            if (!lapPillowSessionMaid) {
+                YSMActionBridge.playIfAvailable(maid, YSMMaidAnimation.MORNING_KISS);
+            }
 
             int completed = task.completedKisses() + 1;
             if (completed >= task.totalKisses()) {
@@ -293,6 +329,9 @@ public final class MorningKissService {
     private static boolean start(Player player, EntityMaid maid, TriggerSource triggerSource, String autoWindowId, boolean showStartMessage) {
         String failureKey = getFailureKey(player, maid);
         if (!(player instanceof ServerPlayer serverPlayer)) {
+            return false;
+        }
+        if (LapPillowState.isActive(serverPlayer) && !LapPillowState.isSessionMaid(serverPlayer, maid.getUUID())) {
             return false;
         }
         if (TASKS.containsKey(serverPlayer.getUUID())) {

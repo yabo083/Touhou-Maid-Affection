@@ -8,6 +8,8 @@ import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.lap.LapPillowAnchorEntity;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
+import com.github.touhoumaidaffection.bond.service.MorningKissService;
+import com.github.touhoumaidaffection.bond.service.RandomGiftService;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
@@ -15,9 +17,9 @@ import com.github.touhoumaidaffection.ysm.YSMCompatibility;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,11 +28,13 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import java.util.List;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class LapPillowHandler {
     private static final double TELEPORT_EPSILON_SQR = 0.0009D;
+    private static final double LIE_CORRECTION_TRIGGER_SQR = 0.0144D;
     private static final double MAID_LYING_VISUAL_Y_LIFT = 0.55D;
 
     private LapPillowHandler() {
@@ -57,6 +61,8 @@ public final class LapPillowHandler {
             }
 
             clearLapPillow(player, "restart_before_start");
+            MorningKissService.cancelForPlayerExcept(player, maid.getUUID());
+            RandomGiftService.cancelForPlayer(player);
             LapPillowPoseSnapshot pose = BondManager.getMaidLapPillowPose(player, maid.getUUID()).clamp();
             LapPillowAnchorEntity anchor = new LapPillowAnchorEntity(player.level(), player.getUUID(), maid.getUUID());
             anchor.setPoseSnapshot(pose);
@@ -73,6 +79,8 @@ public final class LapPillowHandler {
                     logReject(player, maid.getUUID(), "start_riding_failed");
                     return;
                 }
+            } else {
+                enforceNonRidingPlayerState(player, anchor);
             }
 
             LapPillowState.activate(
@@ -82,7 +90,8 @@ public final class LapPillowHandler {
                     player.level().getGameTime(),
                     pose,
                     maid.isMaidInSittingPose(),
-                    maid.isSleeping()
+                    maid.isSleeping(),
+                    player.isNoGravity()
             );
             applyMaidPose(maid, pose, anchor);
             applyPlayerPose(player, pose, anchor);
@@ -162,9 +171,7 @@ public final class LapPillowHandler {
         anchor.setXRot(0.0F);
 
         if (pose.playerLying()) {
-            if (player.getVehicle() == anchor) {
-                player.stopRiding();
-            }
+            enforceNonRidingPlayerState(player, anchor);
         } else if (player.getVehicle() != anchor) {
             if (!player.startRiding(anchor, true)) {
                 clearLapPillow(player, "rebind_riding_failed");
@@ -231,12 +238,21 @@ public final class LapPillowHandler {
 
     private static void applyPlayerPose(ServerPlayer player, LapPillowPoseSnapshot pose, LapPillowAnchorEntity anchor) {
         if (pose.playerLying()) {
-            Vec3 target = resolveSafePlayerPos(player, anchor.getPlayerWorldPosition().add(0.0D, 0.35D, 0.0D));
-            if (player.position().distanceToSqr(target) > TELEPORT_EPSILON_SQR) {
-                player.teleportTo(target.x, target.y, target.z);
+            enforceNonRidingPlayerState(player, anchor);
+            player.setNoGravity(true);
+
+            Vec3 desired = anchor.getPlayerWorldPosition().add(0.0D, 0.35D, 0.0D);
+            if (player.position().distanceToSqr(desired) > LIE_CORRECTION_TRIGGER_SQR) {
+                Vec3 target = resolveSafePlayerPos(player, desired);
+                if (player.position().distanceToSqr(target) > LIE_CORRECTION_TRIGGER_SQR) {
+                    player.teleportTo(target.x, target.y, target.z);
+                }
             }
+            player.setDeltaMovement(Vec3.ZERO);
+            player.fallDistance = 0.0F;
             player.setForcedPose(Pose.SLEEPING);
         } else {
+            player.setNoGravity(LapPillowState.wasPlayerNoGravity(player));
             player.setForcedPose(null);
         }
     }
@@ -308,10 +324,12 @@ public final class LapPillowHandler {
         UUID anchorUuid = LapPillowState.getAnchorUuid(player);
         boolean restoreSit = LapPillowState.wasMaidSitting(player);
         boolean restoreSleep = LapPillowState.wasMaidSleeping(player);
+        boolean restoreNoGravity = LapPillowState.wasPlayerNoGravity(player);
 
         if (player.isPassenger()) {
             player.stopRiding();
         }
+        player.setNoGravity(restoreNoGravity);
         player.setForcedPose(null);
         player.removeEffect(ModEffects.ETERNAL_UTOPIA.getDelegate());
 
@@ -361,6 +379,19 @@ public final class LapPillowHandler {
         return String.format(java.util.Locale.ROOT, "%.3f", value);
     }
 
+    private static void enforceNonRidingPlayerState(ServerPlayer player, LapPillowAnchorEntity anchor) {
+        if (player.getVehicle() != null) {
+            player.stopRiding();
+        }
+        if (!anchor.getPassengers().isEmpty()) {
+            for (Entity passenger : List.copyOf(anchor.getPassengers())) {
+                if (passenger == player || passenger.getUUID().equals(player.getUUID())) {
+                    passenger.stopRiding();
+                }
+            }
+        }
+    }
+
     private static Vec3 resolveSafePlayerPos(ServerPlayer player, Vec3 desired) {
         double x = desired.x;
         double y = desired.y;
@@ -377,4 +408,5 @@ public final class LapPillowHandler {
         }
         return new Vec3(x, y, z);
     }
+
 }

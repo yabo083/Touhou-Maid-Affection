@@ -18,6 +18,7 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.List;
 import java.util.UUID;
 
 public class LapPillowAnchorEntity extends Entity {
@@ -177,6 +178,12 @@ public class LapPillowAnchorEntity extends Entity {
             return;
         }
 
+        if (poseSnapshot.playerLying() && !getPassengers().isEmpty()) {
+            for (Entity passenger : List.copyOf(getPassengers())) {
+                passenger.stopRiding();
+            }
+        }
+
         if (poseSnapshot.playerLying() || (getFirstPassenger() == owner && owner.getVehicle() == this)) {
             orphanTicks = 0;
             return;
@@ -192,6 +199,7 @@ public class LapPillowAnchorEntity extends Entity {
     public boolean canAddPassenger(Entity passenger) {
         return passenger != null
                 && passenger.getUUID().equals(ownerPlayerUuid)
+                && !poseSnapshot.playerLying()
                 && getPassengers().isEmpty();
     }
 
