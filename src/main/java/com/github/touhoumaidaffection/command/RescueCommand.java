@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.command;
 
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
 import com.github.touhoumaidaffection.bond.rescue.RescueSoundSyncService;
@@ -33,6 +34,12 @@ public final class RescueCommand {
                                 .executes(context -> setEnabled(context.getSource(), false)))
                         .then(Commands.literal("toggle")
                                 .executes(context -> toggleEnabled(context.getSource())))
+                        .then(Commands.literal("clear")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(context -> clearPoolAndResetUnlock(context.getSource())))
+                        .then(Commands.literal("reset")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(context -> clearPoolAndResetUnlock(context.getSource())))
                         .then(Commands.literal("sound")
                                 .then(Commands.literal("sync")
                                         .requires(source -> source.hasPermission(2))
@@ -98,6 +105,18 @@ public final class RescueCommand {
                         : "command.touhou_maid_affection.rescue.personal.set_off"
         ), false);
         return next ? 1 : 0;
+    }
+
+    private static int clearPoolAndResetUnlock(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        BondData bondData = BondData.of(player);
+        int resetCount = bondData.resetAbilityForAllMaids("emergency_heal");
+        EmergencyRescueData.clearPoolAndRegistration(player);
+        source.sendSuccess(
+                () -> Component.translatable("command.touhou_maid_affection.rescue.clear.done", resetCount),
+                true
+        );
+        return resetCount;
     }
 
     private static int forceSoundSync(CommandSourceStack source) {

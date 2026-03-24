@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.client;
 import com.github.tartaricacid.touhoulittlemaid.client.resource.CustomPackLoader;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.SoundData;
+import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.mojang.blaze3d.audio.SoundBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -25,7 +26,7 @@ import java.util.zip.ZipFile;
 public final class RescueTlmVoiceIndex {
     private static final Map<String, VoicePackIndex> CACHE = new ConcurrentHashMap<>();
     private static final String MAID_SOUND_PREFIX = "sounds/maid/";
-    private static final ResourceLocation DEFAULT_SOUND_EVENT = ResourceLocation.withDefaultNamespace("entity.player.levelup");
+    private static final ResourceLocation DEFAULT_SOUND_EVENT = InitSounds.MAID_IDLE.get().getLocation();
 
     private RescueTlmVoiceIndex() {
     }
@@ -192,6 +193,7 @@ public final class RescueTlmVoiceIndex {
         String groupPath = slash >= 0 ? relativePath.substring(0, slash) : "general";
         String fileName = slash >= 0 ? relativePath.substring(slash + 1) : relativePath;
         String groupKey = groupPath.toLowerCase(Locale.ROOT);
+        ResourceLocation soundEventId = resolveSoundEvent(groupKey, fileName.toLowerCase(Locale.ROOT));
 
         return new VoiceEntry(
                 relativePath.toLowerCase(Locale.ROOT),
@@ -199,10 +201,119 @@ public final class RescueTlmVoiceIndex {
                 humanizePath(groupPath),
                 humanizeFileName(fileName),
                 Component.literal(source.describe()),
-                DEFAULT_SOUND_EVENT,
+                soundEventId,
                 groupOrder(groupKey),
                 source
         );
+    }
+
+    private static ResourceLocation resolveSoundEvent(String groupKey, String fileName) {
+        String firstSegment = groupKey == null ? "" : groupKey;
+        int slash = firstSegment.indexOf('/');
+        if (slash >= 0) {
+            firstSegment = firstSegment.substring(0, slash);
+        }
+
+        return switch (firstSegment) {
+            case "environment" -> resolveEnvironmentSound(fileName);
+            case "mode" -> resolveModeSound(fileName);
+            case "ai" -> resolveAiSound(fileName);
+            case "chat" -> InitSounds.MAID_AI_CHAT.get().getLocation();
+            default -> DEFAULT_SOUND_EVENT;
+        };
+    }
+
+    private static ResourceLocation resolveEnvironmentSound(String fileName) {
+        if (fileName.startsWith("morning")) {
+            return InitSounds.MAID_MORNING.get().getLocation();
+        }
+        if (fileName.startsWith("night")) {
+            return InitSounds.MAID_NIGHT.get().getLocation();
+        }
+        if (fileName.startsWith("hot")) {
+            return InitSounds.MAID_HOT.get().getLocation();
+        }
+        if (fileName.startsWith("cold")) {
+            return InitSounds.MAID_COLD.get().getLocation();
+        }
+        if (fileName.startsWith("rain")) {
+            return InitSounds.MAID_RAIN.get().getLocation();
+        }
+        if (fileName.startsWith("snow")) {
+            return InitSounds.MAID_SNOW.get().getLocation();
+        }
+        return InitSounds.MAID_MORNING.get().getLocation();
+    }
+
+    private static ResourceLocation resolveModeSound(String fileName) {
+        if (fileName.startsWith("range_attack")) {
+            return InitSounds.MAID_RANGE_ATTACK.get().getLocation();
+        }
+        if (fileName.startsWith("danmaku_attack")) {
+            return InitSounds.MAID_DANMAKU_ATTACK.get().getLocation();
+        }
+        if (fileName.startsWith("attack")) {
+            return InitSounds.MAID_ATTACK.get().getLocation();
+        }
+        if (fileName.startsWith("farm")) {
+            return InitSounds.MAID_FARM.get().getLocation();
+        }
+        if (fileName.startsWith("feed_animal")) {
+            return InitSounds.MAID_FEED_ANIMAL.get().getLocation();
+        }
+        if (fileName.startsWith("feed")) {
+            return InitSounds.MAID_FEED.get().getLocation();
+        }
+        if (fileName.startsWith("furnace")) {
+            return InitSounds.MAID_FURNACE.get().getLocation();
+        }
+        if (fileName.startsWith("brewing")) {
+            return InitSounds.MAID_BREWING.get().getLocation();
+        }
+        if (fileName.startsWith("shears")) {
+            return InitSounds.MAID_SHEARS.get().getLocation();
+        }
+        if (fileName.startsWith("milk")) {
+            return InitSounds.MAID_MILK.get().getLocation();
+        }
+        if (fileName.startsWith("snow")) {
+            return InitSounds.MAID_REMOVE_SNOW.get().getLocation();
+        }
+        if (fileName.startsWith("torch")) {
+            return InitSounds.MAID_TORCH.get().getLocation();
+        }
+        if (fileName.startsWith("extinguishing")) {
+            return InitSounds.MAID_EXTINGUISHING.get().getLocation();
+        }
+        if (fileName.startsWith("break")) {
+            return InitSounds.MAID_BREAK.get().getLocation();
+        }
+        return InitSounds.MAID_IDLE.get().getLocation();
+    }
+
+    private static ResourceLocation resolveAiSound(String fileName) {
+        if (fileName.startsWith("hurt_fire")) {
+            return InitSounds.MAID_HURT_FIRE.get().getLocation();
+        }
+        if (fileName.startsWith("hurt_player")) {
+            return InitSounds.MAID_PLAYER.get().getLocation();
+        }
+        if (fileName.startsWith("hurt")) {
+            return InitSounds.MAID_HURT.get().getLocation();
+        }
+        if (fileName.startsWith("find_target")) {
+            return InitSounds.MAID_FIND_TARGET.get().getLocation();
+        }
+        if (fileName.startsWith("item_get")) {
+            return InitSounds.MAID_ITEM_GET.get().getLocation();
+        }
+        if (fileName.startsWith("tamed")) {
+            return InitSounds.MAID_TAMED.get().getLocation();
+        }
+        if (fileName.startsWith("death")) {
+            return InitSounds.MAID_DEATH.get().getLocation();
+        }
+        return InitSounds.MAID_AI_CHAT.get().getLocation();
     }
 
     private static int groupOrder(String groupKey) {

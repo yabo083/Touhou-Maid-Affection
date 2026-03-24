@@ -23,6 +23,8 @@ public interface BondPrimaryPageHost {
 
     void openSecondaryPageForAbility(IBondAbility ability);
 
+    void openEmergencyRescueActionPage();
+
     Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary);
 
     boolean isMainButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary);

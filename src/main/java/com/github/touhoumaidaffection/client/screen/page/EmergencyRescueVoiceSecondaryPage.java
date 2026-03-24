@@ -87,9 +87,9 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
             modeDropdown.renderBase(graphics, font, modeOptions, selectedModeIndex(), mouseX, mouseY, this::renderModeOption);
 
             int listLeft = contentLeft;
-            int listTop = contentTop + 56;
+            int listTop = contentTop + 52;
             int listWidth = contentWidth;
-            int listHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - listTop - 2);
+            int listHeight = alignedListHeight(modal, listTop);
             graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
             if (!anyDropdownExpanded) {
                 if (getSoundPackId().isBlank()) {
@@ -115,7 +115,7 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
             int listLeft = contentLeft;
             int listTop = contentTop + 72;
             int listWidth = contentWidth;
-            int listHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - listTop - 2);
+            int listHeight = alignedListHeight(modal, listTop);
             graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
             if (!anyDropdownExpanded) {
                 if (workingSettings.customPlayMode() != EmergencyRescueVoiceSettings.CustomPlayMode.FIXED) {
@@ -448,17 +448,23 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
 
         sourceDropdown = new BondDropdown<>(dropdownX, contentTop - 3, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
         modeDropdown = new BondDropdown<>(dropdownX, contentTop + 33, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        int tlmListTop = contentTop + 56;
-        int tlmListHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - tlmListTop - 2);
+        int tlmListTop = contentTop + 52;
+        int tlmListHeight = alignedListHeight(modal, tlmListTop);
         selectionList = new BondScrollableList<>(contentLeft, tlmListTop, contentWidth, tlmListHeight, DROPDOWN_ROW_HEIGHT);
 
         customModeDropdown = new BondDropdown<>(dropdownX, contentTop + 19, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
         fallbackDropdown = new BondDropdown<>(dropdownX, contentTop + 41, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
         int fixedListTop = contentTop + 72;
-        int fixedListHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - fixedListTop - 2);
+        int fixedListHeight = alignedListHeight(modal, fixedListTop);
         fixedFileList = new BondScrollableList<>(contentLeft, fixedListTop, contentWidth, fixedListHeight, DROPDOWN_ROW_HEIGHT);
         rebuildSelectionOptions();
         rebuildCustomFileOptions();
+    }
+
+    private int alignedListHeight(BondModalPage modal, int listTop) {
+        int available = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - listTop - 2);
+        int aligned = (available / DROPDOWN_ROW_HEIGHT) * DROPDOWN_ROW_HEIGHT;
+        return Math.max(DROPDOWN_ROW_HEIGHT, aligned);
     }
 
     private void rebuildSelectionOptions() {

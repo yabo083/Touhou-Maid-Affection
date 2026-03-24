@@ -10,12 +10,17 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
 public final class EmergencyRescueData {
+    private static final String RESCUER_TOKEN_PREFIX = "maid:";
+    private static final String EMERGENCY_HEAL_ABILITY_ID = "emergency_heal";
+
     private EmergencyRescueData() {
     }
 
@@ -60,19 +65,28 @@ public final class EmergencyRescueData {
     }
 
     public static boolean hasRegisteredRescuer(ServerPlayer player, UUID maidUuid) {
-        return hasRegisteredRescuer(player, maidUuid.toString());
+        return hasRegisteredRescuer(player, toRescuerToken(maidUuid));
     }
 
     public static void markRegisteredRescuer(ServerPlayer player, UUID maidUuid) {
-        markRegisteredRescuer(player, maidUuid.toString());
+        markRegisteredRescuer(player, toRescuerToken(maidUuid));
     }
 
     public static void setRegisteredRescuers(ServerPlayer player, List<UUID> maidIds) {
-        Set<String> providerIds = new java.util.LinkedHashSet<>(maidIds.size());
+        Set<String> canonicalIds = new LinkedHashSet<>(maidIds.size());
         for (UUID maidId : maidIds) {
-            providerIds.add(resolveRescuerId(player, maidId));
+            canonicalIds.add(toRescuerToken(maidId));
         }
-        get(player).setRegisteredRescuers(new java.util.ArrayList<>(providerIds));
+        get(player).setRegisteredRescuers(new ArrayList<>(canonicalIds));
+    }
+
+    public static void clearPoolAndRegistration(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        setAvailableRescuerIds(player, List.of());
+        get(player).setRegisteredRescuers(List.of());
+        setLastReplenishDay(player, 0L);
     }
 
     public static int getChargeCount(ServerPlayer player) {
@@ -97,25 +111,24 @@ public final class EmergencyRescueData {
     }
 
     public static List<String> buildDailyRescuerList(ServerPlayer player) {
-        List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, "emergency_heal");
+        List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID);
         int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
-        Set<String> providerIds = new java.util.LinkedHashSet<>(unlockedIds.size());
+        Set<String> canonicalIds = new LinkedHashSet<>(unlockedIds.size());
         for (UUID maidUuid : unlockedIds) {
-            providerIds.add(resolveRescuerId(player, maidUuid));
+            canonicalIds.add(toRescuerToken(maidUuid));
         }
-        List<String> expanded = new java.util.ArrayList<>(providerIds.size() * chargesPerMaid);
-        for (String providerId : providerIds) {
+        List<String> expanded = new ArrayList<>(canonicalIds.size() * chargesPerMaid);
+        for (String canonicalId : canonicalIds) {
             for (int i = 0; i < chargesPerMaid; i++) {
-                expanded.add(providerId);
+                expanded.add(canonicalId);
             }
         }
         return expanded;
     }
 
     public static void grantImmediateRescueIfEligible(ServerPlayer player, UUID maidUuid) {
-        String legacyId = maidUuid.toString();
-        String rescuerId = resolveRescuerId(player, maidUuid);
-        if (hasRegisteredAlias(player, rescuerId) || hasRegisteredRescuer(player, legacyId)) {
+        String rescuerId = toRescuerToken(maidUuid);
+        if (hasRegisteredAlias(player, rescuerId)) {
             return;
         }
         int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
@@ -123,9 +136,45 @@ public final class EmergencyRescueData {
             addRescuer(player, rescuerId);
         }
         markRegisteredRescuer(player, rescuerId);
-        if (!legacyId.equals(rescuerId)) {
-            markRegisteredRescuer(player, legacyId);
+    }
+
+    public static boolean normalizeRescuerState(ServerPlayer player) {
+        if (player == null) {
+            return false;
         }
+        List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID);
+        Set<UUID> unlockedSet = new LinkedHashSet<>(unlockedIds);
+        BondData data = BondData.of(player);
+
+        List<String> currentAvailable = getAvailableRescuerIds(player);
+        List<String> normalizedAvailable = new ArrayList<>(currentAvailable.size());
+        boolean availableDirty = false;
+        for (String rescuerId : currentAvailable) {
+            UUID maidUuid = resolveRescuerToMaidUuid(data, rescuerId, unlockedSet);
+            if (maidUuid == null) {
+                availableDirty = true;
+                continue;
+            }
+            String canonical = toRescuerToken(maidUuid);
+            normalizedAvailable.add(canonical);
+            if (!canonical.equals(rescuerId)) {
+                availableDirty = true;
+            }
+        }
+        if (availableDirty) {
+            setAvailableRescuerIds(player, normalizedAvailable);
+        }
+
+        Set<String> expectedRegistered = new LinkedHashSet<>(unlockedIds.size());
+        for (UUID maidId : unlockedIds) {
+            expectedRegistered.add(toRescuerToken(maidId));
+        }
+        Set<String> currentRegistered = new LinkedHashSet<>(getRegisteredRescuerIds(player));
+        boolean registeredDirty = !currentRegistered.equals(expectedRegistered);
+        if (registeredDirty) {
+            setRegisteredRescuers(player, unlockedIds);
+        }
+        return availableDirty || registeredDirty;
     }
 
     public static EmergencyRescueAttachment get(ServerPlayer player) {
@@ -133,41 +182,133 @@ public final class EmergencyRescueData {
     }
 
     private static boolean hasYsmProfile(BondData data, String rescuerId) {
-        BondData.MaidProfileSnapshot byProvider = data.findMaidProfileByRescueProviderId(rescuerId);
-        if (!byProvider.ysmModelId().isBlank()) {
+        UUID resolved = resolveRescuerToMaidUuid(data, rescuerId, null);
+        if (resolved != null && !data.getMaidYsmModelId(resolved).isBlank()) {
             return true;
         }
-        try {
-            UUID maidUuid = UUID.fromString(rescuerId);
-            return !data.getMaidYsmModelId(maidUuid).isBlank();
-        } catch (IllegalArgumentException ignored) {
-            return !data.findMaidProfileByModelId(rescuerId).ysmModelId().isBlank();
+        String lookupId = toLegacyLookupId(rescuerId);
+        if (lookupId.isBlank()) {
+            return false;
         }
+        return !data.findMaidProfileByModelId(lookupId).ysmModelId().isBlank();
     }
 
-    private static String resolveRescuerId(ServerPlayer player, UUID maidUuid) {
-        String providerId = BondManager.getMaidRescueProviderId(player, maidUuid);
-        return providerId.isBlank() ? maidUuid.toString() : providerId;
+    public static UUID resolveRescuerToMaidUuid(ServerPlayer player, String rescuerId) {
+        Set<UUID> unlockedSet = new LinkedHashSet<>(BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID));
+        Set<UUID> preferred = unlockedSet.isEmpty() ? null : unlockedSet;
+        return resolveRescuerToMaidUuid(BondData.of(player), rescuerId, preferred);
+    }
+
+    public static String toRescuerToken(UUID maidUuid) {
+        return maidUuid == null ? "" : RESCUER_TOKEN_PREFIX + maidUuid;
+    }
+
+    public static boolean isCanonicalRescuerId(String rescuerId) {
+        if (rescuerId == null || rescuerId.isBlank()) {
+            return false;
+        }
+        if (!rescuerId.startsWith(RESCUER_TOKEN_PREFIX)) {
+            return false;
+        }
+        return tryParseUuid(rescuerId.substring(RESCUER_TOKEN_PREFIX.length())) != null;
+    }
+
+    public static UUID tryExtractMaidUuid(String rescuerId) {
+        if (rescuerId == null || rescuerId.isBlank()) {
+            return null;
+        }
+        String normalized = rescuerId.trim();
+        if (normalized.startsWith(RESCUER_TOKEN_PREFIX)) {
+            return tryParseUuid(normalized.substring(RESCUER_TOKEN_PREFIX.length()));
+        }
+        return tryParseUuid(normalized);
+    }
+
+    public static String toLegacyLookupId(String rescuerId) {
+        if (rescuerId == null || rescuerId.isBlank()) {
+            return "";
+        }
+        String normalized = rescuerId.trim();
+        if (normalized.startsWith(RESCUER_TOKEN_PREFIX)) {
+            return normalized.substring(RESCUER_TOKEN_PREFIX.length());
+        }
+        return normalized;
     }
 
     private static boolean hasRegisteredAlias(ServerPlayer player, String rescuerId) {
         if (rescuerId == null || rescuerId.isBlank()) {
             return false;
         }
+        BondData data = BondData.of(player);
+        UUID targetUuid = resolveRescuerToMaidUuid(data, rescuerId, null);
         for (String registered : getRegisteredRescuerIds(player)) {
             if (rescuerId.equals(registered)) {
                 return true;
             }
-            try {
-                UUID maidUuid = UUID.fromString(registered);
-                if (rescuerId.equals(resolveRescuerId(player, maidUuid))) {
+            if (targetUuid != null) {
+                UUID registeredUuid = resolveRescuerToMaidUuid(data, registered, null);
+                if (targetUuid.equals(registeredUuid)) {
                     return true;
                 }
-            } catch (IllegalArgumentException ignored) {
-                // Ignore non-UUID legacy ids.
             }
         }
         return false;
+    }
+
+    private static UUID resolveRescuerToMaidUuid(BondData data, String rescuerId, Set<UUID> preferredMaidIds) {
+        UUID directUuid = tryExtractMaidUuid(rescuerId);
+        if (isAllowed(directUuid, preferredMaidIds) && hasKnownMaidRecord(data, directUuid)) {
+            return directUuid;
+        }
+
+        String lookupId = toLegacyLookupId(rescuerId);
+        if (!lookupId.isBlank()) {
+            UUID byProvider = data.findMaidUuidByRescueProviderId(lookupId, EMERGENCY_HEAL_ABILITY_ID);
+            if (isAllowed(byProvider, preferredMaidIds)) {
+                return byProvider;
+            }
+            UUID byModel = data.findMaidUuidByModelId(lookupId);
+            if (isAllowed(byModel, preferredMaidIds)) {
+                return byModel;
+            }
+        }
+
+        if (isAllowed(directUuid, preferredMaidIds)) {
+            return directUuid;
+        }
+        return null;
+    }
+
+    private static boolean isAllowed(UUID candidate, Set<UUID> preferredMaidIds) {
+        if (candidate == null) {
+            return false;
+        }
+        return preferredMaidIds == null || preferredMaidIds.contains(candidate);
+    }
+
+    private static boolean hasKnownMaidRecord(BondData data, UUID maidUuid) {
+        if (maidUuid == null) {
+            return false;
+        }
+        if (data.isBondUnlocked(maidUuid)) {
+            return true;
+        }
+        return !data.getMaidModelId(maidUuid).isBlank()
+                || !data.getMaidDisplayName(maidUuid).isBlank()
+                || !data.getMaidSoundPackId(maidUuid).isBlank()
+                || !data.getMaidYsmModelId(maidUuid).isBlank()
+                || !data.getMaidRescueAction(maidUuid).isBlank();
+    }
+
+    private static UUID tryParseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     @SubscribeEvent

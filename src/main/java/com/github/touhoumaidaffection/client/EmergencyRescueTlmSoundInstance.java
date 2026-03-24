@@ -9,11 +9,18 @@ import net.minecraft.sounds.SoundSource;
 
 import javax.annotation.Nullable;
 
-public final class EmergencyRescueCustomSoundInstance extends AbstractTickableSoundInstance implements ICustomSoundBuffer {
+public final class EmergencyRescueTlmSoundInstance extends AbstractTickableSoundInstance implements ICustomSoundBuffer {
     private final SoundBuffer soundBuffer;
 
-    public EmergencyRescueCustomSoundInstance(SoundEvent soundEvent, SoundBuffer soundBuffer,
-                                              double x, double y, double z, float volume, float pitch) {
+    public EmergencyRescueTlmSoundInstance(
+            SoundEvent soundEvent,
+            SoundBuffer soundBuffer,
+            double x,
+            double y,
+            double z,
+            float volume,
+            float pitch
+    ) {
         super(soundEvent, SoundSource.NEUTRAL, SoundInstance.createUnseededRandom());
         this.soundBuffer = soundBuffer;
         this.x = x;
@@ -21,9 +28,6 @@ public final class EmergencyRescueCustomSoundInstance extends AbstractTickableSo
         this.z = z;
         this.volume = volume;
         this.pitch = pitch;
-        // Rescue sound should be a player-centric cue, not world-positional audio.
-        this.relative = true;
-        this.attenuation = Attenuation.NONE;
     }
 
     @Override

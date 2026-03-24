@@ -1,5 +1,7 @@
 package com.github.touhoumaidaffection.bond;
 
+import java.util.Locale;
+
 public record EmergencyRescueVoiceSettings(
         SourceMode sourceMode,
         TlmPlayMode tlmPlayMode,
@@ -67,14 +69,25 @@ public record EmergencyRescueVoiceSettings(
         }
 
         public static SourceMode fromSerializedName(String raw) {
-            if (raw != null) {
-                for (SourceMode mode : values()) {
-                    if (mode.serializedName.equalsIgnoreCase(raw.trim())) {
-                        return mode;
-                    }
-                }
+            if (raw == null) {
+                return CUSTOM_FS;
             }
-            return CUSTOM_FS;
+            String normalized = raw.trim().toLowerCase(Locale.ROOT);
+            if (normalized.isEmpty()) {
+                return CUSTOM_FS;
+            }
+            return switch (normalized) {
+                case "tlm_pack", "tlm", "tlmpack", "tlm-pack", "sound_pack", "soundpack", "pack" -> TLM_PACK;
+                case "custom_fs", "custom", "custom-file", "custom_file", "filesystem", "fs", "file", "local" -> CUSTOM_FS;
+                default -> {
+                    for (SourceMode mode : values()) {
+                        if (mode.serializedName.equalsIgnoreCase(normalized)) {
+                            yield mode;
+                        }
+                    }
+                    yield CUSTOM_FS;
+                }
+            };
         }
     }
 

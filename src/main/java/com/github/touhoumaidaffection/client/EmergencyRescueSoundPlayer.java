@@ -38,7 +38,14 @@ public final class EmergencyRescueSoundPlayer {
             return;
         }
 
-        if (tryPlayByConfiguredSource(payload, minecraft)) {
+        EmergencyRescueVoiceSettings voiceSettings = readVoiceSettings(payload);
+        if (voiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK) {
+            // Match morning-kiss behavior: TLM source is a hard switch and does not fall back to custom/default rescue sounds.
+            tryPlayTlmPackVoice(payload, voiceSettings, minecraft);
+            return;
+        }
+
+        if (payload.allowClientCustomSound() && tryPlayCustomFileVoice(payload, voiceSettings, minecraft)) {
             return;
         }
 
@@ -51,8 +58,8 @@ public final class EmergencyRescueSoundPlayer {
         SEQUENCE_INDEX_CACHE.clear();
     }
 
-    private static boolean tryPlayByConfiguredSource(MaidRescuePopPayload payload, Minecraft minecraft) {
-        EmergencyRescueVoiceSettings voiceSettings = EmergencyRescueVoiceSettings.of(
+    private static EmergencyRescueVoiceSettings readVoiceSettings(MaidRescuePopPayload payload) {
+        return EmergencyRescueVoiceSettings.of(
                 payload.rescueVoiceSourceMode(),
                 payload.rescueVoiceTlmMode(),
                 payload.rescueVoiceTlmGroup(),
@@ -61,19 +68,6 @@ public final class EmergencyRescueSoundPlayer {
                 payload.rescueVoiceFixedFile(),
                 payload.rescueVoiceUseCommonFallback()
         );
-        if (voiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK) {
-            if (tryPlayTlmPackVoice(payload, voiceSettings, minecraft)) {
-                return true;
-            }
-            if (payload.allowClientCustomSound() && tryPlayCustomFileVoice(payload, voiceSettings, minecraft)) {
-                return true;
-            }
-            return false;
-        }
-        if (payload.allowClientCustomSound() && tryPlayCustomFileVoice(payload, voiceSettings, minecraft)) {
-            return true;
-        }
-        return false;
     }
 
     private static boolean tryPlayTlmPackVoice(MaidRescuePopPayload payload, EmergencyRescueVoiceSettings settings, Minecraft minecraft) {
@@ -88,28 +82,32 @@ public final class EmergencyRescueSoundPlayer {
             return false;
         }
         RandomSource random = minecraft.level != null ? minecraft.level.random : RandomSource.create();
-        RescueTlmVoiceIndex.VoiceEntry entry = pool.get(random.nextInt(pool.size()));
-        SoundBuffer soundBuffer = RescueTlmVoiceIndex.loadSoundBuffer(soundPackId, entry.clipKey());
-        if (soundBuffer == null) {
-            debugLog("Emergency rescue TLM voice buffer missing: pack={}, clip={}", soundPackId, entry.clipKey());
-            return false;
+        int startIndex = random.nextInt(pool.size());
+        for (int i = 0; i < pool.size(); i++) {
+            RescueTlmVoiceIndex.VoiceEntry entry = pool.get((startIndex + i) % pool.size());
+            SoundBuffer soundBuffer = RescueTlmVoiceIndex.loadSoundBuffer(soundPackId, entry.clipKey());
+            if (soundBuffer == null) {
+                debugLog("Emergency rescue TLM voice buffer missing: pack={}, clip={}", soundPackId, entry.clipKey());
+                continue;
+            }
+            try {
+                minecraft.getSoundManager().play(new EmergencyRescueTlmSoundInstance(
+                        SoundEvent.createVariableRangeEvent(entry.soundEventId()),
+                        soundBuffer,
+                        minecraft.player.getX(),
+                        minecraft.player.getY(),
+                        minecraft.player.getZ(),
+                        1.0F,
+                        1.0F
+                ));
+                debugLog("Emergency rescue TLM voice played: pack={}, clip={}", soundPackId, entry.clipKey());
+                return true;
+            } catch (Exception ex) {
+                TouhouMaidAffection.LOGGER.warn("Failed to play emergency rescue TLM voice entry '{}'", entry.clipKey(), ex);
+            }
         }
-        try {
-            minecraft.getSoundManager().play(new EmergencyRescueCustomSoundInstance(
-                    SoundEvent.createVariableRangeEvent(entry.soundEventId()),
-                    soundBuffer,
-                    minecraft.player.getX(),
-                    minecraft.player.getY(),
-                    minecraft.player.getZ(),
-                    1.0F,
-                    1.0F
-            ));
-            debugLog("Emergency rescue TLM voice played: pack={}, clip={}", soundPackId, entry.clipKey());
-            return true;
-        } catch (Exception ex) {
-            TouhouMaidAffection.LOGGER.warn("Failed to play emergency rescue TLM voice entry '{}'", entry.clipKey(), ex);
-            return false;
-        }
+        debugLog("Emergency rescue TLM voice skipped: no playable entries in pack {}", soundPackId);
+        return false;
     }
 
     private static List<RescueTlmVoiceIndex.VoiceEntry> selectTlmVoicePool(String soundPackId, EmergencyRescueVoiceSettings settings) {

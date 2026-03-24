@@ -11,7 +11,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
@@ -241,8 +243,13 @@ public class BondData {
     }
 
     public MaidProfileSnapshot findMaidProfileByModelId(String modelId) {
+        UUID maidUuid = findMaidUuidByModelId(modelId);
+        return maidUuid == null ? MaidProfileSnapshot.empty() : getMaidProfile(maidUuid);
+    }
+
+    public UUID findMaidUuidByModelId(String modelId) {
         if (modelId == null || modelId.isBlank()) {
-            return MaidProfileSnapshot.empty();
+            return null;
         }
         for (String key : root.getAllKeys()) {
             if (!key.startsWith("BondMaidModel_")) {
@@ -254,19 +261,28 @@ public class BondData {
             }
             String uuidPart = key.substring("BondMaidModel_".length());
             try {
-                UUID maidUuid = UUID.fromString(uuidPart);
-                return getMaidProfile(maidUuid);
+                return UUID.fromString(uuidPart);
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed legacy keys.
             }
         }
-        return MaidProfileSnapshot.empty();
+        return null;
     }
 
     public MaidProfileSnapshot findMaidProfileByRescueProviderId(String providerId) {
+        UUID maidUuid = findMaidUuidByRescueProviderId(providerId);
+        return maidUuid == null ? MaidProfileSnapshot.empty() : getMaidProfile(maidUuid);
+    }
+
+    public UUID findMaidUuidByRescueProviderId(String providerId) {
+        return findMaidUuidByRescueProviderId(providerId, "");
+    }
+
+    public UUID findMaidUuidByRescueProviderId(String providerId, String preferredAbilityId) {
         if (providerId == null || providerId.isBlank()) {
-            return MaidProfileSnapshot.empty();
+            return null;
         }
+        List<UUID> matches = new ArrayList<>();
         for (String key : root.getAllKeys()) {
             if (!key.startsWith("BondMaidRescueProvider_")) {
                 continue;
@@ -276,13 +292,80 @@ public class BondData {
             }
             String uuidPart = key.substring("BondMaidRescueProvider_".length());
             try {
-                UUID maidUuid = UUID.fromString(uuidPart);
-                return getMaidProfile(maidUuid);
+                matches.add(UUID.fromString(uuidPart));
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed legacy keys.
             }
         }
-        return MaidProfileSnapshot.empty();
+        if (matches.isEmpty()) {
+            return null;
+        }
+        matches.sort(java.util.Comparator.comparing(UUID::toString));
+        if (preferredAbilityId != null && !preferredAbilityId.isBlank()) {
+            for (UUID candidate : matches) {
+                if (isAbilityUnlocked(candidate, preferredAbilityId)) {
+                    return candidate;
+                }
+            }
+        }
+        for (UUID candidate : matches) {
+            if (isBondUnlocked(candidate)) {
+                return candidate;
+            }
+        }
+        return matches.getFirst();
+    }
+
+    public int resetAbilityForAllMaids(String abilityId) {
+        if (abilityId == null || abilityId.isBlank()) {
+            return 0;
+        }
+        Set<UUID> maidIds = collectKnownMaidIds();
+        if (maidIds.isEmpty()) {
+            return 0;
+        }
+
+        int resetCount = 0;
+        boolean dirty = false;
+        for (UUID maidUuid : maidIds) {
+            migrateAbilityDataIfNeeded(maidUuid);
+            String abilitiesKey = getAbilitiesKey(maidUuid);
+            CompoundTag abilities = root.getCompound(abilitiesKey);
+            boolean wasUnlocked = abilities.getBoolean(abilityId);
+            if (wasUnlocked) {
+                resetCount++;
+            }
+            if (wasUnlocked || !abilities.contains(abilityId)) {
+                abilities.putBoolean(abilityId, false);
+                root.put(abilitiesKey, abilities);
+                dirty = true;
+            }
+        }
+        if (dirty) {
+            save();
+        }
+        return resetCount;
+    }
+
+    private Set<UUID> collectKnownMaidIds() {
+        LinkedHashSet<UUID> maidIds = new LinkedHashSet<>();
+        for (String key : root.getAllKeys()) {
+            addMaidIdFromKey(maidIds, key, "BondUnlocked_");
+            addMaidIdFromKey(maidIds, key, "BondAbilities_");
+        }
+        return maidIds;
+    }
+
+    private void addMaidIdFromKey(Set<UUID> output, String key, String prefix) {
+        if (key == null || !key.startsWith(prefix)) {
+            return;
+        }
+        String uuidPart = key.substring(prefix.length());
+        try {
+            output.add(UUID.fromString(uuidPart));
+        } catch (IllegalArgumentException ignored) {
+            // Ignore malformed legacy keys.
+        }
     }
 
     public MaidProfileSnapshot getMaidProfile(UUID maidUuid) {

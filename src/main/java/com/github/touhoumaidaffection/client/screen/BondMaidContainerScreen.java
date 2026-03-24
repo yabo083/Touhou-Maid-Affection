@@ -16,6 +16,7 @@ import com.github.touhoumaidaffection.client.screen.page.BondPrimaryPageHost;
 import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPage;
 import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageHost;
 import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageRegistry;
+import com.github.touhoumaidaffection.client.screen.page.RescueActionSecondaryPage;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
@@ -280,6 +281,15 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     }
 
     @Override
+    public void openEmergencyRescueActionPage() {
+        if (maid == null || !isRescueActionConfigAvailable()) {
+            return;
+        }
+        closeSecondaryPage();
+        secondaryPage = new RescueActionSecondaryPage(this);
+    }
+
+    @Override
     public void closeSecondaryPage() {
         if (secondaryPage != null) {
             secondaryPage.onClose();
@@ -340,14 +350,17 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             }
             return Component.translatable("bond.unlock");
         }
+        if (isEmergencyHealAbility(ability)) {
+            if (isRescueActionConfigAvailable()) {
+                return Component.translatable("bond.emergency_rescue.action.button");
+            }
+            return ability.getUnlockedButtonLabel();
+        }
         if (ability.hasSecondaryAction()) {
             if (canUseSecondary) {
                 return ability.getSecondaryActionButtonLabel();
             }
             return Component.translatable("bond.requirements_unmet");
-        }
-        if (isEmergencyHealAbility(ability) && isRescueActionConfigAvailable()) {
-            return ability.getUnlockedButtonLabel();
         }
         return ability.getUnlockedButtonLabel();
     }
@@ -359,6 +372,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         }
         if (!abilityUnlocked) {
             return enoughPowerPoint && canUnlockNow;
+        }
+        if (isEmergencyHealAbility(ability)) {
+            return isRescueActionConfigAvailable();
         }
         if (ability.hasSecondaryAction()) {
             return canUseSecondary;

@@ -130,6 +130,7 @@
   "command.touhou_maid_affection.rescue.effective.off": "Effective state: Emergency Rescue cannot trigger",
   "command.touhou_maid_affection.rescue.personal.set_on": "Your personal Emergency Rescue switch has been enabled.",
   "command.touhou_maid_affection.rescue.personal.set_off": "Your personal Emergency Rescue switch has been disabled.",
+  "command.touhou_maid_affection.rescue.clear.done": "Emergency rescue pool cleared, and Emergency Heal was reset to locked for %s maids.",
   "command.touhou_maid_affection.rescue.sound.sync": "Triggered predefined rescue voice rescan and sync.",
   "command.touhou_maid_affection.rescue.sound.reload": "Requested client-side rescue voice config reload.",
   "command.touhou_maid_affection.rescue.refresh.tomorrow": "Today's charges have already been refreshed. They will refill on the next MC day.",

@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.bond.rescue;
 
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
@@ -13,6 +14,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+
+import java.util.UUID;
 
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
 public final class EmergencyHealListener {
@@ -56,14 +59,16 @@ public final class EmergencyHealListener {
         player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 200, 1));
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0));
 
-        BondData.MaidProfileSnapshot profile = resolveRescueProfile(player, consumedRescuerId);
+        ResolvedRescueProfile resolvedProfile = resolveRescueProfile(player, consumedRescuerId);
+        BondData.MaidProfileSnapshot profile = resolvedProfile.profile();
         EmergencyRescueVoiceSettings rescueVoiceSettings = profile.rescueVoiceSettings() == null
                 ? EmergencyRescueVoiceSettings.DEFAULT
                 : profile.rescueVoiceSettings();
+        debugRescueResolve(consumedRescuerId, resolvedProfile, rescueVoiceSettings);
         EmergencyRescueSoundProfileData.EmergencyRescueSoundProfile soundProfile = EmergencyRescueSoundProfileData.getActiveProfile();
         PacketDistributor.sendToPlayer(player, new MaidRescuePopPayload(
-                consumedRescuerId,
-                profile.modelId().isBlank() ? consumedRescuerId : profile.modelId(),
+                resolvedProfile.maidUuidForPayload(),
+                profile.modelId().isBlank() ? resolvedProfile.maidUuidForPayload() : profile.modelId(),
                 profile.displayName(),
                 profile.soundPackId(),
                 profile.ysmModelId(),
@@ -85,16 +90,46 @@ public final class EmergencyHealListener {
     }
 
 
-    private static BondData.MaidProfileSnapshot resolveRescueProfile(ServerPlayer player, String rescuerId) {
-        BondData.MaidProfileSnapshot byProvider = BondManager.findMaidProfileByRescueProviderId(player, rescuerId);
-        if (!isEmptyProfile(byProvider)) {
-            return byProvider;
+    private static ResolvedRescueProfile resolveRescueProfile(ServerPlayer player, String rescuerId) {
+        BondData data = BondData.of(player);
+
+        UUID resolvedUuid = EmergencyRescueData.resolveRescuerToMaidUuid(player, rescuerId);
+        if (resolvedUuid != null) {
+            return new ResolvedRescueProfile(resolvedUuid.toString(), data.getMaidProfile(resolvedUuid));
+        }
+
+        String lookupId = EmergencyRescueData.toLegacyLookupId(rescuerId);
+        UUID byProviderUuid = data.findMaidUuidByRescueProviderId(lookupId, "emergency_heal");
+        if (byProviderUuid != null) {
+            return new ResolvedRescueProfile(byProviderUuid.toString(), data.getMaidProfile(byProviderUuid));
+        }
+
+        UUID parsedUuid = tryParseUuid(lookupId);
+        if (parsedUuid != null) {
+            BondData.MaidProfileSnapshot byUuid = data.getMaidProfile(parsedUuid);
+            if (!isEmptyProfile(byUuid)) {
+                return new ResolvedRescueProfile(parsedUuid.toString(), byUuid);
+            }
+        }
+
+        UUID byModelUuid = data.findMaidUuidByModelId(lookupId);
+        if (byModelUuid != null) {
+            return new ResolvedRescueProfile(byModelUuid.toString(), data.getMaidProfile(byModelUuid));
+        }
+
+        BondData.MaidProfileSnapshot byModel = BondManager.findMaidProfileByModelId(player, lookupId);
+        String payloadMaidUuid = parsedUuid == null ? lookupId : parsedUuid.toString();
+        return new ResolvedRescueProfile(payloadMaidUuid, byModel);
+    }
+
+    private static UUID tryParseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
         }
         try {
-            java.util.UUID maidUuid = java.util.UUID.fromString(rescuerId);
-            return BondData.of(player).getMaidProfile(maidUuid);
+            return UUID.fromString(raw);
         } catch (IllegalArgumentException ignored) {
-            return BondManager.findMaidProfileByModelId(player, rescuerId);
+            return null;
         }
     }
 
@@ -120,10 +155,7 @@ public final class EmergencyHealListener {
             EmergencyRescueData.setLastReplenishDay(player, lastReplenishDay);
         }
 
-        if (needsRescuerIdMigration(player)) {
-            EmergencyRescueData.setAvailableRescuerIds(player, EmergencyRescueData.buildDailyRescuerList(player));
-            EmergencyRescueData.setRegisteredRescuers(player, com.github.touhoumaidaffection.bond.BondManager.getUnlockedMaidIdsForAbility(player, "emergency_heal"));
-        }
+        EmergencyRescueData.normalizeRescuerState(player);
 
         if (currentDay <= lastReplenishDay) {
             return;
@@ -133,22 +165,31 @@ public final class EmergencyHealListener {
         EmergencyRescueData.setLastReplenishDay(player, currentDay);
     }
 
-
-    private static boolean needsRescuerIdMigration(ServerPlayer player) {
-        for (String rescuerId : EmergencyRescueData.getAvailableRescuerIds(player)) {
-            try {
-                java.util.UUID.fromString(rescuerId);
-            } catch (IllegalArgumentException ex) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static long getCurrentRescueDay(ServerPlayer player) {
         if (ModConfig.BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME.get()) {
             return Math.floorDiv(player.level().getDayTime(), 24000L);
         }
         return Math.floorDiv(player.level().getGameTime(), 24000L);
+    }
+
+    private static void debugRescueResolve(
+            String consumedRescuerId,
+            ResolvedRescueProfile resolvedProfile,
+            EmergencyRescueVoiceSettings rescueVoiceSettings
+    ) {
+        if (ModConfig.BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG == null || !ModConfig.BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG.get()) {
+            return;
+        }
+        TouhouMaidAffection.LOGGER.info(
+                "Emergency rescue resolve: consumedId='{}' -> maidUuid='{}', sourceMode='{}', modelId='{}', displayName='{}'",
+                consumedRescuerId,
+                resolvedProfile.maidUuidForPayload(),
+                rescueVoiceSettings.sourceMode().serializedName(),
+                resolvedProfile.profile().modelId(),
+                resolvedProfile.profile().displayName()
+        );
+    }
+
+    private record ResolvedRescueProfile(String maidUuidForPayload, BondData.MaidProfileSnapshot profile) {
     }
 }

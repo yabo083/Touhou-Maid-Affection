@@ -137,7 +137,7 @@
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
-  - 该目录额外维护“救援贡献者稳定标识（provider id）”与女仆-物品互转同步逻辑，避免女仆复活后重复贡献次数。
+  - 该目录维护“救援者池 canonical id（`maid:<uuid>`）”与 legacy/provider 兼容解析，确保语音配置总是落到正确女仆档案键。
   - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）、预定义语音自动下发服务（`RescueSoundSyncService`）与玩家个人开关状态。
 
 - `bond/lap/`
@@ -362,22 +362,24 @@
 #### 生命周期
 
 - 玩家 tick 时由 `EmergencyHealListener.ensureRescueChargesUpToDate` 检查是否跨日并补满次数。
-- 女仆解锁 `emergency_heal` 时，会基于稳定 `provider id` 执行“当日即时补充”，并防止同一女仆复活后重复入池。
+- 女仆解锁 `emergency_heal` 时，按 `maid:<uuid>` 进行当日即时补充；同时保留对 legacy/provider id 的别名判定以避免重复入池。
 - 监听致命伤害前先经过“双重开关”门禁：`ModConfig` 全局开关 + `Attachment` 中玩家个人开关。
 - 玩家受到致命或濒死伤害时，监听器尝试消耗一个救援名额。
 - 若成功，则取消伤害、回复生命并施加再生/伤害吸收/抗火。
 - 随后发送 `MaidRescuePopPayload`（含音效策略）到客户端播放弹出表现。
+- payload 中的 `maidUuid` 语义固定为“女仆实体 UUID（档案键）”；服务端会先按 canonical id 解析女仆，再以 provider/model 作为 fallback，避免历史脏数据导致语音源错配。
 
 #### 数据流向
 
 - `EmergencyRescueAttachment`
-  - 保存每日剩余可用救援者列表（列表元素为 `provider id`，不依赖实体是否加载）
-  - 保存已注册过的救援者列表（同样按 `provider id` / 兼容别名判定）
+  - 保存每日剩余可用救援者列表（列表元素为 canonical id：`maid:<uuid>`）
+  - 保存已注册过的救援者列表（同样按 canonical id；登录/触发时会做 legacy/provider 规范化）
   - 保存最后补充日
   - 保存玩家个人残血救护开关
 - `BondData`
   - 保存女仆模型、显示名、语音包 ID、YSM 配置、救援动作、救护语音来源设置等档案信息
-  - 额外保存 `maidUuid -> rescue provider id` 映射，用于跨复活维持“同一女仆”语义
+  - 额外保存 `maidUuid -> rescue provider id` 映射，用于 legacy 恢复、女仆互转后的历史兼容与冲突判定
+  - 提供 `provider id / model id -> maidUuid` 反查，且 provider 命中时会优先选择已激活 `emergency_heal` 的候选，避免错绑到旧档案
   - 客户端展示时依赖这些信息还原救援者形象
 - 数据包 `data/touhou_maid_affection/rescue_sound/profile.json`
   - 保存服务端救护音效策略：`sound_event`、客户端覆盖开关、客户端自定义音效格式与最大时长限制
@@ -390,12 +392,13 @@
 - overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
 - 音效来源支持 `TLM语音包` 与 `自定义文件` 两种模式；TLM 模式改为使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安），自定义模式按 `voice.json` 的播放模式选曲。
 - 服务端预定义语音目录按 `server_predefined/{maids,common}` 扫描，按 `size + mtime + sha1` 做增量同步，客户端落盘到 `rescue/server_synced/<serverId>/...`。
+- 管理指令补充：`/tma rescue clear`（`/tma rescue reset` 同义）为 OP 命令，会清空 `EmergencyRescueAttachment` 的可用池/已注册列表，并把该玩家档案中所有女仆的 `emergency_heal` 解锁位重置为未激活，便于单女仆链路测试与脏状态清理。
 
 #### 架构意义
 
 - `Attachment` 在这里承载的是“运行中的玩家能力槽位”。
 - `BondData` 承载的是“可展示、可回放的女仆身份档案”。
-- `provider id` 把“能力贡献身份”从实体 UUID 中解耦，使死亡/复活不再改变贡献归属。
+- `maid:<uuid>` 作为救援池主键，彻底消除 provider UUID 与 maid UUID 同形字符串导致的语音错配风险；provider id 退化为兼容层。
 - 同一能力同时提供“服务端总开关 + 玩家个人开关”，把玩法自由度控制与反作弊统计解耦。
 - 这两层分工是合理的，也说明项目已经开始出现多种状态容器并存的趋势。
 
