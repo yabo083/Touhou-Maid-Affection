@@ -12,8 +12,8 @@ public record BondSplitPanelPage(
         int rightPanelHeight
 ) {
     public static BondSplitPanelPage create(BondModalPage modal, int topOffset, int height, int gap, int leftWidth) {
-        int contentLeft = modal.left() + 10;
-        int contentRight = modal.right() - 10;
+        int contentLeft = modal.contentLeft();
+        int contentRight = modal.contentRight();
         int totalWidth = contentRight - contentLeft;
         int rightWidth = totalWidth - leftWidth - gap;
         return new BondSplitPanelPage(

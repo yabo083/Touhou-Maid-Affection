@@ -5,6 +5,7 @@ import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityRowLayout;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -182,14 +183,14 @@ public final class BondAbilityPrimaryPage {
         Component status = host.getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
 
         BondAbilityRowLayout row = createLayout(y, x, hasSecondaryButton);
-        graphics.fill(row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom(), 0x7F2F2F2F);
+        graphics.fill(row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom(), BondGuiTokens.COLOR_BG_ELEMENT);
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
             title.withStyle(ChatFormatting.RED);
         }
         Component titleLine = Component.literal(font.plainSubstrByWidth(title.getString(), Math.max(8, row.textRight() - row.textLeft())));
-        graphics.drawString(font, titleLine, row.textLeft(), y + 2, 0xFFE0E0E0, false);
+        graphics.drawString(font, titleLine, row.textLeft(), y + 2, BondGuiTokens.COLOR_TEXT_BODY, false);
 
         Component secondaryText;
         if (host.isRandomGiftAbility(ability) && abilityUnlocked) {
@@ -212,28 +213,51 @@ public final class BondAbilityPrimaryPage {
             secondaryText = ability.getDescription();
         }
         Component detailLine = Component.literal(font.plainSubstrByWidth(secondaryText.getString(), Math.max(8, row.textRight() - row.textLeft())));
-        graphics.drawString(font, detailLine, row.textLeft(), y + 13, host.isRandomGiftAbility(ability) && abilityUnlocked ? 0xFF7AD5FF : (abilityUnlocked ? 0xFFAFAFAF : 0xFF7AD5FF), false);
+        graphics.drawString(
+                font,
+                detailLine,
+                row.textLeft(),
+                y + 13,
+                host.isRandomGiftAbility(ability) && abilityUnlocked
+                        ? BondGuiTokens.COLOR_SUCCESS
+                        : (abilityUnlocked ? BondGuiTokens.COLOR_TEXT_HINT : BondGuiTokens.COLOR_TEXT_SELECTED),
+                false
+        );
 
         if (hasSecondaryButton) {
             renderActionButton(graphics, font, row.secondaryButtonX(), row.buttonY(), secondaryButtonWidth, buttonHeight,
-                    host.getSecondaryPageButtonLabel(ability), true, mouseX, mouseY, 0xFF79F0F0);
+                    host.getSecondaryPageButtonLabel(ability), true, mouseX, mouseY, BondGuiTokens.COLOR_ACCENT, false);
         }
 
         boolean clickable = host.isMainButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
-        int statusColor = clickable ? 0xFF79F079 : 0xFFFFC970;
-        renderActionButton(graphics, font, row.mainButtonX(), row.buttonY(), buttonWidth, buttonHeight, status, clickable, mouseX, mouseY, statusColor);
+        int statusColor = clickable ? BondGuiTokens.COLOR_SUCCESS : BondGuiTokens.COLOR_WARNING;
+        renderActionButton(graphics, font, row.mainButtonX(), row.buttonY(), buttonWidth, buttonHeight, status, clickable, mouseX, mouseY, statusColor, true);
     }
 
     private void renderActionButton(GuiGraphics graphics, Font font, int x, int y, int width, int height, Component label,
-                                    boolean enabled, int mouseX, int mouseY, int textColor) {
-        int buttonColor = enabled ? 0xFF4B4B4B : 0xFF2E2E2E;
-        graphics.fill(x, y, x + width, y + height, buttonColor);
-        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFF1F1F1F);
-        if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height) {
-            graphics.fill(x, y, x + width, y + height, 0x33FFFFFF);
+                                    boolean enabled, int mouseX, int mouseY, int textColor, boolean primary) {
+        boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+        int border;
+        int background;
+        if (!enabled) {
+            border = BondGuiTokens.STATE_DISABLED_BORDER;
+            background = BondGuiTokens.STATE_DISABLED_BG;
+        } else {
+            border = hovered ? BondGuiTokens.STATE_HOVER_BORDER : BondGuiTokens.STATE_DEFAULT_BORDER;
+            if (primary) {
+                background = hovered ? BondGuiTokens.PRIMARY_BUTTON_HOVER_BG : BondGuiTokens.PRIMARY_BUTTON_BG;
+            } else {
+                background = hovered ? BondGuiTokens.STATE_HOVER_BG : BondGuiTokens.STATE_DEFAULT_BG;
+            }
         }
-        int color = enabled ? textColor : 0xFFB08A60;
-        graphics.drawCenteredString(font, label, x + width / 2, y + 2, color);
+
+        BondGuiTokens.drawFramedPanelWithInnerBorder(graphics, x, y, x + width, y + height, background, border);
+        if (hovered && enabled) {
+            graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, BondGuiTokens.HOVER_OVERLAY);
+        }
+        int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
+        int textY = y + Math.max(1, (height - font.lineHeight) / 2);
+        graphics.drawCenteredString(font, label, x + width / 2, textY, color);
     }
 
     private BondAbilityRowLayout createLayout(int index, boolean hasSecondaryButton) {

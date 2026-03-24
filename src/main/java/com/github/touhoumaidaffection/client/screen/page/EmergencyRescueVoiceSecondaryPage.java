@@ -8,6 +8,7 @@ import com.github.touhoumaidaffection.client.EmergencyRescueSoundPlayer;
 import com.github.touhoumaidaffection.client.RescueTlmVoiceIndex;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
 import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondScrollableList;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
@@ -27,15 +28,14 @@ import java.util.Locale;
 import java.util.Set;
 
 public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPage {
-    private static final int MODAL_WIDTH = 172;
-    private static final int MODAL_HEIGHT = 178;
-    private static final int DROPDOWN_HEIGHT = 16;
-    private static final int DROPDOWN_ROW_HEIGHT = 16;
+    private static final int MODAL_WIDTH = BondGuiTokens.SECONDARY_MODAL_WIDTH;
+    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
+    private static final int DROPDOWN_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
+    private static final int DROPDOWN_ROW_HEIGHT = BondGuiTokens.DROPDOWN_ROW_HEIGHT;
     private static final int DROPDOWN_VISIBLE_ROWS = 3;
-    private static final int LIST_ROW_HEIGHT = 16;
-    private static final int BUTTON_WIDTH = 46;
-    private static final int BUTTON_HEIGHT = 16;
-    private static final int BUTTON_GAP = 8;
+    private static final int LIST_ROW_HEIGHT = BondGuiTokens.LIST_ROW_HEIGHT;
+    private static final int BUTTON_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
+    private static final int BUTTON_GAP = BondGuiTokens.SPACING_MD;
 
     private final BondSecondaryPageHost host;
     private EmergencyRescueVoiceSettings workingSettings = EmergencyRescueVoiceSettings.DEFAULT;
@@ -70,62 +70,63 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         boolean anyDropdownExpanded = sourceExpanded || modeExpanded || customModeExpanded || fallbackExpanded;
         int contentMouseX = anyDropdownExpanded ? Integer.MIN_VALUE : mouseX;
         int contentMouseY = anyDropdownExpanded ? Integer.MIN_VALUE : mouseY;
+        int contentLeft = modal.contentLeft();
+        int contentRight = modal.contentRight();
+        int contentTop = modal.contentTop();
+        int contentWidth = contentRight - contentLeft;
 
-        graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.source"), modal.left() + 10, modal.top() + 18, 0xFFD0D0D0, false);
+        graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.source"), contentLeft, contentTop, BondGuiTokens.COLOR_TEXT_BODY, false);
         sourceDropdown.renderBase(graphics, font, sourceOptions, selectedSourceIndex(), mouseX, mouseY, this::renderSourceOption);
 
         if (workingSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK) {
             Component packName = getSoundPackId().isBlank()
                     ? Component.translatable("bond.morning_kiss.voice.none")
                     : Component.literal(getSoundPackId());
-            graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.pack", packName), modal.left() + 10, modal.top() + 42, 0xFFE0E0E0, false);
-            graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.mode"), modal.left() + 10, modal.top() + 56, 0xFFD0D0D0, false);
+            graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.pack", packName), contentLeft, contentTop + 22, BondGuiTokens.COLOR_TEXT_BODY, false);
+            graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.mode"), contentLeft, contentTop + 36, BondGuiTokens.COLOR_TEXT_BODY, false);
             modeDropdown.renderBase(graphics, font, modeOptions, selectedModeIndex(), mouseX, mouseY, this::renderModeOption);
 
-            int listLeft = modal.left() + 10;
-            int listTop = modal.top() + 78;
-            int listWidth = modal.width() - 20;
-            int listHeight = 54;
-            graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, 0xFF111111);
+            int listLeft = contentLeft;
+            int listTop = contentTop + 56;
+            int listWidth = contentWidth;
+            int listHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - listTop - 2);
+            graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
             if (!anyDropdownExpanded) {
                 if (getSoundPackId().isBlank()) {
-                    graphics.drawCenteredString(font, Component.translatable("bond.morning_kiss.voice.no_sound_pack"), listLeft + listWidth / 2, listTop + 24, 0xFFB0B0B0);
+                    graphics.drawCenteredString(font, Component.translatable("bond.morning_kiss.voice.no_sound_pack"), listLeft + listWidth / 2, listTop + 4, BondGuiTokens.COLOR_TEXT_HINT);
                 } else if (workingSettings.tlmPlayMode() == EmergencyRescueVoiceSettings.TlmPlayMode.RANDOM_ALL) {
-                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.tlm.random_all_hint"), listLeft + listWidth / 2, listTop + 24, 0xFFB0B0B0);
+                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.tlm.random_all_hint"), listLeft + listWidth / 2, listTop + 4, BondGuiTokens.COLOR_TEXT_HINT);
                 } else if (selectionOptions.isEmpty()) {
-                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.tlm.no_entries"), listLeft + listWidth / 2, listTop + 24, 0xFFB0B0B0);
+                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.tlm.no_entries"), listLeft + listWidth / 2, listTop + 4, BondGuiTokens.COLOR_TEXT_HINT);
                 } else {
                     selectionList.clamp(selectionOptions);
                     selectionList.render(graphics, font, selectionOptions, contentMouseX, contentMouseY, this::renderSelectionOption);
                 }
             }
         } else {
-            int textX = modal.left() + 10;
-            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.mode"), textX, modal.top() + 56, 0xFFD0D0D0, false);
+            int textX = contentLeft;
+            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.mode"), textX, contentTop + 22, BondGuiTokens.COLOR_TEXT_BODY, false);
             customModeDropdown.renderBase(graphics, font, customModeOptions, selectedCustomModeIndex(), mouseX, mouseY, this::renderCustomModeOption);
 
-            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.fallback"), textX, modal.top() + 84, 0xFFD0D0D0, false);
+            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.fallback"), textX, contentTop + 44, BondGuiTokens.COLOR_TEXT_BODY, false);
             fallbackDropdown.renderBase(graphics, font, fallbackOptions, selectedFallbackIndex(), mouseX, mouseY, this::renderFallbackOption);
 
-            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed"), textX, modal.top() + 104, 0xFFD0D0D0, false);
-            int listLeft = modal.left() + 10;
-            int listTop = modal.top() + 114;
-            int listWidth = modal.width() - 20;
-            int listHeight = 24;
-            graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, 0xFF111111);
+            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed"), textX, contentTop + 62, BondGuiTokens.COLOR_TEXT_BODY, false);
+            int listLeft = contentLeft;
+            int listTop = contentTop + 72;
+            int listWidth = contentWidth;
+            int listHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - listTop - 2);
+            graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
             if (!anyDropdownExpanded) {
                 if (workingSettings.customPlayMode() != EmergencyRescueVoiceSettings.CustomPlayMode.FIXED) {
-                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed.hint"), listLeft + listWidth / 2, listTop + 3, 0xFFB0B0B0);
+                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed.hint"), listLeft + listWidth / 2, listTop + 3, BondGuiTokens.COLOR_TEXT_HINT);
                 } else if (fixedFileOptions.isEmpty()) {
-                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed.none"), listLeft + listWidth / 2, listTop + 3, 0xFFB0B0B0);
+                    graphics.drawCenteredString(font, Component.translatable("bond.emergency_rescue.voice.custom.fixed.none"), listLeft + listWidth / 2, listTop + 3, BondGuiTokens.COLOR_TEXT_HINT);
                 } else {
                     fixedFileList.clamp(fixedFileOptions);
                     fixedFileList.render(graphics, font, fixedFileOptions, contentMouseX, contentMouseY, this::renderFixedFileOption);
                 }
             }
-
-            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.tip2"), textX, modal.top() + 140, 0xFFB8B8B8, false);
-            graphics.drawString(font, Component.translatable("bond.emergency_rescue.voice.custom.tip3"), textX, modal.top() + 150, 0xFF8AD8FF, false);
         }
 
         BondButtonRow.render(graphics, font, modal.left(), buttons(modal), contentMouseX, contentMouseY);
@@ -351,6 +352,28 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
     }
 
     @Override
+    public boolean onEscapePressed() {
+        boolean collapsed = false;
+        if (sourceDropdown.isExpanded()) {
+            sourceDropdown.collapse();
+            collapsed = true;
+        }
+        if (modeDropdown.isExpanded()) {
+            modeDropdown.collapse();
+            collapsed = true;
+        }
+        if (customModeDropdown.isExpanded()) {
+            customModeDropdown.collapse();
+            collapsed = true;
+        }
+        if (fallbackDropdown.isExpanded()) {
+            fallbackDropdown.collapse();
+            collapsed = true;
+        }
+        return collapsed;
+    }
+
+    @Override
     public List<Component> getTooltip(int mouseX, int mouseY) {
         if (sourceDropdown.isExpanded() || modeDropdown.isExpanded() || customModeDropdown.isExpanded() || fallbackDropdown.isExpanded()) {
             return List.of();
@@ -417,12 +440,23 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         );
 
         BondModalPage modal = modal();
-        sourceDropdown = new BondDropdown<>(modal.left() + 44, modal.top() + 15, modal.width() - 54, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        modeDropdown = new BondDropdown<>(modal.left() + 44, modal.top() + 53, modal.width() - 54, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        selectionList = new BondScrollableList<>(modal.left() + 10, modal.top() + 78, modal.width() - 20, 54, LIST_ROW_HEIGHT);
-        customModeDropdown = new BondDropdown<>(modal.left() + 44, modal.top() + 53, modal.width() - 54, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        fallbackDropdown = new BondDropdown<>(modal.left() + 44, modal.top() + 81, modal.width() - 54, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        fixedFileList = new BondScrollableList<>(modal.left() + 10, modal.top() + 114, modal.width() - 20, 24, LIST_ROW_HEIGHT);
+        int contentLeft = modal.contentLeft();
+        int contentTop = modal.contentTop();
+        int contentWidth = modal.contentRight() - contentLeft;
+        int dropdownX = contentLeft + 34;
+        int dropdownWidth = modal.contentRight() - dropdownX;
+
+        sourceDropdown = new BondDropdown<>(dropdownX, contentTop - 3, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        modeDropdown = new BondDropdown<>(dropdownX, contentTop + 33, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        int tlmListTop = contentTop + 56;
+        int tlmListHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - tlmListTop - 2);
+        selectionList = new BondScrollableList<>(contentLeft, tlmListTop, contentWidth, tlmListHeight, DROPDOWN_ROW_HEIGHT);
+
+        customModeDropdown = new BondDropdown<>(dropdownX, contentTop + 19, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        fallbackDropdown = new BondDropdown<>(dropdownX, contentTop + 41, dropdownWidth, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        int fixedListTop = contentTop + 72;
+        int fixedListHeight = Math.max(DROPDOWN_ROW_HEIGHT, modal.footerTop() - fixedListTop - 2);
+        fixedFileList = new BondScrollableList<>(contentLeft, fixedListTop, contentWidth, fixedListHeight, DROPDOWN_ROW_HEIGHT);
         rebuildSelectionOptions();
         rebuildCustomFileOptions();
     }
@@ -584,46 +618,30 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
 
     private void renderSourceOption(GuiGraphics graphics, Font font, SourceOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
         if (!selectedHeader) {
-            int fill = index == selectedSourceIndex() ? 0xFF4F4A32 : 0xFF2B2B2B;
-            graphics.fill(left - 4, top - 2, right, top + height + 2, fill);
-            if (hovered) {
-                graphics.fill(left - 4, top - 2, right, top + height + 2, 0x22FFFFFF);
-            }
+            BondGuiTokens.drawSelectableRow(graphics, left - 4, top - 2, right, top + height + 2, index == selectedSourceIndex(), hovered);
         }
-        graphics.drawString(font, option.label(), left, top + 1, index == selectedSourceIndex() ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        graphics.drawString(font, option.label(), left, top + 1, index == selectedSourceIndex() ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private void renderModeOption(GuiGraphics graphics, Font font, TlmModeOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
         if (!selectedHeader) {
-            int fill = index == selectedModeIndex() ? 0xFF4F4A32 : 0xFF2B2B2B;
-            graphics.fill(left - 4, top - 2, right, top + height + 2, fill);
-            if (hovered) {
-                graphics.fill(left - 4, top - 2, right, top + height + 2, 0x22FFFFFF);
-            }
+            BondGuiTokens.drawSelectableRow(graphics, left - 4, top - 2, right, top + height + 2, index == selectedModeIndex(), hovered);
         }
-        graphics.drawString(font, option.label(), left, top + 1, index == selectedModeIndex() ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        graphics.drawString(font, option.label(), left, top + 1, index == selectedModeIndex() ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private void renderCustomModeOption(GuiGraphics graphics, Font font, CustomModeOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
         if (!selectedHeader) {
-            int fill = index == selectedCustomModeIndex() ? 0xFF4F4A32 : 0xFF2B2B2B;
-            graphics.fill(left - 4, top - 2, right, top + height + 2, fill);
-            if (hovered) {
-                graphics.fill(left - 4, top - 2, right, top + height + 2, 0x22FFFFFF);
-            }
+            BondGuiTokens.drawSelectableRow(graphics, left - 4, top - 2, right, top + height + 2, index == selectedCustomModeIndex(), hovered);
         }
-        graphics.drawString(font, option.label(), left, top + 1, index == selectedCustomModeIndex() ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        graphics.drawString(font, option.label(), left, top + 1, index == selectedCustomModeIndex() ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private void renderFallbackOption(GuiGraphics graphics, Font font, FallbackOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
         if (!selectedHeader) {
-            int fill = index == selectedFallbackIndex() ? 0xFF4F4A32 : 0xFF2B2B2B;
-            graphics.fill(left - 4, top - 2, right, top + height + 2, fill);
-            if (hovered) {
-                graphics.fill(left - 4, top - 2, right, top + height + 2, 0x22FFFFFF);
-            }
+            BondGuiTokens.drawSelectableRow(graphics, left - 4, top - 2, right, top + height + 2, index == selectedFallbackIndex(), hovered);
         }
-        graphics.drawString(font, option.label(), left, top + 1, index == selectedFallbackIndex() ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        graphics.drawString(font, option.label(), left, top + 1, index == selectedFallbackIndex() ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private void renderSelectionOption(GuiGraphics graphics, Font font, TlmListOption option, int index, int left, int top, int right, int height, boolean hovered) {
@@ -632,12 +650,8 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
             case SPECIFIC_CLIP -> !option.group() && option.key().equals(workingSettings.tlmSelectedClip());
             case RANDOM_ALL -> false;
         };
-        int fill = selected ? 0xFF4F4A32 : 0xFF2B2B2B;
-        graphics.fill(left, top, right, top + height, fill);
-        if (hovered) {
-            graphics.fill(left, top, right, top + height, 0x33FFFFFF);
-        }
-        graphics.drawString(font, option.label(), left + 4, top + 3, selected ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        BondGuiTokens.drawSelectableRow(graphics, left, top, right, top + height, selected, hovered);
+        graphics.drawString(font, option.label(), left + 4, top + 3, selected ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private void renderFixedFileOption(GuiGraphics graphics, Font font, FixedFileOption option, int index, int left, int top, int right, int height, boolean hovered) {
@@ -645,12 +659,8 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         if (workingSettings.fixedFile().isBlank() && option.fileName().isBlank()) {
             selected = true;
         }
-        int fill = selected ? 0xFF4F4A32 : 0xFF2B2B2B;
-        graphics.fill(left, top, right, top + height, fill);
-        if (hovered) {
-            graphics.fill(left, top, right, top + height, 0x33FFFFFF);
-        }
-        graphics.drawString(font, option.label(), left + 4, top + 3, selected ? 0xFFFFE08A : 0xFFE0E0E0, false);
+        BondGuiTokens.drawSelectableRow(graphics, left, top, right, top + height, selected, hovered);
+        graphics.drawString(font, option.label(), left + 4, top + 3, selected ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     private int selectedSourceIndex() {
@@ -695,10 +705,10 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
 
     private List<BondButtonRow.ButtonSpec> buttons(BondModalPage modal) {
         boolean saveEnabled = workingSettings.sourceMode() != EmergencyRescueVoiceSettings.SourceMode.TLM_PACK || !getSoundPackId().isBlank();
-        return BondButtonRow.createCentered(modal.width(), modal.bottom() - 22, BUTTON_WIDTH, BUTTON_HEIGHT, BUTTON_GAP,
-                new BondButtonRow.ButtonSpec(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.save"), "save", saveEnabled),
-                new BondButtonRow.ButtonSpec(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.clear"), "clear", true),
-                new BondButtonRow.ButtonSpec(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, Component.translatable("gui.cancel"), "cancel", true)
+        return BondButtonRow.createCenteredUniform(host.getFont(), modal.width(), modal.footerButtonY(BUTTON_HEIGHT), BUTTON_HEIGHT, BUTTON_GAP, BondGuiTokens.BUTTON_HORIZONTAL_PADDING,
+                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.save"), "save", saveEnabled, true),
+                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.clear"), "clear", true),
+                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("gui.cancel"), "cancel", true)
         );
     }
 

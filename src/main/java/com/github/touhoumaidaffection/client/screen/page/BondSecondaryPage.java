@@ -18,6 +18,10 @@ public interface BondSecondaryPage {
         return false;
     }
 
+    default boolean onEscapePressed() {
+        return false;
+    }
+
     boolean mouseScrolled(double mouseX, double mouseY, double scrollY);
 
     List<Component> getTooltip(int mouseX, int mouseY);

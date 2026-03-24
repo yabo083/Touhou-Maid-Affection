@@ -28,11 +28,17 @@ public class BondModalPage {
     }
 
     public void renderChrome(GuiGraphics graphics, Font font) {
-        graphics.fill(pageLeft, pageTop, pageRight, pageBottom, 0xA0000000);
-        graphics.fill(left - 2, top - 2, right() + 2, bottom() + 2, 0xCC000000);
-        graphics.fill(left, top, right(), bottom(), 0xFF3A3A3A);
-        graphics.fill(left + 1, top + 1, right() - 1, bottom() - 1, 0xFF1F1F1F);
-        graphics.drawCenteredString(font, title, left + width / 2, top + 8, 0xFFFFFFFF);
+        int right = right();
+        int bottom = bottom();
+        graphics.fill(pageLeft, pageTop, pageRight, pageBottom, BondGuiTokens.COLOR_BG_OVERLAY);
+        BondGuiTokens.drawFramedPanel(graphics, left, top, right, bottom, BondGuiTokens.COLOR_BG_PANEL);
+        int titleBottom = Math.min(bottom - 1, top + BondGuiTokens.MODAL_TITLE_HEIGHT);
+        graphics.fill(left + 2, top + 2, right - 2, titleBottom, BondGuiTokens.TITLE_PANEL_BG);
+        graphics.hLine(left + 2, right - 3, titleBottom, BondGuiTokens.DIVIDER_COLOR);
+
+        int titleY = top + Math.max(2, (BondGuiTokens.MODAL_TITLE_HEIGHT - font.lineHeight) / 2);
+        int titleX = left + (width - font.width(title)) / 2;
+        graphics.drawString(font, title, titleX, titleY, BondGuiTokens.COLOR_TEXT_TITLE, true);
     }
 
     public boolean contains(double mouseX, double mouseY) {
@@ -61,5 +67,29 @@ public class BondModalPage {
 
     public int height() {
         return height;
+    }
+
+    public int contentLeft() {
+        return left + BondGuiTokens.CONTENT_SIDE_PADDING;
+    }
+
+    public int contentRight() {
+        return right() - BondGuiTokens.CONTENT_SIDE_PADDING;
+    }
+
+    public int contentTop() {
+        return top + BondGuiTokens.MODAL_TITLE_HEIGHT + BondGuiTokens.SPACING_MD;
+    }
+
+    public int contentBottom() {
+        return bottom() - BondGuiTokens.MODAL_FOOTER_HEIGHT;
+    }
+
+    public int footerTop() {
+        return bottom() - BondGuiTokens.MODAL_FOOTER_HEIGHT;
+    }
+
+    public int footerButtonY(int buttonHeight) {
+        return bottom() - BondGuiTokens.SPACING_SM - buttonHeight;
     }
 }

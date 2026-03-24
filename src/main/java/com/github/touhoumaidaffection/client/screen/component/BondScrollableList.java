@@ -27,13 +27,23 @@ public class BondScrollableList<T> {
     }
 
     public void render(GuiGraphics graphics, Font font, List<T> items, int mouseX, int mouseY, Renderer<T> renderer) {
-        graphics.fill(left, top, right(), bottom(), 0xFF111111);
-        graphics.enableScissor(left, top, right(), bottom());
+        BondGuiTokens.drawFramedPanel(graphics, left, top, right(), bottom(), BondGuiTokens.COLOR_BG_ELEMENT);
+        graphics.enableScissor(left + 2, top + 2, right() - 2, bottom() - 2);
         try {
             int max = Math.min(items.size(), scrollOffset + visibleRows());
             for (int index = scrollOffset; index < max; index++) {
                 int rowTop = top + (index - scrollOffset) * rowHeight;
-                renderer.render(graphics, font, items.get(index), index, left + 2, rowTop + 2, right() - 2, rowHeight - 2, contains(mouseX, mouseY) && mouseY >= rowTop && mouseY < rowTop + rowHeight);
+                renderer.render(
+                        graphics,
+                        font,
+                        items.get(index),
+                        index,
+                        left + BondGuiTokens.SPACING_SM,
+                        rowTop + BondGuiTokens.SPACING_XS,
+                        right() - BondGuiTokens.SPACING_SM,
+                        rowHeight - BondGuiTokens.SPACING_SM,
+                        contains(mouseX, mouseY) && mouseY >= rowTop && mouseY < rowTop + rowHeight
+                );
             }
         } finally {
             graphics.disableScissor();

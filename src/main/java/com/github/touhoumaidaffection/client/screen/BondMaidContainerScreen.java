@@ -9,6 +9,7 @@ import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.YsmModelActionIndex;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.page.BondAbilityPrimaryPage;
 import com.github.touhoumaidaffection.client.screen.page.BondPrimaryPageHost;
@@ -26,6 +27,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.Slot;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.LinkedHashMap;
@@ -47,10 +49,10 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     private static final int ROW_START_Y = 9;
     private static final int ROW_HEIGHT = 24;
     private static final int ROW_SPACING = 24;
-    private static final int BTN_WIDTH = 44;
-    private static final int BTN_HEIGHT = 14;
-    private static final int SECONDARY_BUTTON_WIDTH = 30;
-    private static final int SECONDARY_BUTTON_GAP = 4;
+    private static final int BTN_WIDTH = 46;
+    private static final int BTN_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
+    private static final int SECONDARY_BUTTON_WIDTH = 40;
+    private static final int SECONDARY_BUTTON_GAP = BondGuiTokens.SPACING_SM;
 
     private final EntityMaid maid;
     private final List<IBondAbility> abilities;
@@ -120,6 +122,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (hasActiveSecondaryPage()) {
+            if (isMouseOverAnyMenuSlot(mouseX, mouseY)) {
+                return super.mouseClicked(mouseX, mouseY, button);
+            }
             return handleSecondaryPageClick(mouseX, mouseY, button);
         }
         if (button == 0 && isMouseInsideBondPage(mouseX, mouseY) && primaryPage != null) {
@@ -158,10 +163,13 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         if (secondaryPage != null && secondaryPage.mouseReleased(mouseX, mouseY, button)) {
             return true;
         }
+        if (super.mouseReleased(mouseX, mouseY, button)) {
+            return true;
+        }
         if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return false;
     }
 
     @Override
@@ -169,10 +177,13 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         if (secondaryPage != null && secondaryPage.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
             return true;
         }
+        if (super.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
         if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return false;
     }
 
     @Override
@@ -180,15 +191,21 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         if (secondaryPage != null && secondaryPage.mouseScrolled(mouseX, mouseY, scrollY)) {
             return true;
         }
+        if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+            return true;
+        }
         if (hasActiveSecondaryPage() || isMouseInsideBondPage(mouseX, mouseY)) {
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return false;
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (hasActiveSecondaryPage() && keyCode == 256) {
+            if (secondaryPage != null && secondaryPage.onEscapePressed()) {
+                return true;
+            }
             closeSecondaryPage();
             return true;
         }
@@ -201,16 +218,15 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         int right = left + PAGE_WIDTH;
         int bottom = top + PAGE_HEIGHT;
 
-        graphics.fill(left, top, right, bottom, 0xFFBEBEBE);
-        graphics.fill(left + 1, top + 1, right - 1, bottom - 1, 0xFF4D4D4D);
-        graphics.fill(left + 3, top + 3, right - 3, bottom - 3, 0xFF2A2A2A);
-        graphics.fill(left + 6, top + 22, right - 6, bottom - 6, 0xFF1D1D1D);
-        graphics.fill(left + 6, top + 22, right - 6, top + 23, 0xFF707070);
-        graphics.fill(left + 6, bottom - 7, right - 6, bottom - 6, 0xFF101010);
-        graphics.fill(left + 6, top + 22, left + 7, bottom - 6, 0xFF707070);
-        graphics.fill(right - 7, top + 22, right - 6, bottom - 6, 0xFF101010);
+        BondGuiTokens.drawFramedPanel(graphics, left, top, right, bottom, BondGuiTokens.COLOR_BG_PANEL);
+        graphics.fill(left + 3, top + 3, right - 3, bottom - 3, 0xAA2B2228);
+        graphics.fill(left + 6, top + 22, right - 6, bottom - 6, BondGuiTokens.COLOR_BG_ELEMENT);
+        graphics.fill(left + 6, top + 22, right - 6, top + 23, BondGuiTokens.DIVIDER_COLOR);
+        graphics.fill(left + 6, bottom - 7, right - 6, bottom - 6, 0x440F0A0D);
+        graphics.fill(left + 6, top + 22, left + 7, bottom - 6, BondGuiTokens.DIVIDER_COLOR);
+        graphics.fill(right - 7, top + 22, right - 6, bottom - 6, 0x440F0A0D);
         if (!hasActiveSecondaryPage()) {
-            graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, 0xFFFFFF);
+            graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, BondGuiTokens.COLOR_TEXT_TITLE);
         }
     }
 
@@ -456,6 +472,15 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     private boolean isInsideRect(double mouseX, double mouseY, int x, int y, int width, int height) {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+    }
+
+    private boolean isMouseOverAnyMenuSlot(double mouseX, double mouseY) {
+        for (Slot slot : menu.slots) {
+            if (slot != null && isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

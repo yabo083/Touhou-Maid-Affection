@@ -28,17 +28,31 @@ public final class BondDropdown<T> {
         clamp(items);
         int headerBottom = top + headerHeight;
         boolean headerHovered = containsHeader(mouseX, mouseY);
-
-        graphics.fill(left, top, right(), headerBottom, 0xFF3B3B3B);
-        graphics.fill(left + 1, top + 1, right() - 1, headerBottom - 1, 0xFF1C1C1C);
-        if (headerHovered) {
-            graphics.fill(left, top, right(), headerBottom, 0x22FFFFFF);
+        int background = headerHovered ? BondGuiTokens.STATE_HOVER_BG : BondGuiTokens.STATE_DEFAULT_BG;
+        int innerBorder = headerHovered ? BondGuiTokens.STATE_HOVER_BORDER : BondGuiTokens.STATE_DEFAULT_BORDER;
+        BondGuiTokens.drawFramedPanelWithInnerBorder(graphics, left, top, right(), headerBottom, background, innerBorder);
+        if (expanded) {
+            graphics.hLine(left + 2, right() - 3, headerBottom - 1, background);
         }
 
         if (selectedIndex >= 0 && selectedIndex < items.size()) {
-            renderer.render(graphics, font, items.get(selectedIndex), selectedIndex, left + 4, top + 3, right() - 14, headerHeight - 6, headerHovered, true);
+            renderer.render(
+                    graphics,
+                    font,
+                    items.get(selectedIndex),
+                    selectedIndex,
+                    left + BondGuiTokens.SPACING_SM,
+                    top + BondGuiTokens.SPACING_XS,
+                    right() - BondGuiTokens.SPACING_XL,
+                    headerHeight - BondGuiTokens.SPACING_SM,
+                    headerHovered,
+                    true
+            );
         }
-        graphics.drawString(font, expanded ? "▲" : "▼", right() - 10, top + 4, 0xFFE0E0E0, false);
+        if (headerHovered) {
+            graphics.fill(left + 2, top + 2, right() - 2, headerBottom - 2, BondGuiTokens.HOVER_OVERLAY);
+        }
+        graphics.drawString(font, expanded ? "▲" : "▼", right() - 10, top + Math.max(1, (headerHeight - font.lineHeight) / 2), BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
     public void renderOverlay(GuiGraphics graphics, Font font, List<T> items, int selectedIndex, int mouseX, int mouseY, Renderer<T> renderer) {
@@ -49,10 +63,10 @@ public final class BondDropdown<T> {
 
         int headerBottom = top + headerHeight;
         int visibleRows = Math.min(maxVisibleRows, items.size());
-        int listTop = headerBottom + 1;
+        int listTop = headerBottom;
         int listBottom = listTop + visibleRows * rowHeight;
-        graphics.fill(left, listTop, right(), listBottom, 0xFF2A2A2A);
-        graphics.enableScissor(left, listTop, right(), listBottom);
+        BondGuiTokens.drawFramedPanel(graphics, left, listTop, right(), listBottom, BondGuiTokens.COLOR_BG_PANEL);
+        graphics.enableScissor(left + 2, listTop + 2, right() - 2, listBottom - 2);
         try {
             int max = Math.min(items.size(), scrollOffset + visibleRows);
             for (int index = scrollOffset; index < max; index++) {
@@ -60,7 +74,18 @@ public final class BondDropdown<T> {
                 boolean hovered = containsExpanded(mouseX, mouseY, items.size())
                         && mouseX >= left && mouseX < right()
                         && mouseY >= rowTop && mouseY < rowTop + rowHeight;
-                renderer.render(graphics, font, items.get(index), index, left + 4, rowTop + 2, right() - 4, rowHeight - 4, hovered, false);
+                renderer.render(
+                        graphics,
+                        font,
+                        items.get(index),
+                        index,
+                        left + BondGuiTokens.SPACING_SM,
+                        rowTop + BondGuiTokens.SPACING_XS,
+                        right() - BondGuiTokens.SPACING_SM,
+                        rowHeight - BondGuiTokens.SPACING_SM,
+                        hovered,
+                        false
+                );
             }
         } finally {
             graphics.disableScissor();
@@ -109,7 +134,7 @@ public final class BondDropdown<T> {
         if (!expanded || !containsExpanded(mouseX, mouseY, itemCount)) {
             return -1;
         }
-        int local = (int) ((mouseY - (top + headerHeight + 1)) / rowHeight);
+        int local = (int) ((mouseY - (top + headerHeight)) / rowHeight);
         int index = scrollOffset + local;
         return index >= 0 && index < itemCount ? index : -1;
     }
@@ -138,8 +163,8 @@ public final class BondDropdown<T> {
     private boolean containsExpanded(double mouseX, double mouseY, int itemCount) {
         int visibleRows = Math.min(maxVisibleRows, Math.max(0, itemCount));
         return mouseX >= left && mouseX < right()
-                && mouseY >= top + headerHeight + 1
-                && mouseY < top + headerHeight + 1 + visibleRows * rowHeight;
+                && mouseY >= top + headerHeight
+                && mouseY < top + headerHeight + visibleRows * rowHeight;
     }
 
     private int right() {
