@@ -242,9 +242,10 @@ public final class LapPillowHandler {
     }
 
     private static void applyEternalUtopia(ServerPlayer player, EntityMaid maid) {
+        boolean showParticles = ModConfig.BOND_LAP_PILLOW_ETERNAL_UTOPIA_PARTICLES_ENABLED.get();
         MobEffectInstance active = player.getEffect(ModEffects.ETERNAL_UTOPIA.getDelegate());
         if (active == null || active.getDuration() < 60) {
-            player.addEffect(new MobEffectInstance(ModEffects.ETERNAL_UTOPIA.getDelegate(), 220, 0, false, true, true));
+            player.addEffect(new MobEffectInstance(ModEffects.ETERNAL_UTOPIA.getDelegate(), 220, 0, false, showParticles, true));
             TouhouMaidAffection.LOGGER.info(
                     "[EternalUtopia] Applied/refresh: player={} duration=220",
                     player.getScoreboardName()
@@ -252,7 +253,7 @@ public final class LapPillowHandler {
         }
         MobEffectInstance maidActive = maid.getEffect(ModEffects.ETERNAL_UTOPIA.getDelegate());
         if (maidActive == null || maidActive.getDuration() < 60) {
-            maid.addEffect(new MobEffectInstance(ModEffects.ETERNAL_UTOPIA.getDelegate(), 220, 0, false, true, true));
+            maid.addEffect(new MobEffectInstance(ModEffects.ETERNAL_UTOPIA.getDelegate(), 220, 0, false, showParticles, true));
         }
     }
 

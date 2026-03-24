@@ -58,6 +58,7 @@ public class ModConfig {
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET;
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET;
     public static final ModConfigSpec.IntValue BOND_LAP_PILLOW_MAX_DISTANCE;
+    public static final ModConfigSpec.BooleanValue BOND_LAP_PILLOW_ETERNAL_UTOPIA_PARTICLES_ENABLED;
 
     // Buff
     public static final ModConfigSpec.BooleanValue BUFF_ENABLED;
@@ -347,6 +348,10 @@ public class ModConfig {
         BOND_LAP_PILLOW_MAX_DISTANCE = builder
                 .comment("Maximum distance to start lap pillow")
                 .defineInRange("lapPillowMaxDistance", 3, 1, 16);
+
+        BOND_LAP_PILLOW_ETERNAL_UTOPIA_PARTICLES_ENABLED = builder
+                .comment("Show particles for Eternal Utopia during lap pillow (default: true)")
+                .define("lapPillowEternalUtopiaParticles", true);
 
         builder.pop();
 
