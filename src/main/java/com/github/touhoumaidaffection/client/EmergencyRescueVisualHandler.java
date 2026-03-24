@@ -16,6 +16,8 @@ public final class EmergencyRescueVisualHandler {
             return;
         }
 
+        EmergencyRescueSoundPlayer.play(payload);
+
         boolean overlayStarted = EmergencyRescueOverlayRenderer.show(payload);
         if (!overlayStarted) {
             minecraft.gameRenderer.displayItemActivation(new ItemStack(Items.TOTEM_OF_UNDYING));

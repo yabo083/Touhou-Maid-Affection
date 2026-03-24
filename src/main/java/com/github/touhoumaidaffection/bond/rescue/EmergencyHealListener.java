@@ -34,6 +34,9 @@ public final class EmergencyHealListener {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide) {
             return;
         }
+        if (!ModConfig.BOND_EMERGENCY_RESCUE_ENABLED.get() || !EmergencyRescueData.isRescueEnabled(player)) {
+            return;
+        }
         ensureRescueChargesUpToDate(player);
         float healthAfterHit = player.getHealth() - event.getAmount();
         float threshold = ModConfig.BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD.get();
@@ -53,6 +56,7 @@ public final class EmergencyHealListener {
         player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0));
 
         BondData.MaidProfileSnapshot profile = resolveRescueProfile(player, consumedRescuerId);
+        EmergencyRescueSoundProfileData.EmergencyRescueSoundProfile soundProfile = EmergencyRescueSoundProfileData.getActiveProfile();
         PacketDistributor.sendToPlayer(player, new MaidRescuePopPayload(
                 consumedRescuerId,
                 profile.modelId().isBlank() ? consumedRescuerId : profile.modelId(),
@@ -60,7 +64,11 @@ public final class EmergencyHealListener {
                 profile.ysmModelId(),
                 profile.ysmTexture(),
                 profile.ysmDisplayName(),
-                profile.rescueActionId()
+                profile.rescueActionId(),
+                soundProfile.soundEventId(),
+                soundProfile.allowClientOverride(),
+                soundProfile.maxClientSoundDurationSeconds(),
+                soundProfile.requiredClientSoundFormat()
         ));
     }
 

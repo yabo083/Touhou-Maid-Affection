@@ -52,6 +52,7 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD;
+    public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_ENABLED;
     public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID;
     public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET;
@@ -311,6 +312,10 @@ public class ModConfig {
 
         builder.comment("Emergency rescue behaviour after unlock")
                 .push("emergencyRescueBehavior");
+
+        BOND_EMERGENCY_RESCUE_ENABLED = builder
+                .comment("Master switch for emergency rescue interception")
+                .define("enabled", true);
 
         BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD = builder
                 .comment("Emergency rescue trigger threshold in health points")

@@ -39,6 +39,14 @@ public final class EmergencyRescueData {
         get(player).replenish(rescuerIds);
     }
 
+    public static boolean isRescueEnabled(ServerPlayer player) {
+        return get(player).isRescueEnabled();
+    }
+
+    public static void setRescueEnabled(ServerPlayer player, boolean enabled) {
+        get(player).setRescueEnabled(enabled);
+    }
+
     public static void addRescuer(ServerPlayer player, String id) {
         get(player).addRescuer(id);
     }

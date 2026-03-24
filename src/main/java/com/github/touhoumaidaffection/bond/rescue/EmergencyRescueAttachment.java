@@ -15,8 +15,10 @@ public class EmergencyRescueAttachment implements INBTSerializable<CompoundTag> 
     private static final String AVAILABLE_KEY = "available_rescue_maids";
     private static final String REGISTERED_KEY = "registered_rescue_maids";
     private static final String LAST_DAY_KEY = "last_replenish_day";
+    private static final String ENABLED_KEY = "rescue_enabled";
 
     private long lastReplenishDay;
+    private boolean rescueEnabled = true;
     private final List<String> availableRescuers = new ArrayList<>();
     private final List<String> registeredRescuers = new ArrayList<>();
 
@@ -26,6 +28,14 @@ public class EmergencyRescueAttachment implements INBTSerializable<CompoundTag> 
 
     public void setLastReplenishDay(long lastReplenishDay) {
         this.lastReplenishDay = Math.max(0L, lastReplenishDay);
+    }
+
+    public boolean isRescueEnabled() {
+        return rescueEnabled;
+    }
+
+    public void setRescueEnabled(boolean rescueEnabled) {
+        this.rescueEnabled = rescueEnabled;
     }
 
     public void addRescuer(String id) {
@@ -109,6 +119,7 @@ public class EmergencyRescueAttachment implements INBTSerializable<CompoundTag> 
     public CompoundTag serializeNBT(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
         tag.putLong(LAST_DAY_KEY, lastReplenishDay);
+        tag.putBoolean(ENABLED_KEY, rescueEnabled);
         ListTag listTag = new ListTag();
         for (String rescuer : availableRescuers) {
             listTag.add(StringTag.valueOf(rescuer));
@@ -125,6 +136,7 @@ public class EmergencyRescueAttachment implements INBTSerializable<CompoundTag> 
     @Override
     public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
         lastReplenishDay = Math.max(0L, nbt.getLong(LAST_DAY_KEY));
+        rescueEnabled = !nbt.contains(ENABLED_KEY) || nbt.getBoolean(ENABLED_KEY);
         availableRescuers.clear();
         ListTag listTag = nbt.getList(AVAILABLE_KEY, Tag.TAG_STRING);
         for (Tag tag : listTag) {

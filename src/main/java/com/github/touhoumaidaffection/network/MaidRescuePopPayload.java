@@ -14,7 +14,11 @@ public record MaidRescuePopPayload(
         String ysmModelId,
         String ysmModelTexture,
         String ysmDisplayName,
-        String rescueActionId
+        String rescueActionId,
+        String rescueSoundEventId,
+        boolean allowClientCustomSound,
+        double maxClientCustomSoundDurationSeconds,
+        String requiredClientCustomSoundFormat
 ) implements CustomPacketPayload {
     public static final Type<MaidRescuePopPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "maid_rescue_pop"));
@@ -37,6 +41,10 @@ public record MaidRescuePopPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.ysmModelTexture());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.ysmDisplayName());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueActionId());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueSoundEventId());
+        ByteBufCodecs.BOOL.encode(buf, payload.allowClientCustomSound());
+        ByteBufCodecs.DOUBLE.encode(buf, payload.maxClientCustomSoundDurationSeconds());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.requiredClientCustomSoundFormat());
     }
 
     private static MaidRescuePopPayload decode(ByteBuf buf) {
@@ -47,6 +55,10 @@ public record MaidRescuePopPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.BOOL.decode(buf),
+                ByteBufCodecs.DOUBLE.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf)
         );
     }

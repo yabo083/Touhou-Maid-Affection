@@ -95,7 +95,9 @@
    │  ├─ lang
    │  ├─ sounds
    │  └─ textures
-   └─ data/touhou_maid_affection/tags/items
+   └─ data/touhou_maid_affection
+      ├─ rescue_sound/profile.json
+      └─ tags/items
 ```
 
 ### 3.2 目录职责边界
@@ -136,6 +138,7 @@
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
   - 该目录额外维护“救援贡献者稳定标识（provider id）”与女仆-物品互转同步逻辑，避免女仆复活后重复贡献次数。
+  - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）与玩家个人开关状态。
 
 - `bond/lap/`
   - 负责：膝枕姿态配置、会话状态与中间锚点实体抽象。
@@ -172,6 +175,7 @@
 
 - `Kiss*` / `EmergencyRescue*` / `MorningKissVoice*`
   - 负责：镜头、粒子、按键、救援弹出、语音检索与播放。
+  - `EmergencyRescue*` 额外负责“客户端本地救援音效覆盖”：按服务端下发约束校验本地文件格式与时长。
   - 不负责：服务端状态存储。
 
 - `screen/` 与 `screen/component/`
@@ -354,9 +358,10 @@
 
 - 玩家 tick 时由 `EmergencyHealListener.ensureRescueChargesUpToDate` 检查是否跨日并补满次数。
 - 女仆解锁 `emergency_heal` 时，会基于稳定 `provider id` 执行“当日即时补充”，并防止同一女仆复活后重复入池。
+- 监听致命伤害前先经过“双重开关”门禁：`ModConfig` 全局开关 + `Attachment` 中玩家个人开关。
 - 玩家受到致命或濒死伤害时，监听器尝试消耗一个救援名额。
 - 若成功，则取消伤害、回复生命并施加再生/伤害吸收/抗火。
-- 随后发送 `MaidRescuePopPayload` 到客户端播放弹出表现。
+- 随后发送 `MaidRescuePopPayload`（含音效策略）到客户端播放弹出表现。
 
 #### 数据流向
 
@@ -364,23 +369,28 @@
   - 保存每日剩余可用救援者列表（列表元素为 `provider id`，不依赖实体是否加载）
   - 保存已注册过的救援者列表（同样按 `provider id` / 兼容别名判定）
   - 保存最后补充日
+  - 保存玩家个人残血救护开关
 - `BondData`
   - 保存女仆模型、显示名、YSM 配置、救援动作等档案信息
   - 额外保存 `maidUuid -> rescue provider id` 映射，用于跨复活维持“同一女仆”语义
   - 客户端展示时依赖这些信息还原救援者形象
+- 数据包 `data/touhou_maid_affection/rescue_sound/profile.json`
+  - 保存服务端救护音效策略：`sound_event`、客户端覆盖开关、客户端自定义音效格式与最大时长限制
 
 #### 模块交互
 
-- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler`
-- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer`
+- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData`
+- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer`
 - YSM：若女仆模型支持，则在 overlay 中播放预设动作
 - overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
+- 音效播放默认回退到 `minecraft:entity.player.levelup`；若玩家启用本地覆盖，则需满足服务端下发的格式/时长约束。
 
 #### 架构意义
 
 - `Attachment` 在这里承载的是“运行中的玩家能力槽位”。
 - `BondData` 承载的是“可展示、可回放的女仆身份档案”。
 - `provider id` 把“能力贡献身份”从实体 UUID 中解耦，使死亡/复活不再改变贡献归属。
+- 同一能力同时提供“服务端总开关 + 玩家个人开关”，把玩法自由度控制与反作弊统计解耦。
 - 这两层分工是合理的，也说明项目已经开始出现多种状态容器并存的趋势。
 
 ### 4.7 膝枕姿态系统
