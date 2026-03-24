@@ -39,6 +39,11 @@
 - 运行端是“单包内同时包含服务端逻辑与客户端逻辑”的典型 Mod 结构。
 - 服务端是真正的状态来源；客户端主要承担缓存、界面、视觉和音频表现。
 
+### 2.4 工程约束文档
+
+- `TESTING.md`：维护测试范围、命名约定和最小回归命令（`test + compileJava`）。
+- `DEPLOYMENT.md`：维护构建产物、发布约束和发版前检查清单。
+
 ## 3. 架构与目录拓扑
 
 ### 3.1 核心目录树
@@ -46,6 +51,8 @@
 ```text
 .
 ├─ build.gradle
+├─ TESTING.md
+├─ DEPLOYMENT.md
 ├─ gradle.properties
 ├─ settings.gradle
 ├─ src/main/java/com/github/touhoumaidaffection
@@ -63,6 +70,7 @@
 │  │  ├─ lap
 │  │  ├─ rescue
 │  │  └─ service
+│  │     └─ MorningKissScheduleRules.java
 │  ├─ client
 │  │  ├─ BondClientPayloadHandler.java
 │  │  ├─ BondClientStateCache.java
@@ -73,10 +81,12 @@
 │  ├─ command
 │  ├─ effect
 │  ├─ handler
+│  │  └─ MaidPayloadResolver.java
 │  ├─ inventory
 │  ├─ mixin
 │  ├─ network
 │  ├─ util
+│  │  └─ PowerPointInventoryHelper.java
 │  └─ ysm
 └─ src/main/resources
    ├─ META-INF/neoforge.mods.toml
@@ -120,7 +130,7 @@
 
 - `bond/service/`
   - 负责：长生命周期、持续 tick 驱动的业务编排。
-  - 当前主要包含 `MorningKissService` 与 `RandomGiftService`。
+  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析与数值修正的 `MorningKissScheduleRules`。
 
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
@@ -140,6 +150,7 @@
 - `KissMaidHandler`：直接基于 TLM 事件处理亲吻。
 - `BondAbilityActivateHandler` / `BondStateRequestHandler`：处理羁绊页按钮与状态同步请求。
 - `LapPillowHandler` / `MorningKissVoiceConfigHandler` / `RescueActionConfigHandler`：处理特定子功能配置或动作触发。
+- `MaidPayloadResolver`：统一处理 payload 中的女仆解析与 owner 校验，减少重复判断和漏检风险。
 
 #### `network/`：协议层
 
@@ -299,8 +310,8 @@
 #### 设计评价
 
 - 这是“服务器权威任务编排 + 客户端纯表现”的正确分层。
-- 时间窗解析、自动调度、任务推进、对话/语音都集中在一个文件中，功能闭环完整。
-- 同时，这个类已经明显承担过多职责，是未来最值得拆分的热点。
+- 自动调度、任务推进、对话/语音仍在一个服务内闭环；时间窗解析和亲吻次数边界修正已抽到 `MorningKissScheduleRules`，可独立测试与复用。
+- 该服务仍是复杂度热点，但职责边界已从“全量混合”向“调度主干 + 规则模块”过渡。
 
 ### 4.5 随机礼物服务
 
@@ -402,6 +413,7 @@
 - `BondContainer`：菜单容器。
 - `BondMaidContainerScreen`：主羁绊页。
 - `screen/component/*`：弹窗、滚动列表、按钮行、分栏页等 UI 基础件。
+- `util/PowerPointInventoryHelper`：统一 P 点统计/扣除逻辑，避免服务端解锁流程与客户端显示各自维护一套实现。
 
 #### 生命周期
 
@@ -520,7 +532,7 @@
 #### 规范 B：网络协议只做传输，不做业务
 
 - `network/*Payload.java` 只能定义字段与编解码。
-- 一切业务判断必须放在 `handler/`、`service/` 或 `bond/` 域层。
+- 一切业务判断必须放在 `handler/`、`service/` 或 `bond/` 域层；同类前置校验（如 owner 判定）优先沉淀到共享 resolver，避免多处复制后出现漏判。
 - 客户端 cache 是显示缓存，不是业务真相。
 
 #### 规范 C：服务端必须保持权威

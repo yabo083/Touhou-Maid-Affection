@@ -122,6 +122,12 @@ cd maid-affection
 
 构建产物在 `build/libs/touhou-maid-affection-x.x.x.jar`。
 
+## 📚 维护文档
+
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)：核心架构边界与模块职责
+- [TESTING.md](TESTING.md)：测试范围、约定与回归命令
+- [DEPLOYMENT.md](DEPLOYMENT.md)：构建发布约束与发版前检查清单
+
 ## 📋 技术细节
 
 - **Mod ID**: `touhou_maid_affection`

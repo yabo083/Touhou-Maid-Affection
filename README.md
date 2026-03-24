@@ -122,6 +122,12 @@ cd maid-affection
 
 Output jar at `build/libs/touhou-maid-affection-x.x.x.jar`.
 
+## 📚 Maintenance Docs
+
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md): Core architecture boundaries and module responsibilities
+- [TESTING.md](TESTING.md): Testing scope, conventions, and regression commands
+- [DEPLOYMENT.md](DEPLOYMENT.md): Build/release constraints and pre-release checklist
+
 ## 📋 Technical Details
 
 - **Mod ID**: `touhou_maid_affection`

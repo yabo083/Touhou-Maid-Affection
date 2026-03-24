@@ -5,7 +5,6 @@ import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class MorningKissVoiceConfigHandler {
@@ -17,8 +16,8 @@ public final class MorningKissVoiceConfigHandler {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            Entity entity = player.serverLevel().getEntity(payload.maidUuid());
-            if (!(entity instanceof EntityMaid maid) || !maid.isOwnedBy(player)) {
+            EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
+            if (maid == null || !BondManager.isAbilityUnlocked(player, payload.maidUuid(), "morning_kiss")) {
                 return;
             }
             BondManager.setMorningKissVoiceSettings(player, maid.getUUID(),

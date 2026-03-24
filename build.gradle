@@ -72,6 +72,8 @@ neoForge {
 dependencies {
     // Touhou Little Maid - compile only, not bundled
     compileOnly "maven.modrinth:touhou-little-maid:${tlm_version}"
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 tasks.withType(ProcessResources).configureEach {
@@ -97,6 +99,10 @@ tasks.withType(ProcessResources).configureEach {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 idea {

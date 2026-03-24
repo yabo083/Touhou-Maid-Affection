@@ -8,7 +8,6 @@ import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class LapPillowPoseConfigHandler {
@@ -20,8 +19,8 @@ public final class LapPillowPoseConfigHandler {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            Entity entity = player.serverLevel().getEntity(payload.maidUuid());
-            if (!(entity instanceof EntityMaid maid) || !BondManager.isAbilityUnlocked(player, payload.maidUuid(), "lap_pillow")) {
+            EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
+            if (maid == null || !BondManager.isAbilityUnlocked(player, payload.maidUuid(), "lap_pillow")) {
                 return;
             }
 

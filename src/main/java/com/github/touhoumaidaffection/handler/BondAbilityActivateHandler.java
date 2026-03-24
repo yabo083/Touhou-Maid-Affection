@@ -6,11 +6,8 @@ import com.github.touhoumaidaffection.bond.ability.IBondAbility;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
+import com.github.touhoumaidaffection.util.PowerPointInventoryHelper;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class BondAbilityActivateHandler {
@@ -26,8 +23,8 @@ public final class BondAbilityActivateHandler {
             if (ability == null) {
                 return;
             }
-            Entity entity = player.serverLevel().getEntity(payload.maidUuid());
-            if (!(entity instanceof EntityMaid maid)) {
+            var maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
+            if (maid == null) {
                 return;
             }
             BondManager.setBondLevel(player, maid.getUUID(), maid.getFavorabilityManager().getLevel());
@@ -42,10 +39,10 @@ public final class BondAbilityActivateHandler {
                     return;
                 }
                 int cost = ability.getPowerPointCost();
-                if (!hasEnoughPowerPoints(player, cost)) {
+                if (!PowerPointInventoryHelper.hasEnoughPowerPoints(player, cost)) {
                     return;
                 }
-                consumePowerPoints(player, cost);
+                PowerPointInventoryHelper.consumePowerPoints(player, cost);
                 BondManager.unlockAbility(player, maid.getUUID(), ability.getId());
                 ability.unlock(player, maid);
                 if ("emergency_heal".equals(ability.getId())) {
@@ -63,38 +60,5 @@ public final class BondAbilityActivateHandler {
 
             BondSyncHelper.sendBondState(player, maid);
         });
-    }
-
-    private static boolean hasEnoughPowerPoints(ServerPlayer player, int cost) {
-        if (cost <= 0) {
-            return true;
-        }
-        int count = 0;
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = player.getInventory().getItem(i);
-            if (stack.is(InitItems.POWER_POINT.get())) {
-                count += stack.getCount();
-                if (count >= cost) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private static void consumePowerPoints(ServerPlayer player, int cost) {
-        if (cost <= 0) {
-            return;
-        }
-        int remaining = cost;
-        for (int i = 0; i < player.getInventory().getContainerSize() && remaining > 0; i++) {
-            ItemStack stack = player.getInventory().getItem(i);
-            if (!stack.is(InitItems.POWER_POINT.get())) {
-                continue;
-            }
-            int consume = Math.min(stack.getCount(), remaining);
-            stack.shrink(consume);
-            remaining -= consume;
-        }
     }
 }

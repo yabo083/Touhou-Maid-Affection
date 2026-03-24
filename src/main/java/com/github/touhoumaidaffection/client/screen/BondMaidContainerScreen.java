@@ -2,7 +2,6 @@ package com.github.touhoumaidaffection.client.screen;
 
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
@@ -19,15 +18,14 @@ import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageRegist
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
+import com.github.touhoumaidaffection.util.PowerPointInventoryHelper;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.LinkedHashMap;
@@ -309,18 +307,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
 
     @Override
     public int getPowerPointCount() {
-        Player player = Minecraft.getInstance().player;
-        if (player == null) {
-            return 0;
-        }
-        int count = 0;
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = player.getInventory().getItem(i);
-            if (stack.is(InitItems.POWER_POINT.get())) {
-                count += stack.getCount();
-            }
-        }
-        return count;
+        return PowerPointInventoryHelper.countPowerPoints(Minecraft.getInstance().player);
     }
 
     @Override
