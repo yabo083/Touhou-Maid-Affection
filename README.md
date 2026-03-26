@@ -21,6 +21,16 @@
 
 ---
 
+## 🆕 1.7.1 - 心有灵犀 (Soul Resonance)
+
+This release packages and finalizes the feature set introduced through `1.7.0.5`.
+
+- ❤️ Bond system expansion: new bond abilities, random gift flow, locked-tab behavior polish, plus localization and config upgrades.
+- 🚨 Emergency rescue overhaul: complete rescue voice pipeline with GUI sync, override controls, duplicate-charge fixes, and cleaner rescuer identity routing.
+- 🛏️ Lap pillow stability pass: smoother lying-state transitions, conflict gating with other maid tasks, and a configurable Eternal Utopia particle toggle.
+- 🎛️ Experience refinements: unified rescue page visual tokens, morning-kiss behavior adjustments, and stronger interaction consistency.
+- 🔧 Release maintenance: engineering/documentation cleanup and version promotion to `1.7.1`.
+
 ## 🆕 1.6.1 Fixes
 
 - Fixed an issue where kissing could be incorrectly blocked after switching to another save without restarting the game.
