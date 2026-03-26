@@ -160,6 +160,7 @@
   "bond.lap_pillow.angle_lock.enabled": "角度冻结：已开启",
   "bond.lap_pillow.angle_lock.disabled": "角度冻结：已关闭",
   "bond.lap_pillow.angle_lock.unavailable": "仅在膝枕状态中可用",
+  "bond.lap_pillow.failed_locked": "你想要一个膝枕，但被拒绝了，要努力提升好感啊！",
   "bond.lap_pillow.ysm.pending": "YSM 动作配置下一轮接入",
   "bond.ability.heal": "残血救护",
   "bond.ability.heal.desc": "血量过低时自动触发，可多女仆叠加。",

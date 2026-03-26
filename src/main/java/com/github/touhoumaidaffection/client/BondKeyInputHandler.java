@@ -31,6 +31,11 @@ public class BondKeyInputHandler {
                 continue;
             }
             if (minecraft.hitResult instanceof EntityHitResult hitResult && hitResult.getEntity() instanceof EntityMaid maid) {
+                if (BondClientStateCache.hasState(maid.getUUID())
+                        && !BondClientStateCache.isAbilityUnlocked(maid.getUUID(), "lap_pillow")) {
+                    minecraft.player.displayClientMessage(Component.translatable("bond.lap_pillow.failed_locked"), true);
+                    continue;
+                }
                 PacketDistributor.sendToServer(new LapPillowStartPayload(maid.getUUID()));
                 LapPillowClientState.markStartRequested(maid.getUUID(), BondClientStateCache.getLapPillowPose(maid.getUUID()));
             }

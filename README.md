@@ -21,6 +21,11 @@
 
 ---
 
+## 🆕 v1.7.1.1 - Hotfix
+
+- Fixed a lap pillow unlock-state bug: before level-3 bond unlock, pressing `B` now gets blocked correctly.
+- Added explicit lock-state feedback in both client-side key handling and server-side validation.
+
 ## 🆕 v1.7.1 - 心有灵犀 (Soul Resonance)
 
 - Added four Bond System abilities: Lap Pillow, Morning Kiss, Emergency Rescue, and Random Gift.

@@ -16,6 +16,7 @@ import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMCompatibility;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -46,6 +47,7 @@ public final class LapPillowHandler {
                 return;
             }
             if (!BondManager.isAbilityUnlocked(player, payload.maidUuid(), "lap_pillow")) {
+                player.displayClientMessage(Component.translatable("bond.lap_pillow.failed_locked"), true);
                 logReject(player, payload.maidUuid(), "ability_locked");
                 return;
             }

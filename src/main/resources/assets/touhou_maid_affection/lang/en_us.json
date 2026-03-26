@@ -160,6 +160,7 @@
   "bond.lap_pillow.angle_lock.enabled": "Angle Lock: ON",
   "bond.lap_pillow.angle_lock.disabled": "Angle Lock: OFF",
   "bond.lap_pillow.angle_lock.unavailable": "Only available during lap pillow",
+  "bond.lap_pillow.failed_locked": "You wanted a lap pillow, but got turned down. Raise affection and try again!",
   "bond.lap_pillow.ysm.pending": "YSM action config will be wired next round",
   "bond.ability.heal": "Emergency Heal",
   "bond.ability.heal.desc": "Auto-triggers at low HP and stacks with multiple maids.",

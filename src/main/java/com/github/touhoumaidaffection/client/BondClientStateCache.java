@@ -35,6 +35,10 @@ public final class BondClientStateCache {
         return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).unlockedAbilityIds().contains(abilityId);
     }
 
+    public static boolean hasState(UUID maidUuid) {
+        return STATES.containsKey(maidUuid);
+    }
+
     public static int getQueuedGiftCount(UUID maidUuid) {
         return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).queuedGiftCount();
     }
