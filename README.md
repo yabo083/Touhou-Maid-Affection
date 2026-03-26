@@ -21,15 +21,43 @@
 
 ---
 
-## 🆕 1.7.1 - 心有灵犀 (Soul Resonance)
+## 🆕 Latest Update (Unreleased)
 
-This release packages and finalizes the feature set introduced through `1.7.0.5`.
+- Added four Bond System abilities: Lap Pillow, Morning Kiss, Emergency Rescue, and Random Gift.
+- These abilities become available when the maid reaches favorability level 3; each one consumes inventory Power Points only on first unlock (not on every use).
 
-- ❤️ Bond system expansion: new bond abilities, random gift flow, locked-tab behavior polish, plus localization and config upgrades.
-- 🚨 Emergency rescue overhaul: complete rescue voice pipeline with GUI sync, override controls, duplicate-charge fixes, and cleaner rescuer identity routing.
-- 🛏️ Lap pillow stability pass: smoother lying-state transitions, conflict gating with other maid tasks, and a configurable Eternal Utopia particle toggle.
-- 🎛️ Experience refinements: unified rescue page visual tokens, morning-kiss behavior adjustments, and stronger interaction consistency.
-- 🔧 Release maintenance: engineering/documentation cleanup and version promotion to `1.7.1`.
+### 🛏️ Lap Pillow
+
+- Press `B` to start/exit after unlocking, with a visual configuration UI.
+- Supports drag-and-scroll relative position tuning plus saved default sit/lie combinations for maid and player.
+- Maid-side YSM actions are supported when model actions are detected; player-side remains built-in sit/lie, and players can still use native YSM keys (such as `Z`) manually.
+- Press `V` to toggle angle lock for second/third-person photo composition.
+- While active, both player and maid receive the Eternal Utopia buff.
+
+### 🌅 Morning Kiss
+
+- Requires level-3 favorability and ability unlock; supports both manual call and automatic triggering in configured time windows.
+- Voice settings are linked with the maid's current sound pack, with random-all/random-group/specific-clip modes.
+- Time ranges use 24-hour format, for example `06:00-08:00` and `18:00-20:00` (see config examples).
+
+### 🚨 Emergency Rescue
+
+- Requires level-3 favorability and ability unlock, then auto-triggers when the player's HP is in danger.
+- Rescue action and voice behavior are configurable, including TLM voice and custom OGG files.
+- Supports server-side predefined voice sync to clients, with optional fallback to the `common` pool.
+- Player-facing commands: `/tma rescue`, `/tma rescue on`, `/tma rescue off`, `/tma rescue toggle`.
+- Admin commands: `/tma rescue clear|reset`, `/tma rescue sound sync`.
+
+### 🎁 Random Gift
+
+- Requires level-3 favorability and ability unlock; gifts accumulate on real-time intervals and queue while away.
+- Default pool covers most container-valid vanilla items, with optional sampled mod items.
+- Datapack tags can extend/override and blacklist gift entries:
+  - `data/touhou_maid_affection/tags/items/bond_random_gift_pool.json`
+  - `data/touhou_maid_affection/tags/items/bond_random_gift_blacklist.json`
+- Modpack authors can freely tune what maids are allowed to gift.
+
+- Thank you for playing.
 
 ## 🆕 1.6.1 Fixes
 
