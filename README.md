@@ -21,7 +21,7 @@
 
 ---
 
-## 🆕 Latest Update (Unreleased)
+## 🆕 v1.7.1 - 心有灵犀 (Soul Resonance)
 
 - Added four Bond System abilities: Lap Pillow, Morning Kiss, Emergency Rescue, and Random Gift.
 - These abilities become available when the maid reaches favorability level 3; each one consumes inventory Power Points only on first unlock (not on every use).
