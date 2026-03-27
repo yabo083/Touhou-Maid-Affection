@@ -35,6 +35,13 @@ public final class BondAbilityActivateHandler {
 
             boolean abilityUnlocked = BondManager.isAbilityUnlocked(player, payload.maidUuid(), ability.getId());
             if (!abilityUnlocked) {
+                boolean emergencyHeal = "emergency_heal".equals(ability.getId());
+                if (emergencyHeal && EmergencyRescueData.isContributorAlreadyUnlocked(player, maid.getUUID())) {
+                    BondManager.unlockAbility(player, maid.getUUID(), ability.getId());
+                    EmergencyHealListener.ensureRescueChargesUpToDate(player);
+                    BondSyncHelper.sendBondState(player, maid);
+                    return;
+                }
                 if (!ability.canUnlock(player, maid)) {
                     return;
                 }
@@ -45,7 +52,7 @@ public final class BondAbilityActivateHandler {
                 PowerPointInventoryHelper.consumePowerPoints(player, cost);
                 BondManager.unlockAbility(player, maid.getUUID(), ability.getId());
                 ability.unlock(player, maid);
-                if ("emergency_heal".equals(ability.getId())) {
+                if (emergencyHeal) {
                     EmergencyHealListener.ensureRescueChargesUpToDate(player);
                     EmergencyRescueData.grantImmediateRescueIfEligible(player, maid.getUUID());
                 }

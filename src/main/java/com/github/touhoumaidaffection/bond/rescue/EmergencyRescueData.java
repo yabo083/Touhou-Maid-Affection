@@ -11,8 +11,10 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,6 +22,8 @@ import java.util.UUID;
 public final class EmergencyRescueData {
     private static final String RESCUER_TOKEN_PREFIX = "maid:";
     private static final String EMERGENCY_HEAL_ABILITY_ID = "emergency_heal";
+    private static final String PROVIDER_CONTRIBUTOR_KEY_PREFIX = "provider:";
+    private static final String LEGACY_CONTRIBUTOR_KEY_PREFIX = "legacy:";
 
     private EmergencyRescueData() {
     }
@@ -73,11 +77,20 @@ public final class EmergencyRescueData {
     }
 
     public static void setRegisteredRescuers(ServerPlayer player, List<UUID> maidIds) {
-        Set<String> canonicalIds = new LinkedHashSet<>(maidIds.size());
-        for (UUID maidId : maidIds) {
-            canonicalIds.add(toRescuerToken(maidId));
+        if (maidIds == null || maidIds.isEmpty()) {
+            get(player).setRegisteredRescuers(List.of());
+            return;
         }
-        get(player).setRegisteredRescuers(new ArrayList<>(canonicalIds));
+        BondData data = BondData.of(player);
+        Map<String, String> canonicalByContributor = new LinkedHashMap<>(maidIds.size());
+        for (UUID maidId : maidIds) {
+            RescueContributorIdentity identity = resolveContributorIdentity(data, maidId);
+            if (identity == null) {
+                continue;
+            }
+            canonicalByContributor.putIfAbsent(identity.contributorKey(), identity.canonicalRescuerId());
+        }
+        get(player).setRegisteredRescuers(new ArrayList<>(canonicalByContributor.values()));
     }
 
     public static void clearPoolAndRegistration(ServerPlayer player) {
@@ -111,23 +124,23 @@ public final class EmergencyRescueData {
     }
 
     public static List<String> buildDailyRescuerList(ServerPlayer player) {
-        List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID);
         int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
-        Set<String> canonicalIds = new LinkedHashSet<>(unlockedIds.size());
-        for (UUID maidUuid : unlockedIds) {
-            canonicalIds.add(toRescuerToken(maidUuid));
-        }
-        List<String> expanded = new ArrayList<>(canonicalIds.size() * chargesPerMaid);
-        for (String canonicalId : canonicalIds) {
+        List<String> contributorIds = getUnlockedRescueContributorIds(player);
+        List<String> expanded = new ArrayList<>(contributorIds.size() * chargesPerMaid);
+        for (String contributorId : contributorIds) {
             for (int i = 0; i < chargesPerMaid; i++) {
-                expanded.add(canonicalId);
+                expanded.add(contributorId);
             }
         }
         return expanded;
     }
 
     public static void grantImmediateRescueIfEligible(ServerPlayer player, UUID maidUuid) {
-        String rescuerId = toRescuerToken(maidUuid);
+        RescueContributorIdentity identity = resolveContributorIdentity(BondData.of(player), maidUuid);
+        if (identity == null) {
+            return;
+        }
+        String rescuerId = identity.canonicalRescuerId();
         if (hasRegisteredAlias(player, rescuerId)) {
             return;
         }
@@ -145,9 +158,11 @@ public final class EmergencyRescueData {
         List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID);
         Set<UUID> unlockedSet = new LinkedHashSet<>(unlockedIds);
         BondData data = BondData.of(player);
+        int chargesPerMaid = Math.max(1, ModConfig.BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID.get());
 
         List<String> currentAvailable = getAvailableRescuerIds(player);
         List<String> normalizedAvailable = new ArrayList<>(currentAvailable.size());
+        Map<String, Integer> contributorChargeCount = new LinkedHashMap<>();
         boolean availableDirty = false;
         for (String rescuerId : currentAvailable) {
             UUID maidUuid = resolveRescuerToMaidUuid(data, rescuerId, unlockedSet);
@@ -155,7 +170,18 @@ public final class EmergencyRescueData {
                 availableDirty = true;
                 continue;
             }
-            String canonical = toRescuerToken(maidUuid);
+            RescueContributorIdentity identity = resolveContributorIdentity(data, maidUuid);
+            if (identity == null) {
+                availableDirty = true;
+                continue;
+            }
+            int existing = contributorChargeCount.getOrDefault(identity.contributorKey(), 0);
+            if (existing >= chargesPerMaid) {
+                availableDirty = true;
+                continue;
+            }
+            contributorChargeCount.put(identity.contributorKey(), existing + 1);
+            String canonical = identity.canonicalRescuerId();
             normalizedAvailable.add(canonical);
             if (!canonical.equals(rescuerId)) {
                 availableDirty = true;
@@ -165,16 +191,34 @@ public final class EmergencyRescueData {
             setAvailableRescuerIds(player, normalizedAvailable);
         }
 
-        Set<String> expectedRegistered = new LinkedHashSet<>(unlockedIds.size());
-        for (UUID maidId : unlockedIds) {
-            expectedRegistered.add(toRescuerToken(maidId));
-        }
+        Set<String> expectedRegistered = new LinkedHashSet<>(getUnlockedRescueContributorIds(player));
         Set<String> currentRegistered = new LinkedHashSet<>(getRegisteredRescuerIds(player));
         boolean registeredDirty = !currentRegistered.equals(expectedRegistered);
         if (registeredDirty) {
-            setRegisteredRescuers(player, unlockedIds);
+            get(player).setRegisteredRescuers(new ArrayList<>(expectedRegistered));
         }
         return availableDirty || registeredDirty;
+    }
+
+    public static boolean isContributorAlreadyUnlocked(ServerPlayer player, UUID maidUuid) {
+        if (player == null || maidUuid == null) {
+            return false;
+        }
+        BondData data = BondData.of(player);
+        RescueContributorIdentity target = resolveContributorIdentity(data, maidUuid);
+        if (target == null) {
+            return false;
+        }
+        for (UUID unlockedMaidId : BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID)) {
+            if (maidUuid.equals(unlockedMaidId)) {
+                continue;
+            }
+            RescueContributorIdentity candidate = resolveContributorIdentity(data, unlockedMaidId);
+            if (candidate != null && target.contributorKey().equals(candidate.contributorKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static EmergencyRescueAttachment get(ServerPlayer player) {
@@ -240,19 +284,67 @@ public final class EmergencyRescueData {
             return false;
         }
         BondData data = BondData.of(player);
-        UUID targetUuid = resolveRescuerToMaidUuid(data, rescuerId, null);
+        String targetKey = resolveContributorKey(data, rescuerId);
+        if (targetKey.isBlank()) {
+            return false;
+        }
         for (String registered : getRegisteredRescuerIds(player)) {
             if (rescuerId.equals(registered)) {
                 return true;
             }
-            if (targetUuid != null) {
-                UUID registeredUuid = resolveRescuerToMaidUuid(data, registered, null);
-                if (targetUuid.equals(registeredUuid)) {
-                    return true;
-                }
+            String registeredKey = resolveContributorKey(data, registered);
+            if (targetKey.equals(registeredKey)) {
+                return true;
             }
         }
         return false;
+    }
+
+    private static String resolveContributorKey(BondData data, String rescuerId) {
+        if (rescuerId == null || rescuerId.isBlank()) {
+            return "";
+        }
+        UUID maidUuid = resolveRescuerToMaidUuid(data, rescuerId, null);
+        RescueContributorIdentity identity = resolveContributorIdentity(data, maidUuid);
+        if (identity != null) {
+            return identity.contributorKey();
+        }
+        String lookupId = toLegacyLookupId(rescuerId);
+        if (!lookupId.isBlank()) {
+            return LEGACY_CONTRIBUTOR_KEY_PREFIX + lookupId;
+        }
+        return rescuerId.trim();
+    }
+
+    private static List<String> getUnlockedRescueContributorIds(ServerPlayer player) {
+        if (player == null) {
+            return List.of();
+        }
+        BondData data = BondData.of(player);
+        List<UUID> unlockedIds = BondManager.getUnlockedMaidIdsForAbility(player, EMERGENCY_HEAL_ABILITY_ID);
+        Map<String, String> canonicalByContributor = new LinkedHashMap<>(unlockedIds.size());
+        for (UUID maidUuid : unlockedIds) {
+            RescueContributorIdentity identity = resolveContributorIdentity(data, maidUuid);
+            if (identity == null) {
+                continue;
+            }
+            canonicalByContributor.putIfAbsent(identity.contributorKey(), identity.canonicalRescuerId());
+        }
+        return new ArrayList<>(canonicalByContributor.values());
+    }
+
+    private static RescueContributorIdentity resolveContributorIdentity(BondData data, UUID maidUuid) {
+        if (data == null || maidUuid == null) {
+            return null;
+        }
+        String fallbackCanonicalId = toRescuerToken(maidUuid);
+        String providerId = data.getMaidRescueProviderId(maidUuid);
+        if (providerId == null || providerId.isBlank()) {
+            return new RescueContributorIdentity(fallbackCanonicalId, fallbackCanonicalId);
+        }
+        UUID representative = data.findMaidUuidByRescueProviderId(providerId, EMERGENCY_HEAL_ABILITY_ID);
+        String canonicalId = toRescuerToken(representative == null ? maidUuid : representative);
+        return new RescueContributorIdentity(PROVIDER_CONTRIBUTOR_KEY_PREFIX + providerId, canonicalId);
     }
 
     private static UUID resolveRescuerToMaidUuid(BondData data, String rescuerId, Set<UUID> preferredMaidIds) {
@@ -309,6 +401,9 @@ public final class EmergencyRescueData {
         } catch (IllegalArgumentException ignored) {
             return null;
         }
+    }
+
+    private record RescueContributorIdentity(String contributorKey, String canonicalRescuerId) {
     }
 
     @SubscribeEvent

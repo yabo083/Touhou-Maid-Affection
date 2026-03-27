@@ -137,7 +137,7 @@
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
-  - 该目录维护“救援者池 canonical id（`maid:<uuid>`）”与 legacy/provider 兼容解析，确保语音配置总是落到正确女仆档案键。
+  - 该目录维护“救援者池 canonical id（`maid:<uuid>`）”与 legacy/provider 兼容解析，并基于 provider 贡献者身份做跨 UUID 去重，避免同一女仆复活后重复计入。
   - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）、预定义语音自动下发服务（`RescueSoundSyncService`）与玩家个人开关状态。
 
 - `bond/lap/`
@@ -362,7 +362,7 @@
 #### 生命周期
 
 - 玩家 tick 时由 `EmergencyHealListener.ensureRescueChargesUpToDate` 检查是否跨日并补满次数。
-- 女仆解锁 `emergency_heal` 时，按 `maid:<uuid>` 进行当日即时补充；同时保留对 legacy/provider id 的别名判定以避免重复入池。
+- 女仆解锁 `emergency_heal` 时，先按“贡献者身份（provider 优先，`maid:<uuid>` 兜底）”判重；同一女仆跨复活/换壳仅首次生效，随后才按 canonical id 进行当日即时补充。
 - 监听致命伤害前先经过“双重开关”门禁：`ModConfig` 全局开关 + `Attachment` 中玩家个人开关。
 - 玩家受到致命或濒死伤害时，监听器尝试消耗一个救援名额。
 - 若成功，则取消伤害、回复生命并施加再生/伤害吸收/抗火。
@@ -373,7 +373,7 @@
 
 - `EmergencyRescueAttachment`
   - 保存每日剩余可用救援者列表（列表元素为 canonical id：`maid:<uuid>`）
-  - 保存已注册过的救援者列表（同样按 canonical id；登录/触发时会做 legacy/provider 规范化）
+  - 保存已注册过的救援者列表（同样按 canonical id；登录/触发时会做 legacy/provider 规范化与贡献者去重）
   - 保存最后补充日
   - 保存玩家个人残血救护开关
 - `BondData`
@@ -398,7 +398,7 @@
 
 - `Attachment` 在这里承载的是“运行中的玩家能力槽位”。
 - `BondData` 承载的是“可展示、可回放的女仆身份档案”。
-- `maid:<uuid>` 作为救援池主键，彻底消除 provider UUID 与 maid UUID 同形字符串导致的语音错配风险；provider id 退化为兼容层。
+- `maid:<uuid>` 作为救援池与 payload 的主键，仍用于稳定客户端展示；同时引入 provider 贡献者身份作为“去重维度”，用于消除同女仆多 UUID 档案导致的重复救援次数。
 - 同一能力同时提供“服务端总开关 + 玩家个人开关”，把玩法自由度控制与反作弊统计解耦。
 - 这两层分工是合理的，也说明项目已经开始出现多种状态容器并存的趋势。
 
