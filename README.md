@@ -21,6 +21,12 @@
 
 ---
 
+## 🆕 v1.7.1.2-forge1.20.1 - Rescue Stability Hotfix
+
+- Fixed an issue where Emergency Rescue charges could incorrectly refresh after player death/respawn within the same MC day.
+- Fixed duplicate Emergency Rescue charge contribution from the same maid after revive/rebind by deduplicating with a stable contributor ID.
+- Hardened Rescue state persistence across clone/respawn capability recovery and added optional verbose refresh diagnostics.
+
 ## 🆕 v1.7.1.1 - Hotfix
 
 - Fixed a lap pillow unlock-state bug: before level-3 bond unlock, pressing `B` now gets blocked correctly.
