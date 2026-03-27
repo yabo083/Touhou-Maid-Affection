@@ -21,6 +21,11 @@
 
 ---
 
+## 🆕 v1.7.1.2 - Rescue Identity Dedup
+
+- Fixed duplicate Emergency Rescue charge gains when the same maid is transformed/respawned and unlocks again.
+- Emergency Rescue now deduplicates contributors by persistent maid identity, so one maid can only contribute once per day cycle.
+
 ## 🆕 v1.7.1.1 - Hotfix
 
 - Fixed a lap pillow unlock-state bug: before level-3 bond unlock, pressing `B` now gets blocked correctly.
