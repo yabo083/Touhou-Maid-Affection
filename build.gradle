@@ -59,6 +59,8 @@ dependencies {
 
     // Touhou Little Maid - compile only, not bundled
     compileOnly fg.deobf("maven.modrinth:touhou-little-maid:${tlm_version}")
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -101,6 +103,10 @@ tasks.named('jar', Jar).configure {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 java {

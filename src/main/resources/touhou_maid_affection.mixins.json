@@ -5,7 +5,16 @@
   "minVersion": "0.8",
   "mixins": [
     "MaidBegTaskMixin",
-    "MaidRideBegTaskMixin"
+    "MaidRideBegTaskMixin",
+    "EntityMaidAccessorMixin"
+  ],
+  "client": [
+    "AbstractMaidContainerGuiMixin",
+    "client.LapPillowSeatRenderMixin",
+    "client.GeoReplacedEntityRendererLapPillowSitMixin",
+    "client.EntityLapPillowPassengerMixin",
+    "client.EntityRenderDispatcherLapPillowMixin",
+    "client.LivingEntityLapPillowSleepMixin"
   ],
   "injectors": {
     "defaultRequire": 1

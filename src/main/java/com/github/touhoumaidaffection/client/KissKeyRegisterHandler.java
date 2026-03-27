@@ -2,14 +2,16 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 
-@Mod.EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class KissKeyRegisterHandler {
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(KissKeyMappings.KISS_CARRIED);
+        event.register(KissKeyMappings.KISS_CARRIED_MAID);
+        event.register(BondKeyMappings.LAP_PILLOW);
+        event.register(BondKeyMappings.LAP_PILLOW_ANGLE_LOCK);
     }
 }

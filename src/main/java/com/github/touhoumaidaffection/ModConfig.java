@@ -1,7 +1,6 @@
 package com.github.touhoumaidaffection;
 
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraft.util.Mth;
 
 import java.util.Locale;
 
@@ -17,6 +16,53 @@ public class ModConfig {
     // Favorability
     public static final ForgeConfigSpec.IntValue FAVORABILITY_POINTS;
     public static final ForgeConfigSpec.IntValue FAVORABILITY_COOLDOWN;
+
+    // Bond ability costs
+    public static final ForgeConfigSpec.IntValue BOND_COST_LAP_PILLOW;
+    public static final ForgeConfigSpec.IntValue BOND_COST_EMERGENCY_HEAL;
+    public static final ForgeConfigSpec.IntValue BOND_COST_MORNING_KISS;
+    public static final ForgeConfigSpec.IntValue BOND_COST_YSM_ACTION;
+    public static final ForgeConfigSpec.IntValue BOND_COST_RANDOM_GIFT;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_MAX_DISTANCE;
+    public static final ForgeConfigSpec.BooleanValue BOND_RANDOM_GIFT_ENABLED;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_MAX_QUEUED;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_DELIVERY_SEARCH_RANGE;
+    public static final ForgeConfigSpec.DoubleValue BOND_RANDOM_GIFT_DELIVERY_REACH_DISTANCE;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_DELIVERY_COOLDOWN_TICKS;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_PATHFIND_TIMEOUT_TICKS;
+    public static final ForgeConfigSpec.BooleanValue BOND_RANDOM_GIFT_SHOW_ACTION_BAR;
+    public static final ForgeConfigSpec.BooleanValue BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS;
+    public static final ForgeConfigSpec.IntValue BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_ENABLED;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_REQUIRED_FAVORABILITY;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MAX_DISTANCE;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_TIMEOUT_TICKS;
+    public static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> BOND_MORNING_KISS_ALLOWED_TIME_RANGES;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MIN_KISS_COUNT;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MAX_KISS_COUNT;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_KISS_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_APPLY_MAIDS_PRAYER;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MAIDS_PRAYER_DURATION;
+    public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ENABLED;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AUTO_WINDOW_ATTEMPT_SPREAD_PERCENT;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SILENT_FAILURE;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER;
+    public static final ForgeConfigSpec.IntValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD;
+    public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_ENABLED;
+    public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME;
+    public static final ForgeConfigSpec.IntValue BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID;
+    public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT;
+    public static final ForgeConfigSpec.IntValue BOND_EMERGENCY_RESCUE_SYNC_SCAN_INTERVAL_SECONDS;
+    public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG;
+    public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET;
+    public static final ForgeConfigSpec.IntValue BOND_LAP_PILLOW_MAX_DISTANCE;
+    public static final ForgeConfigSpec.BooleanValue BOND_LAP_PILLOW_ETERNAL_UTOPIA_PARTICLES_ENABLED;
 
     // Buff
     public static final ForgeConfigSpec.BooleanValue BUFF_ENABLED;
@@ -68,9 +114,9 @@ public class ModConfig {
     public static final ForgeConfigSpec.IntValue FOV_HOLD_TICKS;
     public static final ForgeConfigSpec.IntValue FOV_ZOOM_OUT_TICKS;
     public static final ForgeConfigSpec.DoubleValue FOV_ZOOM_STRENGTH;
-    public static final ForgeConfigSpec.DoubleValue CARRIED_SIDE_OFFSET;
-    public static final ForgeConfigSpec.DoubleValue CARRIED_FORWARD_OFFSET;
-    public static final ForgeConfigSpec.DoubleValue CARRIED_VERTICAL_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_SIDE_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_FORWARD_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_VERTICAL_OFFSET;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -108,6 +154,223 @@ public class ModConfig {
                 .comment("Favorability gain cooldown in ticks (default: 600 = 30 seconds)",
                          "This is separate from the interaction cooldown - prevents favorability farming")
                 .defineInRange("cooldownTicks", 600, 0, 72000);
+
+        builder.pop();
+
+        builder.comment("Bond ability P point costs",
+                        "Defaults are tuned for Touhou Little Maid's normal P point acquisition pace")
+               .push("bondCosts");
+
+        BOND_COST_LAP_PILLOW = builder
+                .comment("P point cost for Lap Pillow")
+                .defineInRange("lapPillow", 8, 0, 9999);
+
+        BOND_COST_EMERGENCY_HEAL = builder
+                .comment("P point cost for Emergency Heal")
+                .defineInRange("emergencyHeal", 3, 0, 9999);
+
+        BOND_COST_MORNING_KISS = builder
+                .comment("P point cost for Morning Kiss")
+                .defineInRange("morningKiss", 12, 0, 9999);
+
+        BOND_COST_YSM_ACTION = builder
+                .comment("P point cost for YSM Action")
+                .defineInRange("ysmAction", 16, 0, 9999);
+
+        BOND_COST_RANDOM_GIFT = builder
+                .comment("P point cost for Random Gift")
+                .defineInRange("randomGift", 6, 0, 9999);
+
+        BOND_RANDOM_GIFT_MAX_DISTANCE = builder
+                .comment("Maximum distance to gift items after unlock")
+                .defineInRange("randomGiftMaxDistance", 6, 1, 64);
+
+        builder.comment("Automatic random gift behaviour after unlock")
+                .push("randomGiftBehavior");
+
+        BOND_RANDOM_GIFT_ENABLED = builder
+                .comment("Enable the automatic random gift behavior after unlock")
+                .define("enabled", true);
+
+        BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES = builder
+                .comment("Real-time minutes required to prepare one gift")
+                .defineInRange("intervalRealMinutes", 20, 1, 1440);
+
+        BOND_RANDOM_GIFT_MAX_QUEUED = builder
+                .comment("Maximum number of queued gifts per maid")
+                .defineInRange("maxQueuedGifts", 7, 1, 64);
+
+        BOND_RANDOM_GIFT_DELIVERY_SEARCH_RANGE = builder
+                .comment("Range around the player to search for nearby gift maids")
+                .defineInRange("deliverySearchRange", 24, 4, 128);
+
+        BOND_RANDOM_GIFT_DELIVERY_REACH_DISTANCE = builder
+                .comment("Distance at which the maid can throw the gift")
+                .defineInRange("deliveryReachDistance", 2.25, 0.5, 16.0);
+
+        BOND_RANDOM_GIFT_DELIVERY_COOLDOWN_TICKS = builder
+                .comment("Minimum ticks between consecutive automatic gift throws from the same maid")
+                .defineInRange("deliveryCooldownTicks", 40, 0, 24000);
+
+        BOND_RANDOM_GIFT_PATHFIND_TIMEOUT_TICKS = builder
+                .comment("Timeout for a single automatic gift delivery pathfinding task")
+                .defineInRange("pathfindTimeoutTicks", 200, 20, 24000);
+
+        BOND_RANDOM_GIFT_SHOW_ACTION_BAR = builder
+                .comment("Show action bar text when a maid throws a gift")
+                .define("showActionBar", true);
+
+        BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS = builder
+                .comment("Automatically sample a batch of non-vanilla mod items into the gift pool")
+                .define("includeModItems", true);
+
+        BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE = builder
+                .comment("How many non-vanilla mod items are auto-sampled into the gift pool")
+                .defineInRange("autoModSampleSize", 96, 0, 2048);
+
+        builder.pop();
+
+        builder.comment("Morning Kiss behavior after unlock")
+                .push("morningKissBehavior");
+
+        BOND_MORNING_KISS_ENABLED = builder
+                .comment("Enable Morning Kiss after the ability is unlocked")
+                .define("enabled", true);
+
+        BOND_MORNING_KISS_REQUIRED_FAVORABILITY = builder
+                .comment("Required maid favorability level to use Morning Kiss")
+                .defineInRange("requiredFavorabilityLevel", 3, 0, 3);
+
+        BOND_MORNING_KISS_MAX_DISTANCE = builder
+                .comment("Maximum distance to call a maid for Morning Kiss")
+                .defineInRange("maxDistance", 16, 1, 128);
+
+        BOND_MORNING_KISS_TIMEOUT_TICKS = builder
+                .comment("Morning Kiss timeout in ticks")
+                .defineInRange("timeoutTicks", 200, 20, 2400);
+
+        BOND_MORNING_KISS_ALLOWED_TIME_RANGES = builder
+                .comment("Allowed in-world time ranges for Morning Kiss, using 24-hour time",
+                        "Examples: 06:00-08:00, 18:00-20:00",
+                        "Optional dialogue bucket prefix is supported: morning@06:00-08:00, evening@18:00-20:00",
+                        "Legacy tick ranges like 0-2000 are still accepted for compatibility")
+                .defineListAllowEmpty(
+                        java.util.List.of("allowedTimeRanges"),
+                        java.util.List.of("06:00-08:00", "18:00-20:00"),
+                        value -> value instanceof String string && !string.isBlank()
+                );
+
+        BOND_MORNING_KISS_MIN_KISS_COUNT = builder
+                .comment("Minimum number of kisses performed in one Morning Kiss sequence")
+                .defineInRange("minKissCount", 1, 1, 3);
+
+        BOND_MORNING_KISS_MAX_KISS_COUNT = builder
+                .comment("Maximum number of kisses performed in one Morning Kiss sequence")
+                .defineInRange("maxKissCount", 3, 1, 3);
+
+        BOND_MORNING_KISS_KISS_INTERVAL_TICKS = builder
+                .comment("Ticks between consecutive kisses in one Morning Kiss sequence")
+                .defineInRange("kissIntervalTicks", 16, 1, 200);
+
+        BOND_MORNING_KISS_APPLY_MAIDS_PRAYER = builder
+                .comment("Apply Maid's Prayer during Morning Kiss")
+                .define("applyMaidsPrayer", true);
+
+        BOND_MORNING_KISS_MAIDS_PRAYER_DURATION = builder
+                .comment("Maid's Prayer duration applied by Morning Kiss in ticks")
+                .defineInRange("maidsPrayerDurationTicks", 600, 20, 72000);
+
+        BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE = builder
+                .comment("Where Morning Kiss prompts and dialogue are shown",
+                        "Allowed values: action_bar, chat")
+                .define("messageDisplayMode", "action_bar");
+
+        BOND_MORNING_KISS_AUTO_ENABLED = builder
+                .comment("Allow maids to proactively trigger Morning Kiss during allowed time windows")
+                .define("autoEnabled", true);
+
+        BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS = builder
+                .comment("How often the server scans nearby loaded maids for proactive Morning Kiss")
+                .defineInRange("autoScanIntervalTicks", 40, 5, 1200);
+
+        BOND_MORNING_KISS_AUTO_WINDOW_ATTEMPT_SPREAD_PERCENT = builder
+                .comment("How much of the current time window can be used for random proactive attempt scheduling")
+                .defineInRange("autoWindowAttemptSpreadPercent", 70, 10, 100);
+
+        BOND_MORNING_KISS_AUTO_SILENT_FAILURE = builder
+                .comment("When true, proactive Morning Kiss failures stay silent instead of notifying the player")
+                .define("autoSilentFailure", true);
+
+        BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS = builder
+                .comment("When true, all eligible nearby maids may proactively trigger Morning Kiss in the same time window one after another",
+                        "When false, only one maid is selected for the whole time window")
+                .define("autoAllowAllEligibleMaids", true);
+
+        BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER = builder
+                .comment("Allow only one active Morning Kiss task per player at a time")
+                .define("autoSingleActiveTaskPerPlayer", true);
+
+        builder.pop();
+
+        builder.comment("Emergency rescue behaviour after unlock")
+                .push("emergencyRescueBehavior");
+
+        BOND_EMERGENCY_RESCUE_ENABLED = builder
+                .comment("Master switch for emergency rescue interception")
+                .define("enabled", true);
+
+        BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD = builder
+                .comment("Emergency rescue trigger threshold in health points")
+                .defineInRange("healthThreshold", 4, 1, 20);
+
+        BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME = builder
+                .comment("Refresh rescue charges by Minecraft date/daytime progression instead of total game uptime",
+                        "When enabled, sleeping to the next day or /time add 24000 can refresh charges")
+                .define("refreshByDayTime", true);
+
+        BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID = builder
+                .comment("How many rescue charges each unlocked maid contributes on daily refresh")
+                .defineInRange("chargesPerMaid", 1, 1, 16);
+
+        BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT = builder
+                .comment("Default value of common voice fallback for rescue custom voice profiles")
+                .define("commonFallbackDefault", true);
+
+        BOND_EMERGENCY_RESCUE_SYNC_SCAN_INTERVAL_SECONDS = builder
+                .comment("Seconds between server rescue predefined sound folder scans")
+                .defineInRange("syncScanIntervalSeconds", 30, 5, 3600);
+
+        BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG = builder
+                .comment("Verbose logs for rescue sound sync and playback fallback")
+                .define("syncVerboseLog", true);
+
+        BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET = builder
+                .comment("Additional X-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Negative tilts backward, positive tilts forward",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewPitchOffset", 0.0, -180.0, 180.0);
+
+        BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET = builder
+                .comment("Additional Y-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Useful when you want the maid to face the screen more directly",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewYawOffset", 0.0, -180.0, 180.0);
+
+        BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET = builder
+                .comment("Additional Z-axis rotation offset for the rescue overlay maid shown in front of the player",
+                        "Negative rolls left, positive rolls right",
+                        "Range: -180 to 180 degrees")
+                .defineInRange("overlayViewRollOffset", 0.0, -180.0, 180.0);
+
+        builder.pop();
+
+        BOND_LAP_PILLOW_MAX_DISTANCE = builder
+                .comment("Maximum distance to start lap pillow")
+                .defineInRange("lapPillowMaxDistance", 3, 1, 16);
+
+        BOND_LAP_PILLOW_ETERNAL_UTOPIA_PARTICLES_ENABLED = builder
+                .comment("Show particles for Eternal Utopia during lap pillow (default: true)")
+                .define("lapPillowEternalUtopiaParticles", true);
 
         builder.pop();
 
@@ -284,17 +547,18 @@ public class ModConfig {
                 .comment("Zoom strength (0.0 = no zoom, 1.0 = full zoom to 0 FOV) (default: 0.85)")
                 .defineInRange("strength", 0.85, 0.0, 0.95);
 
-        CARRIED_SIDE_OFFSET = builder
-                .comment("Carried kiss camera side offset (left/right) for maid head targeting (default: 0.48)")
-                .defineInRange("carriedSideOffset", 0.48, -2.0, 2.0);
+        FOV_CARRIED_SIDE_OFFSET = builder
+                .comment("Princess-carry camera target side offset relative to player look direction",
+                        "Negative = left, positive = right (default: 0.48)")
+                .defineInRange("carriedSideOffset", 0.48, -1.5, 1.5);
 
-        CARRIED_FORWARD_OFFSET = builder
-                .comment("Carried kiss camera forward/back offset for maid head targeting (default: 0.16)")
-                .defineInRange("carriedForwardOffset", 0.16, -2.0, 2.0);
+        FOV_CARRIED_FORWARD_OFFSET = builder
+                .comment("Princess-carry camera target forward offset (default: 0.16)")
+                .defineInRange("carriedForwardOffset", 0.16, -1.0, 1.0);
 
-        CARRIED_VERTICAL_OFFSET = builder
-                .comment("Carried kiss camera vertical offset for maid head targeting (default: -0.10)")
-                .defineInRange("carriedVerticalOffset", -0.10, -2.0, 2.0);
+        FOV_CARRIED_VERTICAL_OFFSET = builder
+                .comment("Princess-carry camera target vertical offset from player eye (default: -0.10)")
+                .defineInRange("carriedVerticalOffset", -0.10, -1.0, 1.0);
 
         builder.pop();
 
@@ -302,7 +566,7 @@ public class ModConfig {
     }
 
     public static ParticleShapeMode getParticleShapeMode() {
-        return parseEnum(PARTICLE_SHAPE_MODE.get(), ParticleShapeMode.SPIRAL);
+        return parseEnum(PARTICLE_SHAPE_MODE.get(), ParticleShapeMode.HALO);
     }
 
     public static ParticlePhaseRamp getParticlePhaseRamp() {
@@ -310,7 +574,7 @@ public class ModConfig {
     }
 
     public static ParticleAccentType getParticleAccentType() {
-        return parseEnum(PARTICLE_ACCENT_TYPE.get(), ParticleAccentType.GLOW);
+        return parseEnum(PARTICLE_ACCENT_TYPE.get(), ParticleAccentType.NONE);
     }
 
     public static ParticleAccentColorMode getParticleAccentColorMode() {

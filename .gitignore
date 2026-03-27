@@ -33,3 +33,8 @@ desktop.ini
 # Source audio files (only OGG needed)
 src/main/resources/kissSound/
 .github/agent.md
+PLAN-1.7.0.md
+.tmp_tlm_src
+update_gui.py
+GUI_STYLE_REQUIREMENTS_FOR_GEMINI.md
+.tmp_tlm_src_2

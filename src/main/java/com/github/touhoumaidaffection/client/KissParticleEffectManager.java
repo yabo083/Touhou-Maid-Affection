@@ -12,16 +12,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+@EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, value = Dist.CLIENT)
 public class KissParticleEffectManager {
     private static final List<KissParticleEffectInstance> ACTIVE_EFFECTS = new ArrayList<>();
     private static final double TAU = Math.PI * 2.0;
@@ -47,7 +47,6 @@ public class KissParticleEffectManager {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
-
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
         if (level == null) {
@@ -268,7 +267,7 @@ public class KissParticleEffectManager {
                 case 0 -> new Rgba(255, 191, 214, 210);
                 case 1 -> new Rgba(255, 168, 204, 220);
                 case 2 -> new Rgba(255, 143, 184, 230);
-                default -> new Rgba(255, 108, 160, 240);
+                default -> new Rgba(255, 189, 115, 240);
             };
         }
     }

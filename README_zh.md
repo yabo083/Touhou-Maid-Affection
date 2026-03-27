@@ -13,13 +13,62 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-1.20.1-green?style=flat-square" alt="MC 1.20.1"/>
-  <img src="https://img.shields.io/badge/Forge-47\.4\.x-orange?style=flat-square" alt="Forge"/>
+  <img src="https://img.shields.io/badge/Minecraft-1.21.1-green?style=flat-square" alt="MC 1.21.1"/>
+  <img src="https://img.shields.io/badge/NeoForge-21.1.x-orange?style=flat-square" alt="NeoForge"/>
   <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.0+-blue?style=flat-square" alt="TLM"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT"/>
 </p>
 
 ---
+
+## 🆕 v1.7.1.1 - 热修复
+
+- 修复了膝枕解锁状态判断异常：未达三级羁绊解锁前，按 `B` 键会被正确拦截。
+- 在客户端按键处理与服务端校验两侧补充了明确的“未解锁”提示反馈。
+
+## 🆕 v1.7.1 - 心有灵犀 (Soul Resonance)
+
+- 新增「羁绊系统」四项玩法：休闲膝枕、早安吻、残血救护、随机礼物。
+- 以上能力均在女仆达到三级好感后可解锁；每项能力仅在首次解锁时消耗背包中的 P 点（不是每次使用都扣）。
+
+### 🛏️ 休闲膝枕
+
+- 解锁后按 `B` 键触发/退出，支持可视化 GUI 调整。
+- 支持二维拖拽 + 滚轮微调玩家与女仆相对位置，并可保存默认坐/躺动作组合。
+- 女仆侧支持读取并使用 YSM 动作；玩家侧仍以内置坐/躺为主，玩家可继续使用 YSM 原生按键（如 `Z`）自控动作。
+- 按 `V` 键可切换角度冻结，便于二、三人称构图拍照。
+- 膝枕期间会为玩家与女仆持续施加「恒久遥远的理想乡」增益。
+
+### 🌅 早安吻
+
+- 需三级好感并解锁该能力后生效，支持“手动呼唤”与“时段内自动触发”两种方式。
+- 支持与女仆当前语音包联动，并可在随机全部/随机分组/固定单条之间切换。
+- 时段配置支持 24 小时制，示例：`06:00-08:00`、`18:00-20:00`（可参考配置文件示例）。
+
+### 🚨 残血救护
+
+- 需三级好感并解锁后生效，在玩家生命濒危时自动触发。
+- 支持配置救护动作与语音策略，可使用 TLM 语音或自定义 OGG 文件。
+- 支持服务端预配置并同步自定义语音到客户端，同时支持 `common` 通用池回退。
+- 聊天栏指令支持查询与开关：`/tma rescue`、`/tma rescue on`、`/tma rescue off`、`/tma rescue toggle`。
+- 管理类指令（需权限）支持清空与语音同步：`/tma rescue clear|reset`、`/tma rescue sound sync`。
+
+### 🎁 随机礼物
+
+- 需三级好感并解锁后生效，按现实时间自动积攒礼物，不在身边时也会进入队列暂存。
+- 默认礼物池覆盖大部分可装入容器的原版物品，并可按配置自动采样部分模组物品。
+- 支持通过数据包标签扩展/覆盖与剔除礼物范围：
+  - `data/touhou_maid_affection/tags/items/bond_random_gift_pool.json`
+  - `data/touhou_maid_affection/tags/items/bond_random_gift_blacklist.json`
+- 整合包作者可按需增删女仆可赠送物品范围。
+
+- 感谢你的游玩。
+
+## 🆕 1.6.1 修复
+
+- 修复了不重启游戏切换到另一个存档后，亲吻可能被误判为仍在冷却中的问题。
+- 亲吻冷却状态现已按世界/服务器会话隔离，不同存档之间互不影响。
+- 亲吻冷却现已细化为“按女仆独立计算”，不再出现同一玩家下所有女仆共享一次冷却。
 
 ## ✨ 功能特性
 
@@ -28,13 +77,26 @@
 | 特性 | 描述 |
 |---|---|
 | 💋 **亲吻互动** | 潜行 + 空手右击你的女仆，触发亲吻 |
-| ⌨️ **公主抱亲吻按键** | 公主抱状态下可按 `V` 触发亲吻（可在控制菜单改键） |
 | 💕 **爱心粒子** | 亲吻时在两人之间生成浪漫的爱心粒子效果 |
 | 🔊 **亲吻音效** | 播放清脆的亲吻音效（7 个随机变体） |
 | 📈 **好感度提升** | 每次亲吻为女仆增加 **+3 好感度**（30 秒冷却） |
 | 👀 **女仆凝视** | 亲吻时女仆会转头看向你 |
 | ⏱️ **分级冷却** | 冷却时间随好感度等级降低：5秒 → 3秒 → 1秒 → 0秒 |
 | 🎥 **零距离镜头** | 亲吻时镜头平滑推近到女仆面前——真正的面对面特写 |
+| 💞 **浪漫粒子系统 v2** | 爱心改为分阶段生成并支持 RING/HALO/SPIRAL 形态，可减少遮脸、提升氛围感 |
+
+### 🤲 公主抱亲吻按键
+
+当你用鞍把女仆公主抱起来（女仆作为玩家乘客）时，右键命中会变得困难。  
+本模组新增了原生可改键位：
+
+```
+女仆亲亲 -> 公主抱亲吻（默认：V）
+```
+
+- 仅在“正在公主抱女仆”时生效
+- 不影响普通状态下的原有右键亲吻
+- 公主抱状态会使用专门的相机对焦逻辑，尽量保持头对头构图
 
 ### 🙏 少女祈祷
 
@@ -70,15 +132,25 @@
 
 所有数值均可在 `config/touhou_maid_affection-common.toml` 中调整：
 - 各好感度等级的亲吻冷却时间
+- 亲吻镜头时长仅通过 `fov.zoomInTicks`、`fov.holdTicks`、`fov.zoomOutTicks` 调整
 - 好感度增加量和冷却
 - 少女祈祷的触发阈值、持续时间、恢复倍率
 - FOV 缩放强度和动画时长
-- 公主抱镜头偏移（`carriedSideOffset`、`carriedForwardOffset`、`carriedVerticalOffset`）
+- 公主抱相机偏移参数：
+  - `carriedSideOffset`（默认 `0.48`）
+  - `carriedForwardOffset`（默认 `0.16`）
+  - `carriedVerticalOffset`（默认 `-0.10`）
+- 进阶粒子控制参数：
+  - 防遮挡锚点：`offsetY`、`forwardOffset`、`avoidViewStrength`
+  - 空间与运动：`shapeMode`、`spreadRadius`、`upwardSpeed`、`radialSpeed`、`swirlSpeed`
+  - 时间节奏：`phaseBursts`、`phaseIntervalTicks`、`phaseRamp`
+  - 大小模拟：`clusterCopies`、`clusterJitter`
+  - 浪漫陪衬：`accentEnabled`、`accentType`、`accentChance`、`favorabilityColorAccent`
 - 粒子数量
 
 ## 📥 安装
 
-1. 安装 **Minecraft 1.20.1** + **Forge 47.4.x**
+1. 安装 **Minecraft 1.21.1** + **NeoForge 21.1.x**
 2. 安装 **[Touhou Little Maid](https://modrinth.com/mod/touhou-little-maid)** 1.5.0+
 3. 将 `touhou-maid-affection-x.x.x.jar` 放入 `.minecraft/mods/` 文件夹
 4. 启动游戏！
@@ -93,11 +165,17 @@ cd maid-affection
 
 构建产物在 `build/libs/touhou-maid-affection-x.x.x.jar`。
 
+## 📚 维护文档
+
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)：核心架构边界与模块职责
+- [TESTING.md](TESTING.md)：测试范围、约定与回归命令
+- [DEPLOYMENT.md](DEPLOYMENT.md)：构建发布约束与发版前检查清单
+
 ## 📋 技术细节
 
 - **Mod ID**: `touhou_maid_affection`
 - **API**: 使用 TouhouLittleMaid 提供的 `InteractMaidEvent` 事件 API
-- **网络**: `KissCarryRequestMessage`（Client → Server）+ `KissMaidPayload`（Server → Client）
+- **网络**: `KissMaidPayload`（Server → Client）用于特效同步，`KissCarryRequestPayload`（Client → Server）用于公主抱按键触发
 - **兼容性**: 通过 `ModList.isLoaded()` 软检测 CarryOn，零硬依赖
 - **好感度**: 使用 TLM 内置的 `FavorabilityManager` + 自定义 `Type("Kiss", 3, 600)`
 - **客户端效果**: FOV 缩放通过 `ComputeFovModifierEvent` + 镜头角度通过 `ViewportEvent.ComputeCameraAngles` 实现

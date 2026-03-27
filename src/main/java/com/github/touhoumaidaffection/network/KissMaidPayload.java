@@ -1,49 +1,26 @@
 package com.github.touhoumaidaffection.network;
 
-import com.github.touhoumaidaffection.client.KissClientHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.function.Supplier;
+public record KissMaidPayload(int maidEntityId, int playerEntityId, boolean allowFovZoom) implements CustomPacketPayload {
 
-public class KissMaidPayload {
-    private final int maidEntityId;
-    private final int playerEntityId;
-    private final boolean carriedKiss;
+    public static final CustomPacketPayload.Type<KissMaidPayload> TYPE =
+            new CustomPacketPayload.Type<>(new ResourceLocation(TouhouMaidAffection.MOD_ID, "kiss_maid"));
 
-    public KissMaidPayload(int maidEntityId, int playerEntityId, boolean carriedKiss) {
-        this.maidEntityId = maidEntityId;
-        this.playerEntityId = playerEntityId;
-        this.carriedKiss = carriedKiss;
-    }
+    public static final StreamCodec<ByteBuf, KissMaidPayload> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, KissMaidPayload::maidEntityId,
+            ByteBufCodecs.VAR_INT, KissMaidPayload::playerEntityId,
+            ByteBufCodecs.BOOL, KissMaidPayload::allowFovZoom,
+            KissMaidPayload::new
+    );
 
-    public int maidEntityId() {
-        return maidEntityId;
-    }
-
-    public int playerEntityId() {
-        return playerEntityId;
-    }
-
-    public boolean carriedKiss() {
-        return carriedKiss;
-    }
-
-    public static void encode(KissMaidPayload message, FriendlyByteBuf buf) {
-        buf.writeVarInt(message.maidEntityId);
-        buf.writeVarInt(message.playerEntityId);
-        buf.writeBoolean(message.carriedKiss);
-    }
-
-    public static KissMaidPayload decode(FriendlyByteBuf buf) {
-        return new KissMaidPayload(buf.readVarInt(), buf.readVarInt(), buf.readBoolean());
-    }
-
-    public static void handle(KissMaidPayload message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> KissClientHandler.handle(message)));
-        context.setPacketHandled(true);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

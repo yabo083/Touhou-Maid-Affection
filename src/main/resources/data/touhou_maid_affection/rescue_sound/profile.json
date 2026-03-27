@@ -1,0 +1,6 @@
+{
+  "sound_event": "minecraft:entity.player.levelup",
+  "allow_client_override": true,
+  "max_client_sound_duration_seconds": 4.0,
+  "required_client_sound_format": "ogg"
+}

@@ -1,5 +1,6 @@
 package com.github.touhoumaidaffection.handler;
 
+import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.ModSounds;
@@ -11,31 +12,21 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.network.PacketDistributor;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class KissMaidHandler {
 
-    private static final Map<MinecraftServer, SessionState> SESSION = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, SessionState> SESSION_STATES = new IdentityHashMap<>();
 
     private static Boolean carryOnLoaded = null;
-
-    private static final class SessionState {
-        private final Map<UUID, Long> cooldowns = new HashMap<>();
-        private final Map<UUID, List<Long>> kissTimestamps = new HashMap<>();
-    }
 
     private static boolean isCarryOnLoaded() {
         if (carryOnLoaded == null) {
@@ -75,57 +66,114 @@ public class KissMaidHandler {
             return;
         }
 
-        // Cancel to prevent opening the maid GUI
-        event.setCanceled(true);
-
-        executeKiss(player, maid);
-    }
-
-    public static void tryKissCarriedMaid(Player player) {
-        if (player == null || player.level().isClientSide) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
 
-        for (Entity passenger : player.getPassengers()) {
+        int favorabilityLevel = maid.getFavorabilityManager().getLevel();
+        BondManager.setBondLevel(serverPlayer, maid.getUUID(), favorabilityLevel);
+        BondManager.syncMaidProfile(serverPlayer, maid);
+
+        if (executeKiss(player, maid)) {
+            // Cancel to prevent opening the maid GUI when kiss succeeds
+            event.setCanceled(true);
+        }
+    }
+
+    public static void tryKissCarriedMaid(Player player) {
+        if (player.level().isClientSide) {
+            return;
+        }
+
+        for (var passenger : player.getPassengers()) {
             if (passenger instanceof EntityMaid maid) {
-                executeKiss(player, maid, true);
+                executeKiss(player, maid);
                 return;
             }
         }
     }
 
-    public static void executeKiss(Player player, EntityMaid maid) {
-        executeKiss(player, maid, false);
+    public static boolean performKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid);
     }
 
-    private static void executeKiss(Player player, EntityMaid maid, boolean carriedKiss) {
+    public static boolean performMorningKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid, true, false, false);
+    }
+
+    public static void applyMaidsPrayer(Player player, EntityMaid maid, int duration) {
+        if (!ModConfig.BUFF_ENABLED.get()) {
+            return;
+        }
+        int safeDuration = duration > 0 ? duration : ModConfig.BUFF_DURATION.get();
+        int amplifier = getAmplifierForLevel(maid.getFavorabilityManager().getLevel());
+        player.addEffect(new MobEffectInstance(
+                ModEffects.MAIDS_PRAYER.get(), safeDuration, amplifier, false, true, true));
+        maid.addEffect(new MobEffectInstance(
+                ModEffects.MAIDS_PRAYER.get(), safeDuration, amplifier, false, true, true));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        Player player = event.getEntity();
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
         }
 
-        SessionState session = SESSION.computeIfAbsent(server, s -> new SessionState());
+        SessionState sessionState = SESSION_STATES.get(server);
+        if (sessionState == null) {
+            return;
+        }
+
         UUID playerId = player.getUUID();
+        sessionState.cooldownsByPlayerAndMaid.remove(playerId);
+        sessionState.kissTimestamps.remove(playerId);
+        if (sessionState.isEmpty()) {
+            SESSION_STATES.remove(server);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        SESSION_STATES.remove(event.getServer());
+    }
+
+    private static boolean executeKiss(Player player, EntityMaid maid) {
+        return executeKiss(player, maid, false, true, true);
+    }
+
+    private static boolean executeKiss(Player player, EntityMaid maid, boolean ignoreCooldown, boolean applyStandardBuffTracking, boolean allowFovZoom) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return false;
+        }
+
+        SessionState sessionState = SESSION_STATES.computeIfAbsent(server, k -> new SessionState());
 
         // Tiered cooldown check based on maid's favorability level
         long currentTick = server.getTickCount();
         int favLevel = maid.getFavorabilityManager().getLevel();
         long cooldown = getCooldownForLevel(favLevel);
 
-        Long lastKiss = session.cooldowns.get(playerId);
-        if (lastKiss != null) {
+        UUID playerId = player.getUUID();
+        UUID maidId = maid.getUUID();
+        Map<UUID, Long> playerCooldowns = sessionState.cooldownsByPlayerAndMaid.computeIfAbsent(playerId, k -> new HashMap<>());
+        Long lastKiss = playerCooldowns.get(maidId);
+        if (!ignoreCooldown && lastKiss != null) {
             long delta = currentTick - lastKiss;
             if (delta < 0) {
-                session.cooldowns.remove(playerId);
-                session.kissTimestamps.remove(playerId);
-                TouhouMaidAffection.LOGGER.debug("Detected negative kiss cooldown delta, resetting state for player {}", playerId);
+                TouhouMaidAffection.LOGGER.debug("Detected tick rollback for player {} maid {} (current: {}, last: {}), resetting kiss state.",
+                        playerId, maidId, currentTick, lastKiss);
+                sessionState.cooldownsByPlayerAndMaid.remove(playerId);
+                sessionState.kissTimestamps.remove(playerId);
             } else if (cooldown > 0 && delta < cooldown) {
-                return;
+                return false;
             }
         }
 
         // Record cooldown
-        session.cooldowns.put(playerId, currentTick);
+        playerCooldowns.put(maidId, currentTick);
 
         // Apply favorability (dynamic Type with configured values)
         int favPoints = ModConfig.FAVORABILITY_POINTS.get();
@@ -145,13 +193,14 @@ public class KissMaidHandler {
                 1.0F, 1.0F);
 
         // Broadcast particle packet to all tracking clients
-        KissMaidPayload payload = new KissMaidPayload(maid.getId(), player.getId(), carriedKiss);
+        KissMaidPayload payload = new KissMaidPayload(maid.getId(), player.getId(), allowFovZoom);
         TouhouMaidAffection.CHANNEL.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> maid), payload);
 
         // Buff system: track kiss timestamps and check threshold
-        if (ModConfig.BUFF_ENABLED.get()) {
-            handleBuffTrigger(session, player, maid, currentTick, favLevel);
+        if (applyStandardBuffTracking && ModConfig.BUFF_ENABLED.get()) {
+            handleBuffTrigger(sessionState, player, maid, currentTick);
         }
+        return true;
     }
 
     private static int getAmplifierForLevel(int level) {
@@ -163,12 +212,12 @@ public class KissMaidHandler {
         };
     }
 
-    private static void handleBuffTrigger(SessionState session, Player player, EntityMaid maid, long currentTick, int favLevel) {
+    private static void handleBuffTrigger(SessionState sessionState, Player player, EntityMaid maid, long currentTick) {
         UUID playerId = player.getUUID();
         int threshold = ModConfig.BUFF_KISS_THRESHOLD.get();
         long window = ModConfig.BUFF_KISS_WINDOW.get();
 
-        List<Long> timestamps = session.kissTimestamps.computeIfAbsent(playerId, k -> new ArrayList<>());
+        List<Long> timestamps = sessionState.kissTimestamps.computeIfAbsent(playerId, k -> new ArrayList<>());
         timestamps.add(currentTick);
 
         // Remove timestamps outside the window
@@ -178,36 +227,16 @@ public class KissMaidHandler {
             // Clear timestamps to reset counter
             timestamps.clear();
 
-            int duration = ModConfig.BUFF_DURATION.get();
-            int amplifier = getAmplifierForLevel(favLevel);
-
-            // Apply Maid's Prayer (custom effect with built-in regeneration) to both
-            player.addEffect(new MobEffectInstance(
-                    ModEffects.MAIDS_PRAYER.get(), duration, amplifier, false, true, true));
-            maid.addEffect(new MobEffectInstance(
-                    ModEffects.MAIDS_PRAYER.get(), duration, amplifier, false, true, true));
+            applyMaidsPrayer(player, maid, ModConfig.BUFF_DURATION.get());
         }
     }
 
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        MinecraftServer server = event.getEntity().getServer();
-        if (server == null) {
-            return;
+    private static final class SessionState {
+        private final Map<UUID, Map<UUID, Long>> cooldownsByPlayerAndMaid = new HashMap<>();
+        private final Map<UUID, List<Long>> kissTimestamps = new HashMap<>();
+
+        private boolean isEmpty() {
+            return cooldownsByPlayerAndMaid.isEmpty() && kissTimestamps.isEmpty();
         }
-
-        SessionState session = SESSION.get(server);
-        if (session == null) {
-            return;
-        }
-
-        UUID playerId = event.getEntity().getUUID();
-        session.cooldowns.remove(playerId);
-        session.kissTimestamps.remove(playerId);
-    }
-
-    @SubscribeEvent
-    public static void onServerStopped(ServerStoppedEvent event) {
-        SESSION.remove(event.getServer());
     }
 }
