@@ -23,8 +23,43 @@ public abstract class LivingEntityLapPillowSleepMixin {
     @Inject(method = "getBedOrientation", at = @At("HEAD"), cancellable = true)
     private void touhou_maid_affection$bridgeLapPillowBedOrientation(CallbackInfoReturnable<Direction> cir) {
         if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.renderingDepth > 0
                 && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
             cir.setReturnValue(LapPillowClientState.resolveSleepDirection(player));
+        }
+    }
+
+    @Inject(method = "getFallFlyingTicks", at = @At("HEAD"), cancellable = true)
+    private void touhou_maid_affection$disableFallFlyingForLapPillowRender(CallbackInfoReturnable<Integer> cir) {
+        if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.renderingDepth > 0
+                && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
+            cir.setReturnValue(0);
+        }
+    }
+
+    @Inject(method = "isFallFlying", at = @At("HEAD"), cancellable = true, require = 0)
+    private void touhou_maid_affection$disableFallFlyingForLapPillowState(CallbackInfoReturnable<Boolean> cir) {
+        if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(method = "isVisuallySwimming", at = @At("HEAD"), cancellable = true)
+    private void touhou_maid_affection$disableVisualSwimmingForLapPillowRender(CallbackInfoReturnable<Boolean> cir) {
+        if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.renderingDepth > 0
+                && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(method = "isSwimming", at = @At("HEAD"), cancellable = true, require = 0)
+    private void touhou_maid_affection$disableSwimmingForLapPillowState(CallbackInfoReturnable<Boolean> cir) {
+        if ((Object) this instanceof AbstractClientPlayer player
+                && LapPillowClientState.shouldUseSleepPoseBridge(player)) {
+            cir.setReturnValue(false);
         }
     }
 }

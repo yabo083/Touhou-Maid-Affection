@@ -25,7 +25,7 @@ public class BondKeyInputHandler {
         LapPillowClientState.onClientTick(minecraft);
 
         while (BondKeyMappings.LAP_PILLOW.consumeClick()) {
-            if (LapPillowClientState.isActive() || LapPillowClientState.isLapPillowSeat(minecraft.player.getVehicle())) {
+            if (LapPillowClientState.isEngaged() || LapPillowClientState.isLapPillowSeat(minecraft.player.getVehicle())) {
                 PacketDistributor.sendToServer(new LapPillowExitPayload(0));
                 LapPillowClientState.markExitRequested();
                 continue;

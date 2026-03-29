@@ -12,12 +12,17 @@ import java.util.UUID;
 
 public final class LapPillowClientState {
     private static final int LOST_SEAT_GRACE_TICKS = 10;
+    private static final int START_CONFIRM_TIMEOUT_TICKS = 80;
+    private static final double ANCHOR_CONFIRM_RADIUS = 6.0D;
 
     private static boolean active;
+    private static boolean startPending;
     private static boolean exitRequested;
     private static UUID maidUuid;
     private static LapPillowPoseSnapshot pose = LapPillowPoseSnapshot.maidSitPlayerLieDefault();
+    private static int pendingConfirmTicks;
     private static int lostSeatTicks;
+    private static boolean sessionContextConfirmed;
     private static boolean sleepBridgeActive;
     private static Direction sleepBridgeDirection;
     private static boolean angleLockEnabled;
@@ -28,10 +33,13 @@ public final class LapPillowClientState {
     }
 
     public static void markStartRequested(UUID maidUuid, LapPillowPoseSnapshot poseSnapshot) {
-        active = true;
+        active = false;
+        startPending = true;
         LapPillowClientState.maidUuid = maidUuid;
         pose = poseSnapshot == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : poseSnapshot.clamp();
+        pendingConfirmTicks = 0;
         lostSeatTicks = 0;
+        sessionContextConfirmed = false;
         exitRequested = false;
         sleepBridgeActive = false;
         sleepBridgeDirection = null;
@@ -68,38 +76,76 @@ public final class LapPillowClientState {
     }
 
     public static void onClientTick(Minecraft minecraft) {
-        if (!active) {
+        if (!active && !startPending) {
             return;
         }
         if (minecraft.player == null || minecraft.level == null) {
             clear();
             return;
         }
-        boolean seated = isLapPillowSeat(minecraft.player.getVehicle());
-        boolean keepLieBridge = pose.playerLying() && !exitRequested;
-        if (seated || keepLieBridge) {
+        AbstractClientPlayer player = minecraft.player;
+        boolean seated = isLapPillowSeat(player.getVehicle());
+        boolean hasAnchorContext = hasConfirmedAnchorContext(player);
+        boolean contextConfirmed = seated || (pose.playerLying() && hasAnchorContext);
+
+        if (startPending) {
+            if (exitRequested) {
+                clear();
+                return;
+            }
+            if (!contextConfirmed) {
+                pendingConfirmTicks++;
+                sessionContextConfirmed = false;
+                updateSleepBridgeState(null);
+                if (pendingConfirmTicks > START_CONFIRM_TIMEOUT_TICKS) {
+                    TouhouMaidAffection.LOGGER.info(
+                            "[LapPillow] Client start confirmation timeout: maid={} requestedPose={} pendingTicks={}",
+                            maidUuid,
+                            pose.mode().serializedName(),
+                            pendingConfirmTicks
+                    );
+                    clear();
+                }
+                return;
+            }
+            active = true;
+            startPending = false;
+            pendingConfirmTicks = 0;
             lostSeatTicks = 0;
+            sessionContextConfirmed = true;
+            TouhouMaidAffection.LOGGER.info(
+                    "[LapPillow] Client session confirmed: maid={} pose={} context={}",
+                    maidUuid,
+                    pose.mode().serializedName(),
+                    seated ? "seat" : "anchor"
+            );
+        }
+
+        if (contextConfirmed && !exitRequested) {
+            lostSeatTicks = 0;
+            sessionContextConfirmed = true;
             if (pose.playerLying()) {
-                minecraft.player.setForcedPose(net.minecraft.world.entity.Pose.SLEEPING);
+                player.setForcedPose(net.minecraft.world.entity.Pose.SLEEPING);
                 if (angleLockEnabled) {
-                    minecraft.player.setYBodyRot(lockedYaw);
-                    minecraft.player.setYHeadRot(lockedYaw);
-                    minecraft.player.yBodyRotO = lockedYaw;
-                    minecraft.player.yHeadRotO = lockedYaw;
+                    player.setYBodyRot(lockedYaw);
+                    player.setYHeadRot(lockedYaw);
+                    player.yBodyRotO = lockedYaw;
+                    player.yHeadRotO = lockedYaw;
                 }
             } else {
-                minecraft.player.setForcedPose(null);
+                player.setForcedPose(null);
                 if (angleLockEnabled) {
-                    minecraft.player.setYBodyRot(lockedYaw);
-                    minecraft.player.setYHeadRot(lockedYaw);
-                    minecraft.player.yBodyRotO = lockedYaw;
-                    minecraft.player.yHeadRotO = lockedYaw;
+                    player.setYBodyRot(lockedYaw);
+                    player.setYHeadRot(lockedYaw);
+                    player.yBodyRotO = lockedYaw;
+                    player.yHeadRotO = lockedYaw;
                 }
             }
-            updateSleepBridgeState(minecraft.player);
+            updateSleepBridgeState(player);
             return;
         }
         lostSeatTicks++;
+        sessionContextConfirmed = false;
         updateSleepBridgeState(null);
         if (lostSeatTicks > LOST_SEAT_GRACE_TICKS || (exitRequested && lostSeatTicks > 1)) {
             clear();
@@ -110,6 +156,10 @@ public final class LapPillowClientState {
         return active;
     }
 
+    public static boolean isEngaged() {
+        return active || startPending;
+    }
+
     public static LapPillowPoseSnapshot pose() {
         return pose;
     }
@@ -117,6 +167,8 @@ public final class LapPillowClientState {
     public static boolean shouldUseSleepPoseBridge(AbstractClientPlayer player) {
         Minecraft minecraft = Minecraft.getInstance();
         return active
+                && !startPending
+                && sessionContextConfirmed
                 && pose.playerLying()
                 && !exitRequested
                 && minecraft.player != null
@@ -132,19 +184,55 @@ public final class LapPillowClientState {
     }
 
     private static void clear() {
+        active = false;
+        startPending = false;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
             minecraft.player.setForcedPose(null);
         }
-        active = false;
         maidUuid = null;
         pose = LapPillowPoseSnapshot.maidSitPlayerLieDefault();
+        pendingConfirmTicks = 0;
         lostSeatTicks = 0;
+        sessionContextConfirmed = false;
         exitRequested = false;
         sleepBridgeActive = false;
         sleepBridgeDirection = null;
         angleLockEnabled = false;
         lockedYaw = 0.0F;
+    }
+
+    private static boolean hasConfirmedAnchorContext(AbstractClientPlayer player) {
+        if (!pose.playerLying()) {
+            return false;
+        }
+        for (Entity entity : player.level().getEntities(
+                player,
+                player.getBoundingBox().inflate(ANCHOR_CONFIRM_RADIUS),
+                LapPillowClientState::isLapPillowSeat
+        )) {
+            if (!matchesOwner(player, entity) || !matchesMaid(entity)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean matchesOwner(AbstractClientPlayer player, Entity entity) {
+        if (!(entity instanceof LapPillowAnchorEntity anchor)) {
+            return true;
+        }
+        UUID ownerUuid = anchor.getOwnerPlayerUuid();
+        return ownerUuid == null || ownerUuid.equals(player.getUUID());
+    }
+
+    private static boolean matchesMaid(Entity entity) {
+        if (maidUuid == null || !(entity instanceof LapPillowAnchorEntity anchor)) {
+            return true;
+        }
+        UUID anchorMaidUuid = anchor.getMaidUuid();
+        return anchorMaidUuid == null || anchorMaidUuid.equals(maidUuid);
     }
 
     private static void updateSleepBridgeState(AbstractClientPlayer player) {
@@ -156,10 +244,10 @@ public final class LapPillowClientState {
         sleepBridgeActive = activeNow;
         sleepBridgeDirection = directionNow;
         TouhouMaidAffection.LOGGER.info(
-                "[LapPillow] Lie bridge state: active={} playerLieSource=vanilla_sleep_bridge renderSleepPoseActive={} forcedPoseApplied={} seatPassenger={} bedOrientation={}",
+                "[LapPillow] Lie bridge state: active={} pending={} contextConfirmed={} forcedPoseApplied={} seatPassenger={} bedOrientation={}",
                 activeNow,
-                activeNow,
-                activeNow,
+                startPending,
+                sessionContextConfirmed,
                 player != null && player.getForcedPose() == net.minecraft.world.entity.Pose.SLEEPING,
                 player != null && isLapPillowSeat(player.getVehicle()),
                 directionNow == null ? "none" : directionNow

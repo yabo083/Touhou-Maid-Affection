@@ -355,7 +355,7 @@ public class ModConfig {
                 .comment("Additional Y-axis rotation offset for the rescue overlay maid shown in front of the player",
                         "Useful when you want the maid to face the screen more directly",
                         "Range: -180 to 180 degrees")
-                .defineInRange("overlayViewYawOffset", 0.0, -180.0, 180.0);
+                .defineInRange("overlayViewYawOffset", 180.0, -180.0, 180.0);
 
         BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET = builder
                 .comment("Additional Z-axis rotation offset for the rescue overlay maid shown in front of the player",
