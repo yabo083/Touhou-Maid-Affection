@@ -419,7 +419,7 @@
 - 玩家处于 lying 分支时，服务端会主动解除玩家与锚点的乘骑关系，并让锚点在该模式下拒绝新增乘客，彻底切断“躺姿回流到骑乘链路”的路径。
 - 躺姿分支采用“`noGravity` + 零动量 + 阈值纠偏”策略：只在偏移超过阈值时才进行安全高度探测与传送修正，同时持续清零 `deltaMovement` 与 `fallDistance`，避免每 tick 传送导致的网络抖动。
 - 客户端睡姿桥接在 `exitRequested` 置位后会立刻停止续期，防止退出膝枕后残留躺姿。
-- 客户端渲染仍保留“双层桥接”作为兼容兜底：主链路在 `LivingEntityRenderer#render` 改写 `isPassenger`，并通过 `EntityRenderDispatcher` 渲染深度门禁启用 `Entity#isPassenger` / `Entity#getVehicle` / `LivingEntity#isSleeping` 的渲染期局部覆写，兼容替换渲染器与动画管线差异。
+- 客户端渲染仍保留“双层桥接”作为兼容兜底：主链路在 `LivingEntityRenderer#render` 改写 `isPassenger`，并通过 `EntityRenderDispatcher` 渲染深度门禁启用 `Entity#isPassenger` / `Entity#getVehicle` / `Entity#hasPose(SLEEPING)` / `Entity#getPose` / `Entity#onGround` / `LivingEntity#isSleeping` 的渲染期局部覆写，兼容替换渲染器与动画管线差异。
 - 睡姿桥接坚持“仅渲染期生效”边界：`Entity` 与 `LivingEntity` 相关覆写必须受渲染深度门禁约束，避免影响常规游戏逻辑、网络 `SetPassengersPacket` 与原版睡眠界面状态机。
 - 锚点实体本身带有 owner / maid 语义与自清理逻辑，因此即便玩家强制传送、跨维度或会话状态异常，也能在服务端自行清理残留非法锚点。
 - 角度冻结由独立的 `LapPillowAngleLockPayload` 上报到服务端，状态保存在 `LapPillowState`；冻结时只锁定会话内实体姿态（玩家模型、女仆、锚点朝向），不接管第三人称镜头旋转。
@@ -432,8 +432,9 @@
 - 这是“客户端热键发起，服务端会话维持”的姿态状态机；实际空间基准依赖中间锚点实体，玩家传送只作为超阈值偏移时的纠偏手段而非常态更新路径。
 - `BondData` 负责保存长期配置，`LapPillowState` 负责保存一次交互会话，这让“配置”与“运行中状态”第一次在膝枕系统里被明确拆开。
 - `LapPillowState` 新增“当前会话女仆判定”接口，供晨安吻/随机礼物等外部服务复用，形成统一的会话互斥边界而非分散补丁。
-- 客户端仍保留乐观启动，但会通过锚点实体 tag、同步到 `BondClientStateCache` 的膝枕姿态配置、以及 mixin 睡姿桥接在渲染层自校正。
+- 客户端仍保留乐观启动，但新增 `startPending` 上下文确认：只有检测到座位或匹配锚点后才切换到 active，会话超时会自动回收，结合 `BondClientStateCache` 姿态配置与渲染桥接共同完成自校正。
 - 玩家 lying 分支当前采用“非乘骑 + forced pose + 客户端渲染桥接”组合，未正式接入 fake-bed 睡眠链路；此前对 `sleepingPos` 的试探性接入已回退，因为它会把玩家拖入原版真正睡眠流程并引入黑屏与坐立抖动。当前策略优先保证跨渲染器稳定躺姿，而不是回到原版睡眠状态机。
+- 为兼容会在 tick 中改写玩家姿态的第三方模组（如 TACZ / crawl 姿态链路），膝枕 lying 会话新增“姿态写入护栏”：客户端与服务端会阻断非 `Pose.SLEEPING` 的 `setPose` / `setForcedPose` 覆写；退出会话时先清理会话态再恢复姿态，避免外部 `null` 或 `SWIMMING` 覆写导致“悬空站立”。
 - 当玩家处于 lying 分支时，锚点仍负责局部坐标求解与会话存活判定，但不再承担玩家乘客挂点输出。
 - 女仆处于 lying 分支时，仍借由睡眠姿态接口触发躺姿，但已避免“每 tick 同时强制传送 + startSleeping”这类抖动放大组合。
 - 历史的 `GoldenDream` 效果已从注册与膝枕链路中移除，避免与当前复合效果职责重复。

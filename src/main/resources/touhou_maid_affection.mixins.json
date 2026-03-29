@@ -6,7 +6,9 @@
   "mixins": [
     "MaidBegTaskMixin",
     "MaidRideBegTaskMixin",
-    "EntityMaidAccessorMixin"
+    "EntityMaidAccessorMixin",
+    "EntityLapPillowPoseServerGuardMixin",
+    "PlayerLapPillowForcedPoseServerGuardMixin"
   ],
   "client": [
     "AbstractMaidContainerGuiMixin",
@@ -14,7 +16,10 @@
     "client.GeoReplacedEntityRendererLapPillowSitMixin",
     "client.EntityLapPillowPassengerMixin",
     "client.EntityRenderDispatcherLapPillowMixin",
-    "client.LivingEntityLapPillowSleepMixin"
+    "client.LivingEntityLapPillowSleepMixin",
+    "client.EntityLapPillowPoseClientGuardMixin",
+    "client.PlayerLapPillowForcedPoseClientGuardMixin",
+    "client.PlayerModelLapPillowSleepPoseMixin"
   ],
   "injectors": {
     "defaultRequire": 1

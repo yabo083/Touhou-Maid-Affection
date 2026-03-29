@@ -330,6 +330,7 @@ public final class LapPillowHandler {
         boolean restoreSit = LapPillowState.wasMaidSitting(player);
         boolean restoreSleep = LapPillowState.wasMaidSleeping(player);
         boolean restoreNoGravity = LapPillowState.wasPlayerNoGravity(player);
+        LapPillowState.clear(player);
 
         if (player.isPassenger()) {
             player.stopRiding();
@@ -361,7 +362,6 @@ public final class LapPillowHandler {
             }
         }
 
-        LapPillowState.clear(player);
         TouhouMaidAffection.LOGGER.info(
                 "[LapPillow] Cleared: player={} maid={} anchor={} reason={}",
                 player.getScoreboardName(),
