@@ -83,6 +83,11 @@ public final class EmergencyRescueData {
         return hasRegisteredRescuer(player, canonicalId);
     }
 
+    public static boolean isContributorAlreadyUnlocked(ServerPlayer player, UUID maidUuid) {
+        String canonicalId = toCanonicalRescuerId(BondData.of(player), maidUuid);
+        return hasRegisteredAlias(player, canonicalId);
+    }
+
     public static void markRegisteredRescuer(ServerPlayer player, UUID maidUuid) {
         String canonicalId = toCanonicalRescuerId(BondData.of(player), maidUuid);
         markRegisteredRescuer(player, canonicalId);
