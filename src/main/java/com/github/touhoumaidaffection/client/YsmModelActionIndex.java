@@ -173,10 +173,10 @@ public final class YsmModelActionIndex {
         String modelRoot = descriptorLocation.getPath().substring(0, descriptorLocation.getPath().length() - "/ysm.json".length());
         String animationPrefix = modelRoot + "/animations/";
         Set<String> seen = new HashSet<>(actions.keySet());
-        for (ResourceLocation location : listResourcesSafely(resourceManager, "", candidate ->
+        for (ResourceLocation location : listResourceLocationsSafely(resourceManager, animationPrefix, candidate ->
                 candidate.getNamespace().equals(descriptorLocation.getNamespace())
                         && candidate.getPath().startsWith(animationPrefix)
-                        && candidate.getPath().endsWith(".animation.json")).keySet()) {
+                        && candidate.getPath().endsWith(".animation.json"))) {
             JsonObject animationJson = readJson(resourceManager, location);
             if (animationJson == null || !animationJson.has("animations") || !animationJson.get("animations").isJsonObject()) {
                 continue;
@@ -384,7 +384,7 @@ public final class YsmModelActionIndex {
     private static ResourceLocation findDescriptor(ResourceManager resourceManager, List<String> lookupRoots) {
         ResourceLocation best = null;
         int bestScore = Integer.MAX_VALUE;
-        for (ResourceLocation candidate : listResourcesSafely(resourceManager, "", location -> location.getPath().endsWith("/ysm.json")).keySet()) {
+        for (ResourceLocation candidate : listResourceLocationsSafely(resourceManager, "", location -> location.getPath().endsWith("/ysm.json"))) {
             String rootPath = candidate.getPath().substring(0, candidate.getPath().length() - "/ysm.json".length());
             int score = matchScore(lookupRoots, rootPath);
             if (score >= 0 && score < bestScore) {
@@ -395,13 +395,13 @@ public final class YsmModelActionIndex {
         return best;
     }
 
-    private static Map<ResourceLocation, Resource> listResourcesSafely(ResourceManager resourceManager,
-                                                                       String pathPrefix,
-                                                                       Predicate<ResourceLocation> filter) {
+    static List<ResourceLocation> listResourceLocationsSafely(ResourceManager resourceManager,
+                                                              String pathPrefix,
+                                                              Predicate<ResourceLocation> filter) {
         try {
-            return resourceManager.listResources(pathPrefix, filter);
-        } catch (RuntimeException ignored) {
-            return Map.of();
+            return new ArrayList<>(resourceManager.listResources(pathPrefix, filter).keySet());
+        } catch (Throwable ignored) {
+            return List.of();
         }
     }
 

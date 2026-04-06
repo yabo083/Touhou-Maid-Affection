@@ -17,6 +17,7 @@
 - 建立统一变更记录规范：`CHANGELOG.md` 作为用户向更新历史主入口，README 不再内嵌历史版本日志。
 - 客户端 YSM 路径归一化逻辑收敛为 `NamespacedPathNormalizer`，减少分散字符串解析。
 - Modrinth 页面正文同步源切换为英文 README，保持对外发布页信息一致。
+- 残血救护覆盖层视角默认偏航调整为 `180`（`overlayViewYawOffset`），默认朝向更贴合正面展示。
 
 ### Fixed
 - 修复女仆配置页读取 YSM 动作时可能触发的 `ArrayIndexOutOfBoundsException` 崩溃问题：当资源索引异常或命名空间字符串不规范时，改为 best-effort 降级，而不是直接中断界面。
