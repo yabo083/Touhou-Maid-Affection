@@ -126,7 +126,7 @@ modrinth {
     gameVersions = [project.minecraft_version]
     loaders = ["neoforge"]
     changelog = System.getenv("CHANGELOG") ?: "See https://github.com/yabo083/maid-affection/releases/tag/v${project.mod_version}"
-    syncBodyFrom = rootProject.file("README_zh.md").text
+    syncBodyFrom = rootProject.file("README.md").text
     dependencies {
         required.project "touhou-little-maid"
     }

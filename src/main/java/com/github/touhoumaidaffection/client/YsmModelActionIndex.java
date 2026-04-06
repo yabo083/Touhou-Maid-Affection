@@ -1,5 +1,6 @@
 package com.github.touhoumaidaffection.client;
 
+import com.github.touhoumaidaffection.util.NamespacedPathNormalizer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -16,9 +17,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -172,7 +173,7 @@ public final class YsmModelActionIndex {
         String modelRoot = descriptorLocation.getPath().substring(0, descriptorLocation.getPath().length() - "/ysm.json".length());
         String animationPrefix = modelRoot + "/animations/";
         Set<String> seen = new HashSet<>(actions.keySet());
-        for (ResourceLocation location : resourceManager.listResources("", candidate ->
+        for (ResourceLocation location : listResourcesSafely(resourceManager, "", candidate ->
                 candidate.getNamespace().equals(descriptorLocation.getNamespace())
                         && candidate.getPath().startsWith(animationPrefix)
                         && candidate.getPath().endsWith(".animation.json")).keySet()) {
@@ -383,7 +384,7 @@ public final class YsmModelActionIndex {
     private static ResourceLocation findDescriptor(ResourceManager resourceManager, List<String> lookupRoots) {
         ResourceLocation best = null;
         int bestScore = Integer.MAX_VALUE;
-        for (ResourceLocation candidate : resourceManager.listResources("", location -> location.getPath().endsWith("/ysm.json")).keySet()) {
+        for (ResourceLocation candidate : listResourcesSafely(resourceManager, "", location -> location.getPath().endsWith("/ysm.json")).keySet()) {
             String rootPath = candidate.getPath().substring(0, candidate.getPath().length() - "/ysm.json".length());
             int score = matchScore(lookupRoots, rootPath);
             if (score >= 0 && score < bestScore) {
@@ -392,6 +393,16 @@ public final class YsmModelActionIndex {
             }
         }
         return best;
+    }
+
+    private static Map<ResourceLocation, Resource> listResourcesSafely(ResourceManager resourceManager,
+                                                                       String pathPrefix,
+                                                                       Predicate<ResourceLocation> filter) {
+        try {
+            return resourceManager.listResources(pathPrefix, filter);
+        } catch (RuntimeException ignored) {
+            return Map.of();
+        }
     }
 
     private static int matchScore(List<String> lookupRoots, String rootPath) {
@@ -453,37 +464,11 @@ public final class YsmModelActionIndex {
     }
 
     private static String normalizeModelId(String modelId) {
-        if (modelId == null || modelId.isBlank()) {
-            return "";
-        }
-        String normalized = modelId.trim().toLowerCase(Locale.ROOT).replace('\\', '/');
-        if (normalized.contains(":")) {
-            normalized = normalized.split(":", 2)[1];
-        }
-        if (normalized.endsWith("/ysm.json")) {
-            normalized = normalized.substring(0, normalized.length() - "/ysm.json".length());
-        }
-        if (normalized.startsWith("builtin/")) {
-            normalized = normalized.substring("builtin/".length());
-        }
-        return normalized;
+        return NamespacedPathNormalizer.normalizeModelId(modelId);
     }
 
     private static String normalizeTextureId(String textureId) {
-        if (textureId == null || textureId.isBlank()) {
-            return "";
-        }
-        String normalized = textureId.trim().toLowerCase(Locale.ROOT).replace('\\', '/');
-        if (normalized.contains(":")) {
-            normalized = normalized.split(":", 2)[1];
-        }
-        if (normalized.endsWith(".png")) {
-            normalized = normalized.substring(0, normalized.length() - 4);
-        }
-        if (normalized.startsWith("textures/")) {
-            normalized = normalized.substring("textures/".length());
-        }
-        return normalized;
+        return NamespacedPathNormalizer.normalizeTextureId(textureId);
     }
 
     public record DetectedYsmAction(String actionId, String displayName) {
