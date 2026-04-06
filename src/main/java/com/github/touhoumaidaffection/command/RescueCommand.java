@@ -3,7 +3,7 @@ package com.github.touhoumaidaffection.command;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
-import com.github.touhoumaidaffection.bond.rescue.EmergencyHealListener;
+import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueService;
 import com.github.touhoumaidaffection.bond.rescue.RescueSoundSyncService;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -50,9 +50,11 @@ public final class RescueCommand {
 
     private static int executeSelfQuery(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
+        EmergencyRescueService.refreshChargesIfNeeded(player);
+
         int current = EmergencyRescueData.getChargeCount(player);
         int max = EmergencyRescueData.getMaxChargeCount(player);
-        long currentDay = EmergencyHealListener.getCurrentRescueDay(player);
+        long currentDay = EmergencyRescueService.getCurrentRescueDay(player);
         long lastReplenishDay = EmergencyRescueData.getLastReplenishDay(player);
         boolean refreshedToday = currentDay <= lastReplenishDay;
         boolean globalEnabled = ModConfig.BOND_EMERGENCY_RESCUE_ENABLED.get();
@@ -135,3 +137,4 @@ public final class RescueCommand {
         return 1;
     }
 }
+

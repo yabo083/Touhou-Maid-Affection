@@ -21,60 +21,10 @@
 
 ---
 
-## 🆕 v1.7.1.2-forge1.20.1 - Rescue Stability Hotfix
+## 📒 Changelog
 
-- Fixed an issue where Emergency Rescue charges could incorrectly refresh after player death/respawn within the same MC day.
-- Fixed duplicate Emergency Rescue charge contribution from the same maid after revive/rebind by deduplicating with a stable contributor ID.
-- Hardened Rescue state persistence across clone/respawn capability recovery and added optional verbose refresh diagnostics.
-
-## 🆕 v1.7.1.1 - Hotfix
-
-- Fixed a lap pillow unlock-state bug: before level-3 bond unlock, pressing `B` now gets blocked correctly.
-- Added explicit lock-state feedback in both client-side key handling and server-side validation.
-
-## 🆕 v1.7.1 - 心有灵犀 (Soul Resonance)
-
-- Added four Bond System abilities: Lap Pillow, Morning Kiss, Emergency Rescue, and Random Gift.
-- These abilities become available when the maid reaches favorability level 3; each one consumes inventory Power Points only on first unlock (not on every use).
-
-### 🛏️ Lap Pillow
-
-- Press `B` to start/exit after unlocking, with a visual configuration UI.
-- Supports drag-and-scroll relative position tuning plus saved default sit/lie combinations for maid and player.
-- Maid-side YSM actions are supported when model actions are detected; player-side remains built-in sit/lie, and players can still use native YSM keys (such as `Z`) manually.
-- Press `V` to toggle angle lock for second/third-person photo composition.
-- While active, both player and maid receive the Eternal Utopia buff.
-
-### 🌅 Morning Kiss
-
-- Requires level-3 favorability and ability unlock; supports both manual call and automatic triggering in configured time windows.
-- Voice settings are linked with the maid's current sound pack, with random-all/random-group/specific-clip modes.
-- Time ranges use 24-hour format, for example `06:00-08:00` and `18:00-20:00` (see config examples).
-
-### 🚨 Emergency Rescue
-
-- Requires level-3 favorability and ability unlock, then auto-triggers when the player's HP is in danger.
-- Rescue action and voice behavior are configurable, including TLM voice and custom OGG files.
-- Supports server-side predefined voice sync to clients, with optional fallback to the `common` pool.
-- Player-facing commands: `/tma rescue`, `/tma rescue on`, `/tma rescue off`, `/tma rescue toggle`.
-- Admin commands: `/tma rescue clear|reset`, `/tma rescue sound sync`.
-
-### 🎁 Random Gift
-
-- Requires level-3 favorability and ability unlock; gifts accumulate on real-time intervals and queue while away.
-- Default pool covers most container-valid vanilla items, with optional sampled mod items.
-- Datapack tags can extend/override and blacklist gift entries:
-  - `data/touhou_maid_affection/tags/items/bond_random_gift_pool.json`
-  - `data/touhou_maid_affection/tags/items/bond_random_gift_blacklist.json`
-- Modpack authors can freely tune what maids are allowed to gift.
-
-- Thank you for playing.
-
-## 🆕 1.6.1 Fixes
-
-- Fixed an issue where kissing could be incorrectly blocked after switching to another save without restarting the game.
-- Kiss cooldown state is now isolated per world/server session, so saves no longer affect each other.
-- Kiss cooldown is now tracked per maid, so one maid's cooldown no longer blocks kissing other maids.
+- Full release history now lives in [CHANGELOG.md](CHANGELOG.md).
+- This README keeps usage docs and only brief highlights.
 
 ## ✨ Features
 
@@ -174,6 +124,7 @@ Output jar at `build/libs/touhou-maid-affection-x.x.x.jar`.
 ## 📚 Maintenance Docs
 
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md): Core architecture boundaries and module responsibilities
+- [CHANGELOG.md](CHANGELOG.md): User-facing release history (Added/Changed/Fixed/Removed)
 - [TESTING.md](TESTING.md): Testing scope, conventions, and regression commands
 - [DEPLOYMENT.md](DEPLOYMENT.md): Build/release constraints and pre-release checklist
 

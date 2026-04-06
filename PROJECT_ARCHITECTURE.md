@@ -43,6 +43,22 @@
 
 - `TESTING.md`：维护测试范围、命名约定和最小回归命令（`test + compileJava`）。
 - `DEPLOYMENT.md`：维护构建产物、发布约束和发版前检查清单。
+- `CHANGELOG.md`：维护用户可感知的版本变更历史（`Added/Changed/Fixed/Removed`）。
+
+### 2.5 CI/CD 与发布链路（当前仓库事实）
+
+- 工作流文件为 `.github/workflows/build.yml`，触发条件是：`push main`、`pull_request main`、以及 tag `v*`。
+- `build` 作业在 `ubuntu-latest + Java 21` 上执行 `./gradlew build`，并上传 `build/libs/touhou-maid-affection-*.jar`。
+- `release` 作业仅在 `refs/tags/v*` 下运行：先创建 GitHub Release，再按 token 条件发布到 Modrinth 与 CurseForge。
+- Gradle 发布侧使用 `com.modrinth.minotaur`；`modrinth` 任务依赖 `MODRINTH_TOKEN`，项目正文当前由 `README.md` 同步（`syncBodyFrom`）。
+- `gradle.properties` 中的 `mod_version` 是产物版本源；tag 是自动发布闸门，两者需要保持一致。
+
+### 2.6 关键外部参考入口（长期有效）
+
+- Touhou Little Maid 源码（1.21 分支）：`https://github.com/TartaricAcid/TouhouLittleMaid/tree/1.21`
+- TLM 附属开发示例：`https://github.com/TartaricAcid/TLMAdditionExample`
+- NeoForge 文档：`https://docs.neoforged.net/`
+- NeoForge Mixin 指南：`https://docs.neoforged.net/docs/advanced/mixin/`
 
 ## 3. 架构与目录拓扑
 
@@ -361,13 +377,16 @@
 
 #### 生命周期
 
-- 玩家 tick 时由 `EmergencyHealListener.ensureRescueChargesUpToDate` 检查是否跨日并补满次数。
-- 女仆解锁 `emergency_heal` 时，按 canonical id（`provider:<stable_id>` 或 `maid:<uuid>`）进行当日即时补充；同贡献者只允许注册一次，避免复活重解锁重复叠加次数。
-- 监听致命伤害前先经过“双重开关”门禁：`ModConfig` 全局开关 + `Capability` 中玩家个人开关。
+- 救援链路改为事件驱动：`EmergencyHealListener` 监听 `LivingHurtEvent` 与 `LivingDeathEvent`，不再使用玩家 tick 轮询。
+- 事件入口最前置执行轻量门禁：仅检查服务端玩家类型、`ModConfig` 全局开关与 `Attachment` 玩家个人开关，未通过直接返回。
+- 仅当伤害进入“致命或阈值窗口”时，才懒刷新每日次数并进入救援计算；常规伤害不触发重逻辑。
+- `LivingDeathEvent` 作为兜底链路，覆盖极端伤害流程，避免漏救援。
+- 女仆解锁 `emergency_heal` 时，先按“贡献者身份（provider 优先，`maid:<uuid>` 兜底）”判重；同一女仆跨复活/换壳仅首次生效，随后才按 canonical id 进行当日即时补充。
 - 玩家受到致命或濒死伤害时，监听器尝试消耗一个救援名额。
-- 若成功，则取消伤害、回复生命并施加再生/伤害吸收/抗火。
+- 若成功，则取消伤害或取消死亡、回复生命并施加再生/伤害吸收/抗火。
 - 随后发送 `MaidRescuePopPayload`（含音效策略）到客户端播放弹出表现。
 - payload 中的 `maidUuid` 语义固定为“女仆实体 UUID（档案键）”；服务端会先按 canonical id 解析女仆，再以 provider/model 作为 fallback，避免历史脏数据导致语音源错配。
+- 玩家执行 `/tma rescue` 查询时也会触发一次懒刷新，保证展示的是当天最新救援次数。
 
 #### 数据流向
 
@@ -449,6 +468,7 @@
 - `screen/component/*`：弹窗、滚动列表、按钮行、分栏页等 UI 基础件。
 - `BondGuiTokens`：统一维护羁绊页与二级页的设计 token（间距、控件高度、状态色、语义色），避免各页面继续散落硬编码常量。
 - `util/PowerPointInventoryHelper`：统一 P 点统计/扣除逻辑，避免服务端解锁流程与客户端显示各自维护一套实现。
+- `util/NamespacedPathNormalizer`：统一 `modelId/textureId` 的 namespace 剥离与路径归一化，避免在异常命名输入下出现解析越界。
 
 #### 生命周期
 
@@ -486,7 +506,7 @@
 
 - `YSMCompatibility` 只判断模组是否存在。
 - `YSMActionBridge` / `YSMAnimationHelper` 做 best-effort 调用。
-- `YsmModelActionIndex` 在客户端扫描资源与 jar，提取可选动作供 GUI 配置。
+- `YsmModelActionIndex` 在客户端扫描资源与 jar，提取可选动作供 GUI 配置；资源枚举阶段采用 best-effort 兜底，遇到异常资源索引时会降级回退而不是让页面崩溃。
 - 动作互斥策略位于业务层（膝枕/晨安吻/随机礼物服务）而非桥接层：桥接保持薄封装，具体是否允许触发由会话状态门禁统一决定。
 
 #### TLM GUI / 音包兼容
@@ -650,3 +670,32 @@
 - 为 `BondData` 引入更明确的 key 常量区或子结构，降低字符串拼接扩散。
 
 当前整体架构并不混乱，主问题是“功能越来越多后，少数文件开始变成总控中心”。只要后续新增功能继续遵守“域层存状态、handler 做入口、service 跑长流程、client 只做表现”的边界，这个项目仍然具备继续扩展的可维护性。
+
+### 5.6 工程守护清单（从历史 Agent 规范提炼并校正）
+
+- 发布前必须同时校验 `mod_version` 与 Git tag 对齐；当前 release 自动化由 `v*` tag 触发。
+- `gradle/wrapper/gradle-wrapper.jar` 必须保留在仓库内，否则 CI 无法使用 wrapper 构建。
+- Touhou Little Maid 依赖应保持 `compileOnly`，避免把上游模组打进产物造成体积膨胀与潜在冲突。
+- 音效资源最终格式必须是 OGG（Minecraft 运行时约束），源格式可在独立目录维护。
+- 以第三方 mod 类为目标的 Mixin，应显式评估并在需要时设置 `remap = false`，避免映射链路误判。
+
+### 5.7 变更记录与发布叙事规范（强制）
+
+为确保“每次更新都有迹可循”，变更信息必须分层维护，不得混用：
+
+- `CHANGELOG.md`（主记录）：面向用户与整合包作者，记录“这个版本新增/变更/修复了什么”。
+- `README*.md`（入口页）：面向新用户，保留安装与使用说明；仅允许放“最新变更摘要 + CHANGELOG 链接”。
+- `Git Commit Message`（开发轨迹）：面向协作者，记录微观实现细节、重构步骤、issue 对应关系。
+
+执行规则如下：
+
+1. **触发条件（强制）**：只有在以下任一条件满足时，才允许执行一次“更新总结（release summary）”：
+   - 手动检测到版本号提升（如 `gradle.properties` 的 `mod_version` 变更，或出现新的版本 tag）。
+   - 用户明确要求“提升版本号/进行版本总结”。
+2. 若未满足触发条件：允许继续开发与提交，但**不得**生成新的版本总结条目（包括 README 版本摘要和正式 release 文案）。
+3. 触发后，发布前必须更新 `CHANGELOG.md` 的 `Unreleased`，按 `Added / Changed / Fixed / Removed` 分类整理用户可见变更。
+4. 打版本 tag 时，必须将 `Unreleased` 切分为对应版本号条目并写入日期（倒序，最新在上）。
+5. GitHub Release 文案应优先复用该版本在 `CHANGELOG.md` 中的内容，避免手写分叉。
+6. Commit message 不能替代 changelog：commit 可细、可多；changelog 必须是面向用户的一次性摘要。
+7. README 不承载完整历史；若需要展示版本动态，仅展示最近 1 个版本摘要并指向 `CHANGELOG.md`。
+8. 任何 Hotfix（包括崩溃修复）在进入“版本提升触发窗口”后，必须在 `CHANGELOG.md` 的 `Fixed` 下留痕，禁止“只改代码不记变更”。
