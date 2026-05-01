@@ -1,0 +1,29 @@
+{
+  "kiss_sound_event": "touhou_maid_affection:touhou_maid_affection.kiss",
+  "play_kiss_sound_with_voice": false,
+  "dialogue_mode": "replace",
+  "voice_mode": "append",
+  "dialogue": {
+    "morning": [
+      "早安，{player}。今天也要让我陪在你身边哦。",
+      "醒啦？{maid} 已经把今天第一份亲亲准备好了。",
+      "太阳出来了，{player}，来一个会让运气变好的早安吻。",
+      "今天的第一句喜欢你，由 {maid} 认真送达。"
+    ],
+    "evening": [
+      "虽然已经不是早上了，但 {maid} 的亲亲依然有效。",
+      "辛苦啦，{player}。这个吻就当作今天的存档奖励。",
+      "夜色很好，所以 {maid} 决定偷偷把晚安吻提前给你。"
+    ],
+    "general": [
+      "啾。{player}，这下精神恢复了吗？",
+      "{maid} 觉得，偶尔主动一点也没关系吧。",
+      "靠近一点，{player}。今天也请多多指教。",
+      "这是数据包测试用的随机早安吻台词，{maid} 正在营业中。"
+    ]
+  },
+  "voice_files": [
+    "ciallo.ogg",
+    "onjdsk.ogg"
+  ]
+}
