@@ -53,6 +53,28 @@ final class MorningKissGeneratedDialogueCache {
                 && data[3] == 'S';
     }
 
+    static Optional<String> detectPlayableVoiceExtension(byte[] data) {
+        if (isMaybeOgg(data)) {
+            return Optional.of("ogg");
+        }
+        if (isMaybeMp3(data)) {
+            return Optional.of("mp3");
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isMaybeMp3(byte[] data) {
+        if (data == null || data.length < 3) {
+            return false;
+        }
+        if (data[0] == 'I' && data[1] == 'D' && data[2] == '3') {
+            return true;
+        }
+        return data.length >= 2
+                && (data[0] & 0xFF) == 0xFF
+                && (data[1] & 0xE0) == 0xE0;
+    }
+
     synchronized void add(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, Entry entry) {
         if (maidUuid == null || pool == null || entry == null) {
             return;

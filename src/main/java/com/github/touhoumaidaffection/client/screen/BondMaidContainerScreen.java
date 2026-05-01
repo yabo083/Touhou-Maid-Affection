@@ -2,7 +2,10 @@ package com.github.touhoumaidaffection.client.screen;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.AbstractMaidContainerGui;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.ai.settings.AIChatSettingsHubScreen;
+import com.github.tartaricacid.touhoulittlemaid.ai.manager.site.AvailableSites;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
@@ -291,6 +294,14 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     }
 
     @Override
+    public void openMimoAdapterSettings() {
+        if (!isMimoAdapterAvailable()) {
+            return;
+        }
+        Minecraft.getInstance().setScreen(AIChatSettingsHubScreen.openDefault(this, AvailableSites.LLM_SITES, AvailableSites.TTS_SITES, false));
+    }
+
+    @Override
     public void closeSecondaryPage() {
         if (secondaryPage != null) {
             secondaryPage.onClose();
@@ -428,6 +439,11 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     @Override
     public boolean isRescueActionConfigAvailable() {
         return maid != null && maid.isYsmModel() && !getRescueActionModelId().isBlank();
+    }
+
+    @Override
+    public boolean isMimoAdapterAvailable() {
+        return ModConfig.TMA_MIMO_ADAPTER_ENABLED.get();
     }
 
     @Override
