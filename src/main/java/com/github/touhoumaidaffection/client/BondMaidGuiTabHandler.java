@@ -15,12 +15,16 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, value = Dist.CLIENT)
 public final class BondMaidGuiTabHandler {
     private static final String TAB_BUTTON_NAME = "bond_tab";
-    private static final int TAB_X_OFFSET = 194;
-    private static final int TAB_Y_OFFSET = 5;
     private static final int TAB_ICON_U = 207;
+    private static final Field EVENT_BUTTONS_FIELD = findEventButtonsField();
 
     private static final ResourceLocation BOND_TAB_ICON =
             ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/bond_tab_icon.png");
@@ -37,10 +41,11 @@ public final class BondMaidGuiTabHandler {
         }
 
         boolean unlocked = isBondUnlocked(maid);
+        int tabX = resolveTabX(event, gui);
         if (gui instanceof BondMaidContainerScreen) {
             BondTabButton tabButton = new BondTabButton(
-                    event.getLeftPos() + TAB_X_OFFSET,
-                    event.getTopPos() + TAB_Y_OFFSET,
+                    tabX,
+                    event.getTopPos() + BondTabLayout.TOP_TAB_Y_OFFSET,
                     TAB_ICON_U,
                     button -> { },
                     true
@@ -51,8 +56,8 @@ public final class BondMaidGuiTabHandler {
         }
 
         BondTabButton tabButton = new BondTabButton(
-                event.getLeftPos() + TAB_X_OFFSET,
-                event.getTopPos() + TAB_Y_OFFSET,
+                tabX,
+                event.getTopPos() + BondTabLayout.TOP_TAB_Y_OFFSET,
                 TAB_ICON_U,
                 button -> openBondTab(gui, maid),
                 unlocked
@@ -76,6 +81,49 @@ public final class BondMaidGuiTabHandler {
 
     private static boolean isBondUnlocked(EntityMaid maid) {
         return maid.getFavorabilityManager().getLevel() >= BondConfig.DEFAULT_UNLOCK_LEVEL;
+    }
+
+    private static int resolveTabX(MaidContainerGuiEvent.Init event, AbstractMaidContainerGui<?> gui) {
+        List<Integer> topTabXs = new ArrayList<>();
+        int leftPos = event.getLeftPos();
+        int topPos = event.getTopPos();
+        for (var child : gui.children()) {
+            if (child instanceof MaidTabButton tab && tab.getY() == topPos + BondTabLayout.TOP_TAB_Y_OFFSET) {
+                topTabXs.add(tab.getX());
+            }
+        }
+        collectEventButtonTopTabs(event, topPos, topTabXs);
+        return BondTabLayout.nextTopTabX(leftPos, topTabXs.stream().mapToInt(Integer::intValue).toArray());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void collectEventButtonTopTabs(MaidContainerGuiEvent.Init event, int topPos, List<Integer> topTabXs) {
+        if (EVENT_BUTTONS_FIELD == null) {
+            return;
+        }
+        try {
+            Object value = EVENT_BUTTONS_FIELD.get(event);
+            if (!(value instanceof Map<?, ?> buttons)) {
+                return;
+            }
+            for (Object button : buttons.values()) {
+                if (button instanceof MaidTabButton tab && tab.getY() == topPos + BondTabLayout.TOP_TAB_Y_OFFSET) {
+                    topTabXs.add(tab.getX());
+                }
+            }
+        } catch (IllegalAccessException ignored) {
+            // TLM does not expose the event button collection; GUI children still cover the built-in tabs.
+        }
+    }
+
+    private static Field findEventButtonsField() {
+        try {
+            Field field = MaidContainerGuiEvent.class.getDeclaredField("buttons");
+            field.setAccessible(true);
+            return field;
+        } catch (NoSuchFieldException | RuntimeException ignored) {
+            return null;
+        }
     }
 
     private static final class BondTabButton extends MaidTabButton {

@@ -3,7 +3,6 @@ package com.github.touhoumaidaffection.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
-import org.lwjgl.glfw.GLFW;
 
 public final class BondKeyMappings {
     public static final String KEY_LAP_PILLOW = "key.touhou_maid_affection.lap_pillow";
@@ -13,7 +12,7 @@ public final class BondKeyMappings {
             KEY_LAP_PILLOW,
             KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_B,
+            TmaKeyDefaults.LAP_PILLOW,
             KissKeyMappings.KEY_CATEGORY
     );
 
@@ -21,7 +20,7 @@ public final class BondKeyMappings {
             KEY_LAP_PILLOW_ANGLE_LOCK,
             KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_V,
+            TmaKeyDefaults.LAP_PILLOW_ANGLE_LOCK,
             KissKeyMappings.KEY_CATEGORY
     );
 

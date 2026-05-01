@@ -7,6 +7,7 @@ import com.github.touhoumaidaffection.handler.BondAbilityActivateHandler;
 import com.github.touhoumaidaffection.handler.BondStateRequestHandler;
 import com.github.touhoumaidaffection.handler.KissCarryRequestHandler;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
+import com.github.touhoumaidaffection.handler.KissTargetedMaidRequestHandler;
 import com.github.touhoumaidaffection.handler.LapPillowAngleLockHandler;
 import com.github.touhoumaidaffection.handler.LapPillowHandler;
 import com.github.touhoumaidaffection.handler.LapPillowPoseConfigHandler;
@@ -18,6 +19,7 @@ import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.network.KissTargetedMaidRequestPayload;
 import com.github.touhoumaidaffection.network.LapPillowAngleLockPayload;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
@@ -80,6 +82,11 @@ public class TouhouMaidAffection {
                 KissCarryRequestPayload.TYPE,
                 KissCarryRequestPayload.STREAM_CODEC,
                 KissCarryRequestHandler::handle
+        );
+        registrar.playToServer(
+                KissTargetedMaidRequestPayload.TYPE,
+                KissTargetedMaidRequestPayload.STREAM_CODEC,
+                KissTargetedMaidRequestHandler::handle
         );
         registrar.playToServer(
                 BondActivateAbilityPayload.TYPE,
