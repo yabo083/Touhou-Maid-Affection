@@ -174,7 +174,8 @@
 
 这是当前服务端“命令式入口层”，包括：
 
-- `KissMaidHandler`：直接基于 TLM 事件处理亲吻。
+- `KissMaidHandler`：直接基于 TLM 事件处理亲吻；同时被按键请求复用，保证所有手动亲吻入口共享冷却、好感、粒子、音效与 FOV 行为。
+- `KissCarryRequestHandler` / `KissTargetedMaidRequestHandler`：处理客户端按键触发的亲吻请求。公主抱亲吻沿用旧 payload；准星亲吻通过实体 id 请求服务端，服务端重新校验女仆实体、距离与视线后再调用主亲吻逻辑。
 - `BondAbilityActivateHandler` / `BondStateRequestHandler`：处理羁绊页按钮与状态同步请求。
 - `LapPillowHandler` / `MorningKissVoiceConfigHandler` / `RescueActionConfigHandler` / `RescueVoiceConfigHandler`：处理特定子功能配置或动作触发。
 - `MaidPayloadResolver`：统一处理 payload 中的女仆解析与 owner 校验，减少重复判断和漏检风险。
@@ -265,6 +266,11 @@
 - 短时状态：保存在 `KissMaidHandler.SessionState`，按服务器实例隔离。
 - 长期状态：女仆羁绊等级会回写进 `BondData`。
 - 表现层状态：粒子与镜头完全在客户端本地推进。
+- 客户端按键入口：
+  - `KISS_CARRIED_MAID` 仍触发公主抱女仆亲吻。
+  - `KISS_TARGETED_MAID` 是新增的原生 MC 按键绑定，默认与公主抱亲吻同键；客户端只在准星指向女仆时发送 `KissTargetedMaidRequestPayload`。
+  - 两个按键默认同键时，`KissKeyAction` 优先选择公主抱亲吻，避免一次按键发送两种请求。
+  - 膝枕角度冻结按键默认未绑定，避免默认 `V` 被亲吻入口与膝枕辅助功能同时消费；若玩家历史配置仍保留同键，客户端会在可亲吻上下文中抑制膝枕不可用提示，玩家仍可在 MC 原生按键设置中自行绑定。
 
 #### 耦合关系
 
@@ -468,7 +474,7 @@
 
 #### 组成
 
-- `BondMaidGuiTabHandler`：把羁绊页入口插入 TLM 女仆 GUI。
+- `BondMaidGuiTabHandler`：把羁绊页入口插入 TLM 女仆 GUI；顶部 tab 不再固定占用第五格，而是运行时扫描 TLM 已存在的 `MaidTabButton` 与同事件中已注册的顶部 tab，推导下一个可用位置，以适配 TLM 删除/新增页签或其他模组先行插入页签。
 - `BondContainer`：菜单容器。
 - `BondMaidContainerScreen`：主羁绊页。
 - `screen/component/*`：弹窗、滚动列表、按钮行、分栏页等 UI 基础件。

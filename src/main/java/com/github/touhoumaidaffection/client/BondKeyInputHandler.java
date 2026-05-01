@@ -49,8 +49,13 @@ public class BondKeyInputHandler {
         }
 
         while (BondKeyMappings.LAP_PILLOW_ANGLE_LOCK.consumeClick()) {
-            if (!LapPillowClientState.isAngleLockAvailable()) {
-                minecraft.player.displayClientMessage(Component.translatable("bond.lap_pillow.angle_lock.unavailable"), true);
+            boolean angleLockAvailable = LapPillowClientState.isAngleLockAvailable();
+            if (!angleLockAvailable) {
+                boolean kissContextCanHandlePress = minecraft.player.getPassengers().stream().anyMatch(passenger -> passenger instanceof EntityMaid)
+                        || minecraft.hitResult instanceof EntityHitResult hitResult && hitResult.getEntity() instanceof EntityMaid;
+                if (LapPillowAngleLockPrompt.shouldShowUnavailable(angleLockAvailable, kissContextCanHandlePress)) {
+                    minecraft.player.displayClientMessage(Component.translatable("bond.lap_pillow.angle_lock.unavailable"), true);
+                }
                 continue;
             }
             boolean enabled = LapPillowClientState.toggleAngleLock(minecraft);
