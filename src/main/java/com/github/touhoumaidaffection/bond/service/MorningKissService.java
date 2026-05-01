@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.ChatClientInfo;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMSite;
 import com.github.tartaricacid.touhoulittlemaid.config.subconfig.AIConfig;
+import com.github.tartaricacid.touhoulittlemaid.entity.chatbubble.implement.TextChatBubbleData;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondManager;
@@ -430,7 +431,7 @@ public final class MorningKissService {
         return List.of();
     }
 
-    private static boolean isAllowedTime(Level level) {
+    static boolean isAllowedTime(Level level) {
         return getActiveTimeWindow(level) != null;
     }
 
@@ -509,6 +510,10 @@ public final class MorningKissService {
     }
 
     private static boolean maybeShowDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+        GeneratedDialogueResult generated = tryShowGeneratedDialogue(player, maid, dialoguePool);
+        if (generated != GeneratedDialogueResult.MISSING) {
+            return true;
+        }
         if (tryShowAiDialogue(player, maid, dialoguePool)) {
             return true;
         }
@@ -535,39 +540,60 @@ public final class MorningKissService {
 
     private static void showConfiguredDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool, List<String> configuredPool) {
         String raw = configuredPool.get(player.getRandom().nextInt(configuredPool.size()));
-        showMorningKissMessage(player, Component.literal(renderTemplate(raw, player, maid, dialoguePool)));
+        showMorningKissDialogue(player, maid, Component.literal(renderTemplate(raw, player, maid, dialoguePool)));
     }
 
     private static void showBuiltinDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool, int preferredIndex) {
         String[] pool = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL));
         int index = preferredIndex >= 0 && preferredIndex < pool.length ? preferredIndex : player.getRandom().nextInt(pool.length);
         String key = pool[index];
-        showMorningKissMessage(player, Component.translatable(key, getResolvedNameForMode(maid, isChatMode())));
+        showMorningKissDialogue(player, maid, Component.translatable(key, getResolvedNameForMode(maid, true)));
+    }
+
+    private static GeneratedDialogueResult tryShowGeneratedDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+        return MorningKissGeneratedDialogueService.pollCachedLine(maid, dialoguePool, player.getRandom())
+                .map(entry -> {
+                    showMorningKissDialogue(player, maid, Component.literal(entry.text()));
+                    if (entry.hasVoice()) {
+                        PacketDistributor.sendToPlayer(player, new MorningKissDataVoicePlayPayload(
+                                maid.getId(),
+                                maid.getUUID(),
+                                entry.voiceFileName(),
+                                entry.voiceData()
+                        ));
+                        return GeneratedDialogueResult.VOICE_PLAYED;
+                    }
+                    return GeneratedDialogueResult.TEXT_ONLY;
+                })
+                .orElse(GeneratedDialogueResult.MISSING);
     }
 
     private static boolean tryShowAiDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
-        MorningKissProfileParser.AiDialogue aiDialogue = MorningKissProfileData.getActiveProfile().aiDialogue();
-        if (!aiDialogue.enabled()) {
+        if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_ENABLED.get()
+                || !ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED.get()) {
             return false;
         }
         try {
             if (!AIConfig.LLM_ENABLED.get()) {
+                TouhouMaidAffection.LOGGER.debug("Skipping live Morning Kiss AI dialogue for {}: TLM LLM is disabled.", maid.getUUID());
                 return false;
             }
             LLMSite site = maid.getAiChatManager().getLLMSite();
             if (site == null || !site.enabled()) {
+                TouhouMaidAffection.LOGGER.debug("Skipping live Morning Kiss AI dialogue for {}: maid has no enabled LLM site.", maid.getUUID());
                 return false;
             }
-            String prompt = renderTemplate(aiDialogue.prompt(), player, maid, dialoguePool);
+            String prompt = renderTemplate(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, dialoguePool);
             ChatClientInfo clientInfo = new ChatClientInfo(
-                    aiDialogue.language(),
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
                     MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString(),
                     List.of()
             );
+            TouhouMaidAffection.LOGGER.info("Dispatching live Morning Kiss AI dialogue for maid {} pool {}.", maid.getUUID(), dialoguePool.name().toLowerCase(Locale.ROOT));
             maid.getAiChatManager().chat(prompt, clientInfo, player);
             return true;
         } catch (Throwable throwable) {
-            TouhouMaidAffection.LOGGER.warn("Failed to dispatch morning kiss AI dialogue, falling back to static dialogue.", throwable);
+            TouhouMaidAffection.LOGGER.warn("Failed to dispatch live Morning Kiss AI dialogue, falling back to static dialogue.", throwable);
             return false;
         }
     }
@@ -835,6 +861,22 @@ public final class MorningKissService {
         player.displayClientMessage(message, true);
     }
 
+    private static void showMorningKissDialogue(ServerPlayer player, EntityMaid maid, Component message) {
+        if (!ModConfig.BOND_MORNING_KISS_DIALOGUE_CHAT_BUBBLE_ENABLED.get()) {
+            showMorningKissMessage(player, message);
+            return;
+        }
+        try {
+            long key = maid.getChatBubbleManager().addChatBubble(TextChatBubbleData.type2(message));
+            if (key >= 0L) {
+                return;
+            }
+        } catch (Throwable throwable) {
+            TouhouMaidAffection.LOGGER.warn("Failed to show morning kiss dialogue as TLM chat bubble.", throwable);
+        }
+        showMorningKissMessage(player, message);
+    }
+
     private static Component startMessage(String actionBarKey, String chatKey, EntityMaid maid) {
         boolean chatMode = isChatMode();
         return Component.translatable(chatMode ? chatKey : actionBarKey, getResolvedNameForMode(maid, chatMode));
@@ -900,6 +942,12 @@ public final class MorningKissService {
     private enum TriggerSource {
         MANUAL,
         AUTO_WINDOW
+    }
+
+    private enum GeneratedDialogueResult {
+        MISSING,
+        TEXT_ONLY,
+        VOICE_PLAYED
     }
 
 }

@@ -45,6 +45,17 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_APPLY_MAIDS_PRAYER;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAIDS_PRAYER_DURATION;
     public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_DIALOGUE_CHAT_BUBBLE_ENABLED;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_ENABLED;
+    public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE;
+    public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_PROMPT;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_SCAN_DISTANCE;
+    public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL;
+    public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_VERBOSE_LOG;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ENABLED;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_AUTO_WINDOW_ATTEMPT_SPREAD_PERCENT;
@@ -285,6 +296,55 @@ public class ModConfig {
                 .comment("Where Morning Kiss prompts and dialogue are shown",
                         "Allowed values: action_bar, chat")
                 .define("messageDisplayMode", "action_bar");
+
+        BOND_MORNING_KISS_DIALOGUE_CHAT_BUBBLE_ENABLED = builder
+                .comment("Show Morning Kiss dialogue above the maid with Touhou Little Maid chat bubbles when possible",
+                        "If disabled, dialogue uses messageDisplayMode instead")
+                .define("dialogueChatBubbleEnabled", true);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_ENABLED = builder
+                .comment("Enable Morning Kiss AI-generated dialogue integration",
+                        "Requires Touhou Little Maid LLM to be enabled and configured on the maid")
+                .define("aiDialogueEnabled", false);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE = builder
+                .comment("Language passed to Touhou Little Maid AI chat for immediate Morning Kiss dialogue fallback")
+                .define("aiDialogueLanguage", "zh_cn");
+
+        BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
+                .comment("Prompt template for Morning Kiss AI-generated dialogue",
+                        "Placeholders: {maid}, {player}, {pool}, {time}")
+                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
+
+        BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED = builder
+                .comment("Pregenerate AI Morning Kiss dialogue outside active Morning Kiss time windows to reduce trigger latency")
+                .define("aiDialoguePregenerateEnabled", true);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED = builder
+                .comment("If no pregenerated line is cached, request one live through Touhou Little Maid chat during Morning Kiss",
+                        "This can add visible latency, so it is disabled by default")
+                .define("aiDialogueImmediateFallbackEnabled", false);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED = builder
+                .comment("Generate remote TTS OGG voice for pregenerated Morning Kiss dialogue when the maid has TTS configured",
+                        "System/local TTS and non-OGG responses are ignored and fall back to text-only cached dialogue")
+                .define("aiDialogueTtsEnabled", true);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS = builder
+                .comment("Ticks between AI dialogue pregeneration scans")
+                .defineInRange("aiDialogueScanIntervalTicks", 1200, 20, 72000);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_SCAN_DISTANCE = builder
+                .comment("Range around each player to find owned maids for AI dialogue pregeneration")
+                .defineInRange("aiDialogueScanDistance", 16, 1, 128);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL = builder
+                .comment("Target number of pregenerated Morning Kiss lines kept per maid and time pool")
+                .defineInRange("aiDialogueCacheTargetPerPool", 4, 1, 8);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_VERBOSE_LOG = builder
+                .comment("Enable verbose debug logs for Morning Kiss AI dialogue pregeneration")
+                .define("aiDialogueVerboseLog", false);
 
         BOND_MORNING_KISS_AUTO_ENABLED = builder
                 .comment("Allow maids to proactively trigger Morning Kiss during allowed time windows")

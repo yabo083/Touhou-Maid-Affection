@@ -22,7 +22,6 @@ final class MorningKissProfileParser {
         VoiceMode voiceMode = base.voiceMode();
         boolean playKissSoundWithVoice = base.playKissSoundWithVoice();
         Map<MorningKissScheduleRules.DialoguePool, List<String>> dialogues = new EnumMap<>(base.dialogues());
-        AiDialogue aiDialogue = base.aiDialogue();
         List<String> voiceFiles = base.voiceFiles();
 
         if (root.has("kiss_sound_event")) {
@@ -46,14 +45,11 @@ final class MorningKissProfileParser {
                 }
             }
         }
-        if (root.has("ai_dialogue") && root.get("ai_dialogue").isJsonObject()) {
-            aiDialogue = mergeAiDialogue(aiDialogue, root.getAsJsonObject("ai_dialogue"));
-        }
         if (root.has("voice_files")) {
             voiceFiles = parseVoiceFiles(root.get("voice_files"));
         }
 
-        return new MorningKissProfile(kissSoundEventId, dialogueMode, voiceMode, playKissSoundWithVoice, Map.copyOf(dialogues), voiceFiles, aiDialogue);
+        return new MorningKissProfile(kissSoundEventId, dialogueMode, voiceMode, playKissSoundWithVoice, Map.copyOf(dialogues), voiceFiles);
     }
 
     private static List<String> parseDialogueList(JsonElement element) {
@@ -109,25 +105,6 @@ final class MorningKissProfileParser {
         return path;
     }
 
-    private static AiDialogue mergeAiDialogue(AiDialogue base, JsonObject root) {
-        boolean enabled = base.enabled();
-        String language = base.language();
-        String prompt = base.prompt();
-        if (root.has("enabled")) {
-            enabled = root.get("enabled").getAsBoolean();
-        }
-        if (root.has("language")) {
-            language = normalizeLanguage(root.get("language").getAsString(), language);
-        }
-        if (root.has("prompt")) {
-            prompt = normalizeText(root.get("prompt").getAsString(), prompt);
-        }
-        if (prompt.isBlank()) {
-            enabled = false;
-        }
-        return new AiDialogue(enabled, language, prompt);
-    }
-
     private static String parseSoundEventId(String raw, String fallback) {
         if (raw == null || raw.isBlank()) {
             return fallback;
@@ -136,27 +113,13 @@ final class MorningKissProfileParser {
         return RESOURCE_ID.matcher(trimmed).matches() ? trimmed : fallback;
     }
 
-    private static String normalizeLanguage(String raw, String fallback) {
-        String normalized = normalizeText(raw, fallback).toLowerCase(Locale.ROOT);
-        return normalized.isBlank() ? fallback : normalized;
-    }
-
-    private static String normalizeText(String raw, String fallback) {
-        if (raw == null) {
-            return fallback;
-        }
-        String trimmed = raw.trim();
-        return trimmed.isBlank() ? fallback : trimmed;
-    }
-
     record MorningKissProfile(
             String kissSoundEventId,
             DialogueMode dialogueMode,
             VoiceMode voiceMode,
             boolean playKissSoundWithVoice,
             Map<MorningKissScheduleRules.DialoguePool, List<String>> dialogues,
-            List<String> voiceFiles,
-            AiDialogue aiDialogue
+            List<String> voiceFiles
     ) {
         static final String DEFAULT_KISS_SOUND_EVENT_ID = "touhou_maid_affection:touhou_maid_affection.kiss";
 
@@ -172,8 +135,7 @@ final class MorningKissProfileParser {
                     VoiceMode.APPEND,
                     true,
                     Map.copyOf(dialogues),
-                    List.of(),
-                    AiDialogue.defaults()
+                    List.of()
             );
         }
     }
@@ -207,12 +169,6 @@ final class MorningKissProfileParser {
             } catch (IllegalArgumentException ignored) {
                 return fallback;
             }
-        }
-    }
-
-    record AiDialogue(boolean enabled, String language, String prompt) {
-        static AiDialogue defaults() {
-            return new AiDialogue(false, "zh_cn", "");
         }
     }
 }

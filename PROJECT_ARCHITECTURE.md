@@ -88,6 +88,8 @@
 │  │  └─ service
 │  │     ├─ InteractionVoiceProfileData.java
 │  │     ├─ InteractionVoiceProfileParser.java
+│  │     ├─ MorningKissGeneratedDialogueCache.java
+│  │     ├─ MorningKissGeneratedDialogueService.java
 │  │     ├─ MorningKissScheduleRules.java
 │  │     ├─ MorningKissProfileData.java
 │  │     └─ MorningKissProfileParser.java
@@ -154,7 +156,8 @@
 
 - `bond/service/`
   - 负责：长生命周期、持续 tick 驱动的业务编排。
-  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析、数据包 profile 解析与数值修正的 `MorningKissScheduleRules` / `MorningKissProfileData` / `MorningKissProfileParser`。
+  - 当前主要包含 `MorningKissService`、`MorningKissGeneratedDialogueService`、`RandomGiftService`，以及用于晨安吻时间窗解析、数据包 profile 解析、运行时 AI 台词缓存与数值修正的 `MorningKissScheduleRules` / `MorningKissProfileData` / `MorningKissProfileParser` / `MorningKissGeneratedDialogueCache`。
+  - 晨安吻的 AI 台词、异步预生成、TTS 预生成、聊天气泡开关与扫描频率已经收口到 `ModConfig` 的 `morningKissBehavior` 段；`data/touhou_maid_affection/morning_kiss/profile.json` 仅保留静态台词、语音事件与数据包音频文件列表，不再承担 AI 开关职责。
   - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData` 是早安吻与残血救护共享的数据包语音入口，但配置文件按功能隔离：早安吻读取 `data/touhou_maid_affection/morning_kiss/profile.json` 与 `morning_kiss/voices/`，残血救护读取 `data/touhou_maid_affection/emergency_rescue/profile.json` 与 `emergency_rescue/voices/`。每个功能目录只保留一份 `profile.json`，不再拆出额外的语音池 JSON，也不再把两个功能混在同一个根文件里。
 
 - `bond/rescue/`
@@ -186,7 +189,7 @@
 - 不负责：业务逻辑。
 
 设计上很干净：每个消息一个 `record`，字段即协议本体。
-晨安吻数据包语音链路新增 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的 OGG 语音按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音”和“TLM 声包选择”混成同一个协议。
+晨安吻 OGG 字节语音链路使用 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的 OGG 语音或运行时 AI/TTS 预生成 OGG 按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音/运行时字节流”和“TLM 声包选择”混成同一个协议。
 紧急救援音频链路收敛到 `MaidRescuePopPayload`：触发 payload 同时携带女仆档案、TLM 音包选择、兜底 sound event，以及可选的数据包 OGG 字节。旧的救援音频资源同步 payload 已移除。
 
 #### `client/`：客户端展示与缓存层
@@ -324,6 +327,7 @@
   - 推进已创建的晨安吻任务。
 - 启动任务后，女仆会寻路接近玩家。
 - 进入可亲吻距离后，调用 `KissMaidHandler.performMorningKiss` 执行连续亲吻。
+- 非晨安吻活跃时间内，`MorningKissGeneratedDialogueService` 会按 `ModConfig` 中可配置的频率与距离扫描附近已解锁早安吻且具备 TLM LLM 配置的女仆，异步预生成各台词池候选；若女仆也配置了可返回 OGG 字节的远程 TTS，则同时为候选台词生成对应 OGG。
 - 任务结束后记录“本时间窗成功/失败”状态，避免同一时间窗重复触发。
 
 #### 数据流向
@@ -334,6 +338,7 @@
   - 选中的女仆
   - 语音设置
 - 短期运行状态保存在内存 `TASKS` 表中。
+- AI 预生成台词与 TTS 结果只进入服务端运行时缓存 `MorningKissGeneratedDialogueCache`，不会动态写入数据包，也不会触发 `/reload`；缓存为空、LLM/TTS 未配置或请求失败时会短路回退到既有静态台词、即时 AI（若显式打开）或数据包/TLM 语音链路。
 - 客户端只接收语音播放 payload，不参与任务判定。
 
 #### 模块交互
@@ -342,7 +347,8 @@
 - 调用 `KissMaidHandler` 复用亲吻主逻辑。
 - 调用 `YSMActionBridge` 播放晨安吻动作。
 - 调用 `MorningKissVoicePlayback` 所对应的 payload 在客户端播音；语音来源现在先由服务端按玩家保存的动态语音池命中一个条目，再下发“命中项 id”或数据包 OGG 字节给客户端播放。
-- 通过服务端数据包 `data/touhou_maid_affection/morning_kiss/profile.json` 读取早安吻台词池、亲吻 sound event、AI 提示词与预录 OGG 语音池。`dialogue_mode` 控制数据包台词与内置 lang 台词是 `replace` 覆盖还是 `append` 追加；`voice_mode` 控制数据包 OGG 进入玩家可选池的方式：`append` 会保留 mod 原声/TLM 基础池并追加数据包项，`replace` 在存在数据包语音时会把基础池整体排除，只保留数据包项；`dialogue` 静态台词池支持 `{maid}` / `{player}` / `{pool}` / `{time}` 占位符；`play_kiss_sound_with_voice` 用于控制早安吻预录/TLM 语音与原生亲吻音效是否同时播放。
+- 早安吻台词展示优先使用 TLM `TextChatBubbleData` 注入女仆实体聊天气泡；如果气泡写入失败，或 `ModConfig` 关闭气泡展示，则回退到原有 `messageDisplayMode` 控制的聊天栏/action bar。
+- 通过服务端数据包 `data/touhou_maid_affection/morning_kiss/profile.json` 读取早安吻台词池、亲吻 sound event 与预录 OGG 语音池。`dialogue_mode` 控制数据包台词与内置 lang 台词是 `replace` 覆盖还是 `append` 追加；`voice_mode` 控制数据包 OGG 进入玩家可选池的方式：`append` 会保留 mod 原声/TLM 基础池并追加数据包项，`replace` 在存在数据包语音时会把基础池整体排除，只保留数据包项；`dialogue` 静态台词池支持 `{maid}` / `{player}` / `{pool}` / `{time}` 占位符；`play_kiss_sound_with_voice` 用于控制早安吻预录/TLM 语音与原生亲吻音效是否同时播放。AI 台词模板、即时 fallback、异步预生成与 TTS 是否启用都改由 `ModConfig` 控制，不再依赖数据包 JSON。
 - 在膝枕会话中，晨安吻只允许“当前膝枕女仆”继续调度与执行；同玩家的其它女仆晨安吻任务会被拦截或撤销，避免多源并发抢占。
 
 #### 设计评价
@@ -350,6 +356,7 @@
 - 这是“服务器权威任务编排 + 客户端纯表现”的正确分层。
 - 自动调度、任务推进、对话/语音仍在一个服务内闭环；时间窗解析和亲吻次数边界修正已抽到 `MorningKissScheduleRules`，可独立测试与复用。
 - 台词/AI 提示词已从 lang 硬编码推进到 server data profile；跨功能预录语音已进一步抽到 `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`，以统一 JSON 表达“场景语音池 + 女仆匹配覆盖”。`MorningKissProfileParser` 与 `InteractionVoiceProfileParser` 都保持为纯 Java 解析器以便普通 JUnit 覆盖。
+- AI/TTS 预生成刻意保持为运行时增强层，而不是动态数据包生成层：这样避免资源 reload 对服务端和客户端造成可见打断，也避免把外部网络服务的失败状态写成长期资源事实。
 - 该服务仍是复杂度热点，但职责边界已从“全量混合”向“调度主干 + 规则模块”过渡。
 - `LapPillowState` 现在同时承担“会话互斥信号”的职责：晨安吻流程会把它作为前置门禁，允许膝枕女仆内联亲吻，但阻止其它女仆插入任务。
 
