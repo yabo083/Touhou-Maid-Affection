@@ -26,7 +26,7 @@
 
 ### 2.2 核心依赖与生态关系
 
-- `Touhou Little Maid 1.5.0+`：唯一强依赖，提供女仆实体、好感度、GUI、音包、交互事件等基础能力。
+- `Touhou Little Maid 1.5.1+`：唯一强依赖，当前编译目标为 `1.5.2-neoforge+mc1.21.1`，提供女仆实体、好感度、GUI、音包、交互事件与新版 AI 聊天架构等基础能力。
 - `NeoForge Attachment / EventBus / Payload API`：用于挂接状态、监听事件、注册网络消息。
 - `Mixin`：用于改写 TLM 的 GUI 名称渲染与“副手诱饵物品”行为。
 - `Yes Steve Model (YSM)`：软兼容，仅在存在时触发动画或读取动作资源。
@@ -86,7 +86,11 @@
 │  │  ├─ lap
 │  │  ├─ rescue
 │  │  └─ service
-│  │     └─ MorningKissScheduleRules.java
+│  │     ├─ InteractionVoiceProfileData.java
+│  │     ├─ InteractionVoiceProfileParser.java
+│  │     ├─ MorningKissScheduleRules.java
+│  │     ├─ MorningKissProfileData.java
+│  │     └─ MorningKissProfileParser.java
 │  ├─ client
 │  │  ├─ BondClientPayloadHandler.java
 │  │  ├─ BondClientStateCache.java
@@ -112,6 +116,8 @@
    │  ├─ sounds
    │  └─ textures
    └─ data/touhou_maid_affection
+      ├─ morning_kiss/profile.json
+      ├─ emergency_rescue/profile.json
       ├─ rescue_sound/profile.json
       └─ tags/items
 ```
@@ -148,13 +154,14 @@
 
 - `bond/service/`
   - 负责：长生命周期、持续 tick 驱动的业务编排。
-  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析与数值修正的 `MorningKissScheduleRules`。
+  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析、数据包 profile 解析与数值修正的 `MorningKissScheduleRules` / `MorningKissProfileData` / `MorningKissProfileParser`。
+  - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData` 是早安吻与残血救护共享的数据包语音入口，但配置文件按功能隔离：早安吻读取 `data/touhou_maid_affection/morning_kiss/profile.json` 与 `morning_kiss/voices/`，残血救护读取 `data/touhou_maid_affection/emergency_rescue/profile.json` 与 `emergency_rescue/voices/`。每个功能目录只保留一份 `profile.json`，不再拆出额外的语音池 JSON，也不再把两个功能混在同一个根文件里。
 
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
   - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
   - 该目录维护“救援者池 canonical id（`maid:<uuid>`）”与 legacy/provider 兼容解析，并基于 provider 贡献者身份做跨 UUID 去重，避免同一女仆复活后重复计入。
-  - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）、预定义语音自动下发服务（`RescueSoundSyncService`）与玩家个人开关状态。
+  - 该目录还维护服务端数据包音效配置（兼容 `rescue_sound/profile.json`）与玩家个人开关状态；救援预录语音统一改由 `InteractionVoiceProfileData` 读取并随触发 payload 下发，不再维护旧的服务器/客户端文件同步服务。
 
 - `bond/lap/`
   - 负责：膝枕姿态配置、会话状态与中间锚点实体抽象。
@@ -178,9 +185,8 @@
 - 不负责：业务逻辑。
 
 设计上很干净：每个消息一个 `record`，字段即协议本体。
-紧急救援音频链路目前包含两类协议：
-- 触发与播放参数：`MaidRescuePopPayload`
-- 资源同步：`RescueSoundSyncManifestPayload` / `RescueSoundSyncClearPayload` / `RescueSoundSyncChunkPayload` / `RescueSoundSyncCompletePayload` / `RescueSoundReloadPayload`
+晨安吻数据包语音链路新增 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的 OGG 语音按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音”和“TLM 声包选择”混成同一个协议。
+紧急救援音频链路收敛到 `MaidRescuePopPayload`：触发 payload 同时携带女仆档案、TLM 音包选择、兜底 sound event，以及可选的数据包 OGG 字节。旧的救援音频资源同步 payload 已移除。
 
 #### `client/`：客户端展示与缓存层
 
@@ -194,9 +200,7 @@
 
 - `Kiss*` / `EmergencyRescue*` / `MorningKissVoice*`
   - 负责：镜头、粒子、按键、救援弹出、语音检索与播放。
-  - `EmergencyRescue*` 额外负责“客户端本地救援音效覆盖 + 服务端预定义语音落盘”：
-    - 自定义文件优先级：女仆本地目录 -> 本地通用目录 -> 服务器同步女仆目录 -> 服务器同步通用目录 -> 旧版 `custom_rescue.ogg` -> 服务端事件音效。
-    - 女仆本地目录使用 `名字_短ID` 生成，目录内 `voice.json` 持久化 `source_mode / play_mode / fixed_file / use_common_fallback`。
+  - `EmergencyRescueSoundPlayer` 现在只处理两类主要语音源：随 payload 下发的数据包 OGG，以及 TLM 模型/音源包中的语音；若两者都不可用，才播放服务端指定的兜底 sound event。
   - 不负责：服务端状态存储。
 
 - `screen/` 与 `screen/component/`
@@ -331,13 +335,15 @@
 - 调用 `BondManager` 读写调度元数据。
 - 调用 `KissMaidHandler` 复用亲吻主逻辑。
 - 调用 `YSMActionBridge` 播放晨安吻动作。
-- 调用 `MorningKissVoicePlayback` 所对应的 payload 在客户端播音。
+- 调用 `MorningKissVoicePlayback` 所对应的 payload 在客户端播音；语音来源现在先由服务端按玩家保存的动态语音池命中一个条目，再下发“命中项 id”或数据包 OGG 字节给客户端播放。
+- 通过服务端数据包 `data/touhou_maid_affection/morning_kiss/profile.json` 读取早安吻台词池、亲吻 sound event、AI 提示词与预录 OGG 语音池。`dialogue_mode` 控制数据包台词与内置 lang 台词是 `replace` 覆盖还是 `append` 追加；`voice_mode` 控制数据包 OGG 进入玩家可选池的方式：`append` 会保留 mod 原声/TLM 基础池并追加数据包项，`replace` 在存在数据包语音时会把基础池整体排除，只保留数据包项；`dialogue` 静态台词池支持 `{maid}` / `{player}` / `{pool}` / `{time}` 占位符；`play_kiss_sound_with_voice` 用于控制早安吻预录/TLM 语音与原生亲吻音效是否同时播放。
 - 在膝枕会话中，晨安吻只允许“当前膝枕女仆”继续调度与执行；同玩家的其它女仆晨安吻任务会被拦截或撤销，避免多源并发抢占。
 
 #### 设计评价
 
 - 这是“服务器权威任务编排 + 客户端纯表现”的正确分层。
 - 自动调度、任务推进、对话/语音仍在一个服务内闭环；时间窗解析和亲吻次数边界修正已抽到 `MorningKissScheduleRules`，可独立测试与复用。
+- 台词/AI 提示词已从 lang 硬编码推进到 server data profile；跨功能预录语音已进一步抽到 `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`，以统一 JSON 表达“场景语音池 + 女仆匹配覆盖”。`MorningKissProfileParser` 与 `InteractionVoiceProfileParser` 都保持为纯 Java 解析器以便普通 JUnit 覆盖。
 - 该服务仍是复杂度热点，但职责边界已从“全量混合”向“调度主干 + 规则模块”过渡。
 - `LapPillowState` 现在同时承担“会话互斥信号”的职责：晨安吻流程会把它作为前置门禁，允许膝枕女仆内联亲吻，但阻止其它女仆插入任务。
 
@@ -405,12 +411,13 @@
 
 #### 模块交互
 
-- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData` + `RescueSoundSyncService`
-- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer` + `EmergencyRescueServerSoundSyncClient`
+- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData` + `InteractionVoiceProfileData`
+- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer`
 - YSM：若女仆模型支持，则在 overlay 中播放预设动作
 - overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
-- 音效来源支持 `TLM语音包` 与 `自定义文件` 两种模式；TLM 模式改为使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安），自定义模式按 `voice.json` 的播放模式选曲。
-- 服务端预定义语音目录按 `server_predefined/{maids,common}` 扫描，按 `size + mtime + sha1` 做增量同步，客户端落盘到 `rescue/server_synced/<serverId>/...`。
+- 音效来源收敛为 `数据包 OGG` 与 `TLM语音包` 两种模式：数据包模式由 `emergency_rescue/profile.json` 提供，并随 `MaidRescuePopPayload` 下发；TLM 模式使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安）。触发时服务端按玩家保存的动态池选出一个命中项，数据包项随 payload 下发 OGG 字节，TLM 项随 payload 下发命中 id 由客户端播放。
+- `voice_mode=replace` 时，匹配到的数据包救援 OGG 作为硬边界覆盖 TLM 包语音，即使女仆之前保存过 TLM 项也会被当前可用池过滤；`voice_mode=append` 时，数据包 OGG 默认追加到 TLM 全量池。数据包只决定哪些 OGG 进入可选池以及进入方式，不再决定具体哪位女仆播放哪条语音。
+- 旧的“服务端预定义语音目录同步到客户端落盘”链路已移除，避免维护服务器文件同步、客户端目录缓存与数据包语音三套并行方案。
 - 管理指令补充：`/tma rescue clear`（`/tma rescue reset` 同义）为 OP 命令，会清空 `EmergencyRescueAttachment` 的可用池/已注册列表，并把该玩家档案中所有女仆的 `emergency_heal` 解锁位重置为未激活，便于单女仆链路测试与脏状态清理。
 
 #### 架构意义
@@ -474,7 +481,7 @@
 - 进入页面时立刻向服务端请求 `BondStateRequestPayload`。
 - 服务端回包后更新 `BondClientStateCache`。
 - 页面根据缓存决定按钮状态、已解锁能力、礼物队列、晨安吻语音配置与膝枕姿态配置等。
-- 残血救护二级页已升级为“语音来源页”：支持 `TLM语音包 / 自定义文件` 下拉切换；TLM 分支复用晨安吻列表选择，自定义分支提供 `随机/顺序/固定`、固定文件选择与通用池回退开关，并在保存时同步写回女仆目录 `voice.json`。
+- 早安吻与残血救护语音二级页统一改为动态语音池配置页：服务端回包同步数据包候选项，客户端扫描 TLM 音包候选项，页面通过可复用 `BondVoicePoolList` 展示多源语音并允许玩家多选；弹窗尺寸必须限制在一级羁绊页内部，避免遮挡 TLM 原生 tab/侧边按钮；批量操作使用单个动态按钮在 `全选 / 全不选` 间切换；底部播放模式按钮仅循环切换 `随机 / 顺序`，固定播放由“只勾选一条语音”自然表达，保存后把所选池写回女仆档案。
 - 膝枕二级页已从单点偏移页演进为“双坐标点编辑页”：左侧同屏展示玩家/女仆在锚点坐标系下的二维相对位置，点击坐标点即可切换当前编辑对象，滚轮单独修改该对象的 Y 高度。
 - 膝枕页顶部不再保留独立的“四模式”下拉，而是改成“女仆动作 + 玩家动作”两个短下拉；默认坐/躺组合会反推出四种基础模式，自定义动作则建立在这个基础姿态之上。
 - 配置操作再回发新的 payload 给服务端保存。

@@ -4,6 +4,7 @@ import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -19,6 +20,10 @@ public final class BondClientStateCache {
     public static void update(UUID maidUuid, Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
                               MorningKissVoiceSettings morningKissVoiceSettings,
                               EmergencyRescueVoiceSettings emergencyRescueVoiceSettings,
+                              String morningKissDataPackVoiceMode,
+                              List<String> morningKissDataPackVoiceFiles,
+                              String rescueDataPackVoiceMode,
+                              List<String> rescueDataPackVoiceFiles,
                               LapPillowPoseSnapshot lapPillowPose) {
         STATES.put(maidUuid, new MaidBondClientState(
                 new LinkedHashSet<>(unlockedAbilityIds),
@@ -27,6 +32,10 @@ public final class BondClientStateCache {
                 Math.max(0, nextGiftReadySeconds),
                 morningKissVoiceSettings == null ? MorningKissVoiceSettings.DEFAULT : morningKissVoiceSettings,
                 emergencyRescueVoiceSettings == null ? EmergencyRescueVoiceSettings.DEFAULT : emergencyRescueVoiceSettings,
+                normalizeMode(morningKissDataPackVoiceMode),
+                normalizeList(morningKissDataPackVoiceFiles),
+                normalizeMode(rescueDataPackVoiceMode),
+                normalizeList(rescueDataPackVoiceFiles),
                 lapPillowPose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : lapPillowPose.clamp()
         ));
     }
@@ -63,11 +72,29 @@ public final class BondClientStateCache {
         return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).emergencyRescueVoiceSettings();
     }
 
+    public static String getMorningKissDataPackVoiceMode(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).morningKissDataPackVoiceMode();
+    }
+
+    public static List<String> getMorningKissDataPackVoiceFiles(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).morningKissDataPackVoiceFiles();
+    }
+
+    public static String getRescueDataPackVoiceMode(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).rescueDataPackVoiceMode();
+    }
+
+    public static List<String> getRescueDataPackVoiceFiles(UUID maidUuid) {
+        return STATES.getOrDefault(maidUuid, MaidBondClientState.EMPTY).rescueDataPackVoiceFiles();
+    }
+
     public static void updateMorningKissVoiceSettings(UUID maidUuid, MorningKissVoiceSettings settings) {
         STATES.compute(maidUuid, (ignored, current) -> {
             MaidBondClientState base = current == null ? MaidBondClientState.EMPTY : current;
             return new MaidBondClientState(base.unlockedAbilityIds(), base.queuedGiftCount(), base.maxQueuedGiftCount(), base.nextGiftReadySeconds(),
-                    settings == null ? MorningKissVoiceSettings.DEFAULT : settings, base.emergencyRescueVoiceSettings(), base.lapPillowPose());
+                    settings == null ? MorningKissVoiceSettings.DEFAULT : settings, base.emergencyRescueVoiceSettings(),
+                    base.morningKissDataPackVoiceMode(), base.morningKissDataPackVoiceFiles(),
+                    base.rescueDataPackVoiceMode(), base.rescueDataPackVoiceFiles(), base.lapPillowPose());
         });
     }
 
@@ -81,6 +108,10 @@ public final class BondClientStateCache {
                     base.nextGiftReadySeconds(),
                     base.morningKissVoiceSettings(),
                     settings == null ? EmergencyRescueVoiceSettings.DEFAULT : settings,
+                    base.morningKissDataPackVoiceMode(),
+                    base.morningKissDataPackVoiceFiles(),
+                    base.rescueDataPackVoiceMode(),
+                    base.rescueDataPackVoiceFiles(),
                     base.lapPillowPose()
             );
         });
@@ -96,6 +127,10 @@ public final class BondClientStateCache {
                     base.nextGiftReadySeconds(),
                     base.morningKissVoiceSettings(),
                     base.emergencyRescueVoiceSettings(),
+                    base.morningKissDataPackVoiceMode(),
+                    base.morningKissDataPackVoiceFiles(),
+                    base.rescueDataPackVoiceMode(),
+                    base.rescueDataPackVoiceFiles(),
                     pose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : pose.clamp()
             );
         });
@@ -108,6 +143,10 @@ public final class BondClientStateCache {
     private record MaidBondClientState(Set<String> unlockedAbilityIds, int queuedGiftCount, int maxQueuedGiftCount, int nextGiftReadySeconds,
                                        MorningKissVoiceSettings morningKissVoiceSettings,
                                        EmergencyRescueVoiceSettings emergencyRescueVoiceSettings,
+                                       String morningKissDataPackVoiceMode,
+                                       List<String> morningKissDataPackVoiceFiles,
+                                       String rescueDataPackVoiceMode,
+                                       List<String> rescueDataPackVoiceFiles,
                                        LapPillowPoseSnapshot lapPillowPose) {
         private static final MaidBondClientState EMPTY = new MaidBondClientState(
                 Set.of(),
@@ -116,7 +155,23 @@ public final class BondClientStateCache {
                 0,
                 MorningKissVoiceSettings.DEFAULT,
                 EmergencyRescueVoiceSettings.DEFAULT,
+                "append",
+                List.of(),
+                "append",
+                List.of(),
                 LapPillowPoseSnapshot.maidSitPlayerLieDefault()
         );
+    }
+
+    private static String normalizeMode(String mode) {
+        return mode == null || mode.isBlank() ? "append" : mode.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static List<String> normalizeList(List<String> values) {
+        return values == null ? List.of() : values.stream()
+                .map(value -> value == null ? "" : value.trim())
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .toList();
     }
 }

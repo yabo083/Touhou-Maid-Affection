@@ -23,6 +23,9 @@ public record BondStateSyncPayload(
         String morningKissVoiceGroup,
         String morningKissVoiceClip,
         String morningKissVoicePack,
+        List<String> morningKissSelectedVoiceIds,
+        String morningKissDataPackVoiceMode,
+        List<String> morningKissDataPackVoiceFiles,
         String rescueVoiceSourceMode,
         String rescueVoiceTlmMode,
         String rescueVoiceTlmGroup,
@@ -30,6 +33,9 @@ public record BondStateSyncPayload(
         String rescueVoiceCustomPlayMode,
         String rescueVoiceFixedFile,
         boolean rescueVoiceUseCommonFallback,
+        List<String> rescueSelectedVoiceIds,
+        String rescueDataPackVoiceMode,
+        List<String> rescueDataPackVoiceFiles,
         String lapPillowMode,
         double lapPillowMaidOffsetX,
         double lapPillowMaidOffsetY,
@@ -64,6 +70,11 @@ public record BondStateSyncPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceGroup());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoiceClip());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissVoicePack());
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
+                .encode(buf, new ArrayList<>(payload.morningKissSelectedVoiceIds()));
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.morningKissDataPackVoiceMode());
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
+                .encode(buf, new ArrayList<>(payload.morningKissDataPackVoiceFiles()));
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceSourceMode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmMode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmGroup());
@@ -71,6 +82,11 @@ public record BondStateSyncPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceCustomPlayMode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceFixedFile());
         ByteBufCodecs.BOOL.encode(buf, payload.rescueVoiceUseCommonFallback());
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
+                .encode(buf, new ArrayList<>(payload.rescueSelectedVoiceIds()));
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueDataPackVoiceMode());
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
+                .encode(buf, new ArrayList<>(payload.rescueDataPackVoiceFiles()));
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.lapPillowMode());
         ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetX());
         ByteBufCodecs.DOUBLE.encode(buf, payload.lapPillowMaidOffsetY());
@@ -93,6 +109,9 @@ public record BondStateSyncPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
@@ -100,6 +119,9 @@ public record BondStateSyncPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.BOOL.decode(buf),
+                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf),
+                ByteBufCodecs.STRING_UTF8.decode(buf),
+                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf),
                 LapPillowMode.fromName(ByteBufCodecs.STRING_UTF8.decode(buf)).serializedName(),
                 ByteBufCodecs.DOUBLE.decode(buf),
                 ByteBufCodecs.DOUBLE.decode(buf),

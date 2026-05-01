@@ -2,7 +2,11 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+import com.github.touhoumaidaffection.bond.VoicePoolIds;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import com.mojang.blaze3d.audio.SoundBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -12,6 +16,9 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 
 public final class MorningKissVoicePlayback {
+    private static final SoundEvent STREAM_ANCHOR_SOUND_EVENT =
+            SoundEvent.createVariableRangeEvent(ResourceLocation.withDefaultNamespace("music.menu"));
+
     private MorningKissVoicePlayback() {
     }
 
@@ -21,13 +28,10 @@ public final class MorningKissVoicePlayback {
             return;
         }
 
-        MorningKissVoiceSettings settings = MorningKissVoiceSettings.of(
-                payload.mode(),
-                payload.selectedGroup(),
-                payload.selectedClip(),
-                payload.soundPackId()
-        );
-        MorningKissVoiceIndex.VoiceEntry entry = selectEntry(payload.soundPackId(), settings, minecraft);
+        if (VoicePoolIds.BUILTIN_MORNING_KISS.equals(payload.selectedVoiceId())) {
+            return;
+        }
+        MorningKissVoiceIndex.VoiceEntry entry = selectEntry(payload.soundPackId(), payload);
         if (entry == null) {
             return;
         }
@@ -50,7 +54,59 @@ public final class MorningKissVoicePlayback {
         minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(soundEvent, soundBuffer, null, x, y, z, 1.0F, 1.0F));
     }
 
-    private static MorningKissVoiceIndex.VoiceEntry selectEntry(String soundPackId, MorningKissVoiceSettings settings, Minecraft minecraft) {
+    public static void playDataPackVoice(MorningKissDataVoicePlayPayload payload) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null || payload.data().length == 0) {
+            return;
+        }
+        TouhouMaidAffection.LOGGER.info("Received morning kiss data-pack voice '{}' ({} bytes)",
+                payload.fileName(), payload.data().length);
+        OggReader.Type oggType = getOggType(payload.data(), payload.fileName());
+        if (oggType == null) {
+            return;
+        }
+
+        Entity entity = minecraft.level.getEntity(payload.maidEntityId());
+        double x = entity != null ? entity.getX() : minecraft.player.getX();
+        double y = entity != null ? entity.getY() : minecraft.player.getY();
+        double z = entity != null ? entity.getZ() : minecraft.player.getZ();
+        minecraft.getSoundManager().play(new MorningKissDataVoiceSoundInstance(
+                STREAM_ANCHOR_SOUND_EVENT,
+                payload.data(),
+                oggType,
+                payload.fileName(),
+                entity,
+                x,
+                y,
+                z,
+                1.0F,
+                1.0F
+        ));
+    }
+
+    private static OggReader.Type getOggType(byte[] data, String fileName) {
+        try {
+            OggReader.Type type = OggReader.getOggType(data);
+            if (type == OggReader.Type.VORBIS || type == OggReader.Type.OPUS) {
+                TouhouMaidAffection.LOGGER.info("Detected morning kiss data-pack {} voice '{}'", type, fileName);
+                return type;
+            }
+        } catch (Exception ex) {
+            TouhouMaidAffection.LOGGER.warn("Failed to inspect morning kiss data-pack voice '{}'", fileName, ex);
+        }
+        return null;
+    }
+
+    private static MorningKissVoiceIndex.VoiceEntry selectEntry(String soundPackId, MorningKissVoicePlayPayload payload) {
+        if (VoicePoolIds.isTlm(payload.selectedVoiceId())) {
+            return MorningKissVoiceIndex.getEntry(soundPackId, VoicePoolIds.value(payload.selectedVoiceId()));
+        }
+        MorningKissVoiceSettings settings = MorningKissVoiceSettings.of(
+                payload.mode(),
+                payload.selectedGroup(),
+                payload.selectedClip(),
+                payload.soundPackId()
+        );
         List<MorningKissVoiceIndex.VoiceEntry> pool = switch (settings.mode()) {
             case RANDOM_ALL -> MorningKissVoiceIndex.getEntries(soundPackId);
             case RANDOM_GROUP -> MorningKissVoiceIndex.getEntriesForGroup(soundPackId, settings.selectedGroup());
@@ -65,6 +121,7 @@ public final class MorningKissVoicePlayback {
         if (pool.isEmpty()) {
             return null;
         }
-        return pool.get(minecraft.level.random.nextInt(pool.size()));
+        Minecraft minecraft = Minecraft.getInstance();
+        return pool.get(minecraft.level == null ? 0 : minecraft.level.random.nextInt(pool.size()));
     }
 }

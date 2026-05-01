@@ -2,8 +2,10 @@ package com.github.touhoumaidaffection.handler;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
+import com.github.touhoumaidaffection.bond.service.InteractionVoiceProfileData;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -29,6 +31,9 @@ public final class BondSyncHelper {
                 .withSoundPackId(maid.getSoundPackId());
         EmergencyRescueVoiceSettings rescueVoiceSettings = BondManager.getEmergencyRescueVoiceSettings(player, maid.getUUID());
         LapPillowPoseSnapshot lapPillowPose = BondManager.getMaidLapPillowPose(player, maid.getUUID()).clamp();
+        InteractionVoiceProfileData.ResolvedVoiceProfile morningProfile = InteractionVoiceProfileData.resolveMorningKiss(maid);
+        InteractionVoiceProfileData.ResolvedVoiceProfile rescueProfile =
+                InteractionVoiceProfileData.resolveEmergencyRescue(maid.getUUID().toString(), BondData.of(player).getMaidProfile(maid.getUUID()));
 
         PacketDistributor.sendToPlayer(player, new BondStateSyncPayload(
                 maid.getUUID(),
@@ -40,6 +45,9 @@ public final class BondSyncHelper {
                 voiceSettings.selectedGroup(),
                 voiceSettings.selectedClip(),
                 voiceSettings.soundPackId(),
+                voiceSettings.selectedVoiceIds(),
+                morningProfile.voiceMode().name().toLowerCase(java.util.Locale.ROOT),
+                morningProfile.fileNames(),
                 rescueVoiceSettings.sourceMode().serializedName(),
                 rescueVoiceSettings.tlmPlayMode().serializedName(),
                 rescueVoiceSettings.tlmSelectedGroup(),
@@ -47,6 +55,9 @@ public final class BondSyncHelper {
                 rescueVoiceSettings.customPlayMode().serializedName(),
                 rescueVoiceSettings.fixedFile(),
                 rescueVoiceSettings.useCommonFallback(),
+                rescueVoiceSettings.selectedVoiceIds(),
+                rescueProfile.voiceMode().name().toLowerCase(java.util.Locale.ROOT),
+                rescueProfile.fileNames(),
                 lapPillowPose.mode().serializedName(),
                 lapPillowPose.maidOffsetX(),
                 lapPillowPose.maidOffsetY(),

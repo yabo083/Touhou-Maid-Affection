@@ -23,15 +23,11 @@ import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundReloadPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncChunkPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncClearPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncCompletePayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncManifestPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -126,29 +122,9 @@ public class TouhouMaidAffection {
                 BondClientPayloadHandler::handleMorningKissVoicePlay
         );
         registrar.playToClient(
-                RescueSoundSyncManifestPayload.TYPE,
-                RescueSoundSyncManifestPayload.STREAM_CODEC,
-                BondClientPayloadHandler::handleRescueSoundSyncManifest
-        );
-        registrar.playToClient(
-                RescueSoundSyncClearPayload.TYPE,
-                RescueSoundSyncClearPayload.STREAM_CODEC,
-                BondClientPayloadHandler::handleRescueSoundSyncClear
-        );
-        registrar.playToClient(
-                RescueSoundSyncChunkPayload.TYPE,
-                RescueSoundSyncChunkPayload.STREAM_CODEC,
-                BondClientPayloadHandler::handleRescueSoundSyncChunk
-        );
-        registrar.playToClient(
-                RescueSoundSyncCompletePayload.TYPE,
-                RescueSoundSyncCompletePayload.STREAM_CODEC,
-                BondClientPayloadHandler::handleRescueSoundSyncComplete
-        );
-        registrar.playToClient(
-                RescueSoundReloadPayload.TYPE,
-                RescueSoundReloadPayload.STREAM_CODEC,
-                BondClientPayloadHandler::handleRescueSoundReload
+                MorningKissDataVoicePlayPayload.TYPE,
+                MorningKissDataVoicePlayPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleMorningKissDataVoicePlay
         );
         registrar.playToServer(
                 LapPillowStartPayload.TYPE,

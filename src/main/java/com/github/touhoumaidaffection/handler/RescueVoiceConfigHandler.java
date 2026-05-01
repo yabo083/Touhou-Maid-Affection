@@ -27,7 +27,8 @@ public final class RescueVoiceConfigHandler {
                     payload.tlmSelectedClip(),
                     payload.customPlayMode(),
                     payload.fixedFile(),
-                    payload.useCommonFallback()
+                    payload.useCommonFallback(),
+                    payload.selectedVoiceIds()
             );
             BondManager.setEmergencyRescueVoiceSettings(player, maid.getUUID(), settings);
             BondManager.syncMaidProfile(player, maid);

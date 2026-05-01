@@ -21,7 +21,7 @@ public final class MorningKissVoiceConfigHandler {
                 return;
             }
             BondManager.setMorningKissVoiceSettings(player, maid.getUUID(),
-                    MorningKissVoiceSettings.of(payload.mode(), payload.selectedGroup(), payload.selectedClip(), payload.soundPackId()));
+                    MorningKissVoiceSettings.of(payload.mode(), payload.selectedGroup(), payload.selectedClip(), payload.soundPackId(), payload.selectedVoiceIds()));
             BondManager.syncMaidProfile(player, maid);
         });
     }
