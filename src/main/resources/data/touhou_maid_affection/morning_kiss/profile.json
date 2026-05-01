@@ -8,10 +8,5 @@
     "evening": [],
     "general": []
   },
-  "voice_files": [],
-  "ai_dialogue": {
-    "enabled": false,
-    "language": "zh_cn",
-    "prompt": "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻。请只输出一句自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。"
-  }
+  "voice_files": []
 }

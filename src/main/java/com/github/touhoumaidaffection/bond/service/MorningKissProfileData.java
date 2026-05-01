@@ -84,9 +84,9 @@ public final class MorningKissProfileData {
         List<DataPackVoice> voices = loadVoices(resourceManager, profile.voiceFiles());
         activeProfile = profile;
         activeVoices = voices;
-        TouhouMaidAffection.LOGGER.info("Morning kiss profile loaded: sound={}, dialogueMode={}, voiceMode={}, voices={}, voiceFiles={}, aiDialogue={}",
+        TouhouMaidAffection.LOGGER.info("Morning kiss profile loaded: sound={}, dialogueMode={}, voiceMode={}, voices={}, voiceFiles={}",
                 profile.kissSoundEventId(), profile.dialogueMode().name().toLowerCase(java.util.Locale.ROOT),
-                profile.voiceMode().name().toLowerCase(java.util.Locale.ROOT), voices.size(), profile.voiceFiles(), profile.aiDialogue().enabled());
+                profile.voiceMode().name().toLowerCase(java.util.Locale.ROOT), voices.size(), profile.voiceFiles());
     }
 
     private static List<DataPackVoice> loadVoices(ResourceManager resourceManager, List<String> voiceFiles) {

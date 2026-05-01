@@ -7,8 +7,6 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MorningKissProfileDataTest {
     @Test
@@ -70,7 +68,7 @@ class MorningKissProfileDataTest {
     }
 
     @Test
-    void shouldMergeSoundAndAiSettingsFromJson() {
+    void shouldMergeSoundSettingsAndIgnoreAiDialogueFromJson() {
         JsonObject root = JsonParser.parseString("""
                 {
                   "kiss_sound_event": "example_pack:soft_kiss",
@@ -90,9 +88,6 @@ class MorningKissProfileDataTest {
         assertEquals("example_pack:soft_kiss", profile.kissSoundEventId());
         assertEquals(MorningKissProfileParser.VoiceMode.APPEND, profile.voiceMode());
         assertEquals(List.of("morning_soft.ogg", "sub/fallback.ogg"), profile.voiceFiles());
-        assertTrue(profile.aiDialogue().enabled());
-        assertEquals("zh_cn", profile.aiDialogue().language());
-        assertEquals("只回复一句早安吻台词，称呼玩家 {player}。", profile.aiDialogue().prompt());
     }
 
     @Test
@@ -112,7 +107,6 @@ class MorningKissProfileDataTest {
 
         assertEquals(MorningKissProfileParser.MorningKissProfile.DEFAULT_KISS_SOUND_EVENT_ID,
                 profile.kissSoundEventId());
-        assertFalse(profile.aiDialogue().enabled());
     }
 
     @Test
