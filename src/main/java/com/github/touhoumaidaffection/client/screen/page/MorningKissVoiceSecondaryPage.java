@@ -2,38 +2,37 @@ package com.github.touhoumaidaffection.client.screen.page;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+import com.github.touhoumaidaffection.bond.VoicePoolIds;
+import com.github.touhoumaidaffection.bond.VoicePoolSelection;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.MorningKissVoiceIndex;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
-import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
-import com.github.touhoumaidaffection.client.screen.component.BondScrollableList;
+import com.github.touhoumaidaffection.client.screen.component.BondVoicePoolList;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.network.PacketDistributor;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
-    private static final int MODAL_WIDTH = BondGuiTokens.SECONDARY_MODAL_WIDTH;
-    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
-    private static final int DROPDOWN_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
-    private static final int DROPDOWN_ROW_HEIGHT = BondGuiTokens.DROPDOWN_ROW_HEIGHT;
-    private static final int DROPDOWN_VISIBLE_ROWS = 3;
-    private static final int LIST_ROW_HEIGHT = BondGuiTokens.LIST_ROW_HEIGHT;
-    private static final int BUTTON_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
-    private static final int BUTTON_GAP = BondGuiTokens.SPACING_MD;
+    private static final int MODAL_WIDTH = 166;
+    private static final int MODAL_HEIGHT = 132;
+    private static final int LIST_ROW_HEIGHT = 14;
+    private static final int BUTTON_HEIGHT = 17;
+    private static final int HEADER_BUTTON_HEIGHT = 13;
+    private static final int BUTTON_GAP = 3;
 
     private final BondSecondaryPageHost host;
-    private MorningKissVoiceSettings workingSettings = MorningKissVoiceSettings.DEFAULT;
-    private List<VoiceModeOption> modeOptions = List.of();
-    private List<VoiceListOption> selectionOptions = List.of();
-    private BondDropdown<VoiceModeOption> modeDropdown;
-    private BondScrollableList<VoiceListOption> selectionList;
+    private MorningKissVoiceSettings.Mode playMode = MorningKissVoiceSettings.Mode.RANDOM_ALL;
+    private final Set<String> selectedIds = new LinkedHashSet<>();
+    private List<BondVoicePoolList.Entry> voiceEntries = List.of();
+    private BondVoicePoolList voiceList;
 
     public MorningKissVoiceSecondaryPage(BondSecondaryPageHost host) {
         this.host = host;
@@ -45,40 +44,28 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
         Font font = host.getFont();
         BondModalPage modal = modal();
         modal.renderChrome(graphics, font);
-        boolean dropdownExpanded = modeDropdown.isExpanded();
-        int contentMouseX = dropdownExpanded ? Integer.MIN_VALUE : mouseX;
-        int contentMouseY = dropdownExpanded ? Integer.MIN_VALUE : mouseY;
-        int contentLeft = modal.contentLeft();
-        int contentWidth = modal.contentRight() - contentLeft;
-        int contentTop = modal.contentTop();
 
+        int contentLeft = modal.contentLeft();
+        int contentTop = modal.contentTop();
+        int contentWidth = modal.contentRight() - contentLeft;
         Component packName = getSoundPackId().isBlank()
                 ? Component.translatable("bond.morning_kiss.voice.none")
                 : Component.literal(getSoundPackId());
-        graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.pack", packName), contentLeft, contentTop, BondGuiTokens.COLOR_TEXT_BODY, false);
-        graphics.drawString(font, Component.translatable("bond.morning_kiss.voice.mode"), contentLeft, contentTop + 14, BondGuiTokens.COLOR_TEXT_BODY, false);
-        modeDropdown.renderBase(graphics, font, modeOptions, selectedModeIndex(), mouseX, mouseY, this::renderModeOption);
+        Component packLine = Component.translatable("bond.morning_kiss.voice.pack", packName);
+        graphics.drawString(font, font.plainSubstrByWidth(packLine.getString(), contentWidth - 48), contentLeft, contentTop, BondGuiTokens.COLOR_TEXT_BODY, false);
+        BondButtonRow.render(graphics, font, modal.left(), headerButtons(modal), mouseX, mouseY);
 
-        int listLeft = contentLeft;
-        int listTop = contentTop + 36;
-        int listWidth = contentWidth;
-        int listHeight = Math.max(LIST_ROW_HEIGHT, modal.footerTop() - listTop - BondGuiTokens.SPACING_SM);
-        graphics.fill(listLeft, listTop, listLeft + listWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
-        if (!dropdownExpanded) {
-            if (getSoundPackId().isBlank()) {
-                graphics.drawCenteredString(font, Component.translatable("bond.morning_kiss.voice.no_sound_pack"), listLeft + listWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
-            } else if (workingSettings.mode() == MorningKissVoiceSettings.Mode.RANDOM_ALL) {
-                graphics.drawCenteredString(font, Component.translatable("bond.morning_kiss.voice.random_all_hint"), listLeft + listWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
-            } else if (selectionOptions.isEmpty()) {
-                graphics.drawCenteredString(font, Component.translatable("bond.morning_kiss.voice.no_entries"), listLeft + listWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
-            } else {
-                selectionList.clamp(selectionOptions);
-                selectionList.render(graphics, font, selectionOptions, contentMouseX, contentMouseY, this::renderSelectionOption);
-            }
+        int buttonY = modal.footerButtonY(BUTTON_HEIGHT);
+        int listTop = contentTop + 16;
+        int listHeight = Math.max(LIST_ROW_HEIGHT * 4, buttonY - listTop - 3);
+        if (voiceEntries.isEmpty()) {
+            BondGuiTokens.drawFramedPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
+            graphics.drawCenteredString(font, Component.translatable("bond.voice_pool.no_entries"), contentLeft + contentWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
+        } else {
+            voiceList.render(graphics, font, voiceEntries, selectedIds, mouseX, mouseY);
         }
 
-        BondButtonRow.render(graphics, font, modal.left(), buttons(modal), contentMouseX, contentMouseY);
-        modeDropdown.renderOverlay(graphics, font, modeOptions, selectedModeIndex(), mouseX, mouseY, this::renderModeOption);
+        BondButtonRow.render(graphics, font, modal.left(), buttons(modal), mouseX, mouseY);
     }
 
     @Override
@@ -92,37 +79,15 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
             return true;
         }
 
-        BondDropdown.ClickResult modeClick = modeDropdown.mouseClicked(mouseX, mouseY, modeOptions.size());
-        if (modeClick.handled()) {
-            if (modeClick.selectedIndex() >= 0 && modeClick.selectedIndex() < modeOptions.size()) {
-                VoiceModeOption selectedMode = modeOptions.get(modeClick.selectedIndex());
-                workingSettings = MorningKissVoiceSettings.of(selectedMode.mode().serializedName(), "", "", getSoundPackId());
-                rebuildSelectionOptions();
-            }
-            return true;
-        }
-
         String buttonId = BondButtonRow.click(buttons(modal), modal.left(), mouseX, mouseY);
+        if (buttonId.isEmpty()) {
+            buttonId = BondButtonRow.click(headerButtons(modal), modal.left(), mouseX, mouseY);
+        }
         if (!buttonId.isEmpty()) {
             switch (buttonId) {
-                case "save" -> {
-                    MorningKissVoiceSettings settingsToSave = sanitizeSettingsForSave();
-                    TouhouMaidAffection.CHANNEL.sendToServer(new MorningKissVoiceConfigPayload(
-                            host.getMaid().getUUID(),
-                            settingsToSave.mode().serializedName(),
-                            settingsToSave.selectedGroup(),
-                            settingsToSave.selectedClip(),
-                            settingsToSave.soundPackId()
-                    ));
-                    BondClientStateCache.updateMorningKissVoiceSettings(host.getMaid().getUUID(), settingsToSave);
-                    host.closeSecondaryPage();
-                }
-                case "clear" -> {
-                    workingSettings = MorningKissVoiceSettings.DEFAULT.withSoundPackId(getSoundPackId());
-                    TouhouMaidAffection.CHANNEL.sendToServer(new MorningKissVoiceConfigPayload(host.getMaid().getUUID(), workingSettings.mode().serializedName(), "", "", getSoundPackId()));
-                    BondClientStateCache.updateMorningKissVoiceSettings(host.getMaid().getUUID(), workingSettings);
-                    host.closeSecondaryPage();
-                }
+                case "mode" -> playMode = nextMode(playMode);
+                case "toggle_all" -> toggleAll();
+                case "save" -> saveAndClose(false);
                 case "cancel" -> host.closeSecondaryPage();
                 default -> {
                 }
@@ -130,151 +95,131 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
             return true;
         }
 
-        if (workingSettings.mode() != MorningKissVoiceSettings.Mode.RANDOM_ALL && selectionList != null) {
-            int optionIndex = selectionList.getHoveredIndex(mouseX, mouseY, selectionOptions.size());
-            if (optionIndex >= 0 && optionIndex < selectionOptions.size()) {
-                VoiceListOption option = selectionOptions.get(optionIndex);
-                if (workingSettings.mode() == MorningKissVoiceSettings.Mode.RANDOM_GROUP && option.group()) {
-                    workingSettings = MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), option.key(), "", getSoundPackId());
-                } else if (workingSettings.mode() == MorningKissVoiceSettings.Mode.SPECIFIC_CLIP && !option.group()) {
-                    workingSettings = MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), "", option.key(), getSoundPackId());
-                }
-                return true;
+        int optionIndex = voiceList.getHoveredIndex(mouseX, mouseY, voiceEntries.size());
+        if (optionIndex >= 0 && optionIndex < voiceEntries.size()) {
+            String id = voiceEntries.get(optionIndex).id();
+            if (!selectedIds.remove(id)) {
+                selectedIds.add(id);
             }
         }
-
         return true;
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
-        if (modeDropdown.mouseScrolled(mouseX, mouseY, scrollY, modeOptions.size())) {
-            return true;
-        }
-        return workingSettings.mode() != MorningKissVoiceSettings.Mode.RANDOM_ALL
-                && selectionList != null
-                && selectionList.scroll(mouseX, mouseY, scrollY, selectionOptions.size());
-    }
-
-    @Override
-    public boolean onEscapePressed() {
-        if (modeDropdown.isExpanded()) {
-            modeDropdown.collapse();
-            return true;
-        }
-        return false;
+        return voiceList.scroll(mouseX, mouseY, scrollY, voiceEntries.size());
     }
 
     @Override
     public List<Component> getTooltip(int mouseX, int mouseY) {
-        if (modeDropdown.isExpanded()) {
-            return List.of();
-        }
-        int modeIndex = modeDropdown.getHoveredIndex(mouseX, mouseY, modeOptions.size());
-        if (modeIndex >= 0 && modeIndex < modeOptions.size()) {
-            VoiceModeOption option = modeOptions.get(modeIndex);
-            return List.of(option.label(), option.detail());
-        }
-        if (modeDropdown.contains(mouseX, mouseY, modeOptions.size())) {
-            VoiceModeOption option = modeOptions.get(selectedModeIndex());
-            return List.of(option.label(), option.detail());
-        }
-        if (workingSettings.mode() != MorningKissVoiceSettings.Mode.RANDOM_ALL && selectionList != null) {
-            int optionIndex = selectionList.getHoveredIndex(mouseX, mouseY, selectionOptions.size());
-            if (optionIndex >= 0 && optionIndex < selectionOptions.size()) {
-                VoiceListOption option = selectionOptions.get(optionIndex);
-                return option.detail().equals(Component.empty()) ? List.of(option.label()) : List.of(option.label(), option.detail());
-            }
+        int optionIndex = voiceList.getHoveredIndex(mouseX, mouseY, voiceEntries.size());
+        if (optionIndex >= 0 && optionIndex < voiceEntries.size()) {
+            BondVoicePoolList.Entry entry = voiceEntries.get(optionIndex);
+            return entry.detail().equals(Component.empty()) ? List.of(entry.label()) : List.of(entry.label(), entry.detail());
         }
         return List.of();
     }
 
     private void initialize() {
-        workingSettings = BondClientStateCache.getMorningKissVoiceSettings(host.getMaid().getUUID()).withSoundPackId(getSoundPackId());
-        modeOptions = List.of(
-                new VoiceModeOption(MorningKissVoiceSettings.Mode.RANDOM_ALL, Component.translatable("bond.morning_kiss.voice.mode.random_all"), Component.translatable("bond.morning_kiss.voice.mode.random_all.desc")),
-                new VoiceModeOption(MorningKissVoiceSettings.Mode.RANDOM_GROUP, Component.translatable("bond.morning_kiss.voice.mode.random_group"), Component.translatable("bond.morning_kiss.voice.mode.random_group.desc")),
-                new VoiceModeOption(MorningKissVoiceSettings.Mode.SPECIFIC_CLIP, Component.translatable("bond.morning_kiss.voice.mode.specific_clip"), Component.translatable("bond.morning_kiss.voice.mode.specific_clip.desc"))
-        );
+        MorningKissVoiceSettings current = BondClientStateCache.getMorningKissVoiceSettings(host.getMaid().getUUID()).withSoundPackId(getSoundPackId());
+        playMode = current.mode() == MorningKissVoiceSettings.Mode.SPECIFIC_CLIP
+                ? MorningKissVoiceSettings.Mode.RANDOM_ALL
+                : current.mode();
+        voiceEntries = buildEntries();
+        selectedIds.clear();
+        selectedIds.addAll(VoicePoolSelection.initialSelection(current.selectedVoiceIds(), defaultSelectedIds(), allEntryIds()));
 
         BondModalPage modal = modal();
         int contentLeft = modal.contentLeft();
         int contentTop = modal.contentTop();
-        int listTop = contentTop + 36;
-        int listHeight = Math.max(LIST_ROW_HEIGHT, modal.footerTop() - listTop - BondGuiTokens.SPACING_SM);
-        modeDropdown = new BondDropdown<>(contentLeft + 34, contentTop + 12, modal.contentRight() - (contentLeft + 34), DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        selectionList = new BondScrollableList<>(contentLeft, listTop, modal.contentRight() - contentLeft, listHeight, LIST_ROW_HEIGHT);
-        rebuildSelectionOptions();
+        int buttonY = modal.footerButtonY(BUTTON_HEIGHT);
+        int listTop = contentTop + 16;
+        int listHeight = Math.max(LIST_ROW_HEIGHT * 4, buttonY - listTop - 3);
+        voiceList = new BondVoicePoolList(contentLeft, listTop, modal.contentRight() - contentLeft, listHeight, LIST_ROW_HEIGHT);
     }
 
-    private void rebuildSelectionOptions() {
+    private List<BondVoicePoolList.Entry> buildEntries() {
+        List<BondVoicePoolList.Entry> entries = new ArrayList<>();
+        boolean includeBasePool = VoicePoolSelection.shouldIncludeBasePool(
+                BondClientStateCache.getMorningKissDataPackVoiceMode(host.getMaid().getUUID()),
+                BondClientStateCache.getMorningKissDataPackVoiceFiles(host.getMaid().getUUID())
+        );
+        if (includeBasePool) {
+            entries.add(new BondVoicePoolList.Entry(
+                    VoicePoolIds.BUILTIN_MORNING_KISS,
+                    Component.translatable("bond.voice_pool.builtin_morning_kiss"),
+                    Component.translatable("bond.voice_pool.source.builtin"),
+                    Component.translatable("bond.voice_pool.builtin_morning_kiss.desc")
+            ));
+        }
+        for (String fileName : BondClientStateCache.getMorningKissDataPackVoiceFiles(host.getMaid().getUUID())) {
+            entries.add(new BondVoicePoolList.Entry(
+                    VoicePoolIds.dataPack(fileName),
+                    Component.literal(fileName),
+                    Component.translatable("bond.voice_pool.source.datapack"),
+                    Component.literal("morning_kiss/voices/" + fileName)
+            ));
+        }
         String soundPackId = getSoundPackId();
-        if (soundPackId.isBlank()) {
-            selectionOptions = List.of();
-            return;
-        }
-        switch (workingSettings.mode()) {
-            case RANDOM_ALL -> selectionOptions = List.of();
-            case RANDOM_GROUP -> {
-                List<VoiceListOption> options = new ArrayList<>();
-                for (MorningKissVoiceIndex.VoiceGroup group : MorningKissVoiceIndex.getGroups(soundPackId)) {
-                    options.add(VoiceListOption.group(group.key(), Component.literal(group.displayName()), Component.translatable("bond.morning_kiss.voice.group.entries", group.entryCount())));
-                }
-                selectionOptions = List.copyOf(options);
-                if (workingSettings.selectedGroup().isBlank() || options.stream().noneMatch(option -> option.key().equals(workingSettings.selectedGroup()))) {
-                    if (!options.isEmpty()) {
-                        workingSettings = MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), options.get(0).key(), "", soundPackId);
-                    }
-                }
-            }
-            case SPECIFIC_CLIP -> {
-                List<VoiceListOption> options = new ArrayList<>();
-                for (MorningKissVoiceIndex.VoiceEntry entry : MorningKissVoiceIndex.getEntries(soundPackId)) {
-                    options.add(VoiceListOption.clip(entry.clipKey(), Component.literal(entry.groupDisplayName() + " / " + entry.displayName()), entry.detail()));
-                }
-                selectionOptions = List.copyOf(options);
-                if (workingSettings.selectedClip().isBlank() || options.stream().noneMatch(option -> option.key().equals(workingSettings.selectedClip()))) {
-                    if (!options.isEmpty()) {
-                        workingSettings = MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), "", options.get(0).key(), soundPackId);
-                    }
-                }
+        if (includeBasePool && !soundPackId.isBlank()) {
+            for (MorningKissVoiceIndex.VoiceEntry entry : MorningKissVoiceIndex.getEntries(soundPackId)) {
+                entries.add(new BondVoicePoolList.Entry(
+                        VoicePoolIds.tlm(entry.clipKey()),
+                        Component.literal(entry.groupDisplayName() + " / " + entry.displayName()),
+                        Component.translatable("bond.voice_pool.source.tlm"),
+                        entry.detail()
+                ));
             }
         }
+        return List.copyOf(entries);
     }
 
-    private MorningKissVoiceSettings sanitizeSettingsForSave() {
-        String soundPackId = getSoundPackId();
-        return switch (workingSettings.mode()) {
-            case RANDOM_ALL -> MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), "", "", soundPackId);
-            case RANDOM_GROUP -> MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), workingSettings.selectedGroup(), "", soundPackId);
-            case SPECIFIC_CLIP -> MorningKissVoiceSettings.of(workingSettings.mode().serializedName(), "", workingSettings.selectedClip(), soundPackId);
+    private List<String> defaultSelectedIds() {
+        if (!VoicePoolSelection.shouldIncludeBasePool(
+                BondClientStateCache.getMorningKissDataPackVoiceMode(host.getMaid().getUUID()),
+                BondClientStateCache.getMorningKissDataPackVoiceFiles(host.getMaid().getUUID())
+        )) {
+            return BondClientStateCache.getMorningKissDataPackVoiceFiles(host.getMaid().getUUID()).stream()
+                    .map(VoicePoolIds::dataPack)
+                    .toList();
+        }
+        ArrayList<String> ids = new ArrayList<>();
+        ids.add(VoicePoolIds.BUILTIN_MORNING_KISS);
+        ids.addAll(BondClientStateCache.getMorningKissDataPackVoiceFiles(host.getMaid().getUUID()).stream()
+                .map(VoicePoolIds::dataPack)
+                .toList());
+        return ids;
+    }
+
+    private void saveAndClose(boolean resetToDefault) {
+        List<String> savedIds = resetToDefault ? List.of() : selectedIds.stream().toList();
+        MorningKissVoiceSettings settings = MorningKissVoiceSettings.of(playMode.serializedName(), "", "", getSoundPackId(), savedIds);
+        TouhouMaidAffection.CHANNEL.sendToServer(new MorningKissVoiceConfigPayload(
+                host.getMaid().getUUID(),
+                settings.mode().serializedName(),
+                settings.selectedGroup(),
+                settings.selectedClip(),
+                settings.soundPackId(),
+                settings.selectedVoiceIds()
+        ));
+        BondClientStateCache.updateMorningKissVoiceSettings(host.getMaid().getUUID(), settings);
+        host.closeSecondaryPage();
+    }
+
+    private MorningKissVoiceSettings.Mode nextMode(MorningKissVoiceSettings.Mode current) {
+        return switch (current) {
+            case RANDOM_ALL -> MorningKissVoiceSettings.Mode.RANDOM_GROUP;
+            case RANDOM_GROUP -> MorningKissVoiceSettings.Mode.RANDOM_ALL;
+            case SPECIFIC_CLIP -> MorningKissVoiceSettings.Mode.RANDOM_ALL;
         };
     }
 
-    private void renderModeOption(GuiGraphics graphics, Font font, VoiceModeOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
-        if (!selectedHeader) {
-            BondGuiTokens.drawSelectableRow(graphics, left - 4, top - 2, right, top + height + 2, index == selectedModeIndex(), hovered);
-        }
-        graphics.drawString(font, option.label(), left, top + 1, index == selectedModeIndex() ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
-    }
-
-    private void renderSelectionOption(GuiGraphics graphics, Font font, VoiceListOption option, int index, int left, int top, int right, int height, boolean hovered) {
-        boolean selected = switch (workingSettings.mode()) {
-            case RANDOM_GROUP -> option.group() && option.key().equals(workingSettings.selectedGroup());
-            case SPECIFIC_CLIP -> !option.group() && option.key().equals(workingSettings.selectedClip());
-            case RANDOM_ALL -> false;
+    private Component playModeLabel() {
+        return switch (playMode) {
+            case RANDOM_ALL -> Component.translatable("bond.voice_pool.mode.random");
+            case RANDOM_GROUP -> Component.translatable("bond.voice_pool.mode.sequential");
+            case SPECIFIC_CLIP -> Component.translatable("bond.voice_pool.mode.random");
         };
-        BondGuiTokens.drawSelectableRow(graphics, left, top, right, top + height, selected, hovered);
-        graphics.drawString(font, option.label(), left + 4, top + 3, selected ? BondGuiTokens.COLOR_TEXT_SELECTED : BondGuiTokens.COLOR_TEXT_BODY, false);
-    }
-
-    private int selectedModeIndex() {
-        for (int i = 0; i < modeOptions.size(); i++) {
-            if (modeOptions.get(i).mode() == workingSettings.mode()) {
-                return i;
-            }
-        }
-        return 0;
     }
 
     private BondModalPage modal() {
@@ -282,28 +227,41 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
     }
 
     private List<BondButtonRow.ButtonSpec> buttons(BondModalPage modal) {
-        boolean saveEnabled = !getSoundPackId().isBlank();
         return BondButtonRow.createCenteredUniform(host.getFont(), modal.width(), modal.footerButtonY(BUTTON_HEIGHT), BUTTON_HEIGHT, BUTTON_GAP, BondGuiTokens.BUTTON_HORIZONTAL_PADDING,
-                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.save"), "save", saveEnabled, true),
-                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.clear"), "clear", true),
-                new BondButtonRow.ButtonSpec(0, 0, BondGuiTokens.BUTTON_MIN_WIDTH, BUTTON_HEIGHT, Component.translatable("gui.cancel"), "cancel", true)
+                new BondButtonRow.ButtonSpec(0, 0, 42, BUTTON_HEIGHT, Component.translatable("bond.morning_kiss.voice.save"), "save", !selectedIds.isEmpty(), true),
+                new BondButtonRow.ButtonSpec(0, 0, 42, BUTTON_HEIGHT, playModeLabel(), "mode", true),
+                new BondButtonRow.ButtonSpec(0, 0, 42, BUTTON_HEIGHT, Component.translatable("gui.cancel"), "cancel", true)
         );
+    }
+
+    private List<BondButtonRow.ButtonSpec> headerButtons(BondModalPage modal) {
+        int y = modal.contentTop() - 1;
+        int right = modal.contentRight() - modal.left();
+        return List.of(
+                new BondButtonRow.ButtonSpec(right - 42, y, 42, HEADER_BUTTON_HEIGHT, toggleAllLabel(), "toggle_all", !voiceEntries.isEmpty())
+        );
+    }
+
+    private List<String> allEntryIds() {
+        return voiceEntries.stream().map(BondVoicePoolList.Entry::id).toList();
+    }
+
+    private void toggleAll() {
+        if (selectedIds.size() == voiceEntries.size() && !voiceEntries.isEmpty()) {
+            selectedIds.clear();
+            return;
+        }
+        selectedIds.clear();
+        selectedIds.addAll(allEntryIds());
+    }
+
+    private Component toggleAllLabel() {
+        return selectedIds.size() == voiceEntries.size() && !voiceEntries.isEmpty()
+                ? Component.translatable("bond.voice_pool.select_none")
+                : Component.translatable("bond.voice_pool.select_all");
     }
 
     private String getSoundPackId() {
         return host.getMaid() == null || host.getMaid().getSoundPackId() == null ? "" : host.getMaid().getSoundPackId();
-    }
-
-    private record VoiceModeOption(MorningKissVoiceSettings.Mode mode, Component label, Component detail) {
-    }
-
-    private record VoiceListOption(String key, Component label, Component detail, boolean group) {
-        private static VoiceListOption group(String key, Component label, Component detail) {
-            return new VoiceListOption(key, label, detail, true);
-        }
-
-        private static VoiceListOption clip(String key, Component label, Component detail) {
-            return new VoiceListOption(key, label, detail, false);
-        }
     }
 }

@@ -521,7 +521,8 @@ public class BondData {
                 root.getString("MorningKissVoiceMode_" + maidUuid),
                 root.getString("MorningKissVoiceGroup_" + maidUuid),
                 root.getString("MorningKissVoiceClip_" + maidUuid),
-                root.getString("MorningKissVoicePack_" + maidUuid)
+                root.getString("MorningKissVoicePack_" + maidUuid),
+                VoicePoolIds.decode(root.getString("MorningKissVoicePool_" + maidUuid))
         );
     }
 
@@ -531,6 +532,7 @@ public class BondData {
         root.putString("MorningKissVoiceGroup_" + maidUuid, safe.selectedGroup());
         root.putString("MorningKissVoiceClip_" + maidUuid, safe.selectedClip());
         root.putString("MorningKissVoicePack_" + maidUuid, safe.soundPackId());
+        root.putString("MorningKissVoicePool_" + maidUuid, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
     }
 
@@ -544,7 +546,8 @@ public class BondData {
                 root.getString("EmergencyRescueVoiceFixedFile_" + maidUuid),
                 root.contains("EmergencyRescueVoiceCommonFallback_" + maidUuid)
                         ? root.getBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid)
-                        : com.github.touhoumaidaffection.ModConfig.BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT.get()
+                        : com.github.touhoumaidaffection.ModConfig.BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT.get(),
+                VoicePoolIds.decode(root.getString("EmergencyRescueVoicePool_" + maidUuid))
         );
     }
 
@@ -557,6 +560,7 @@ public class BondData {
         root.putString("EmergencyRescueVoiceCustomMode_" + maidUuid, safe.customPlayMode().serializedName());
         root.putString("EmergencyRescueVoiceFixedFile_" + maidUuid, safe.fixedFile());
         root.putBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid, safe.useCommonFallback());
+        root.putString("EmergencyRescueVoicePool_" + maidUuid, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
     }
 

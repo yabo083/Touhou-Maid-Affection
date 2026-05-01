@@ -3,13 +3,15 @@ package com.github.touhoumaidaffection.handler;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
-import com.github.touhoumaidaffection.ModSounds;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.github.touhoumaidaffection.bond.service.MorningKissProfileData;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -98,7 +100,11 @@ public class KissMaidHandler {
     }
 
     public static boolean performMorningKiss(Player player, EntityMaid maid) {
-        return executeKiss(player, maid, true, false, false);
+        return performMorningKiss(player, maid, true);
+    }
+
+    public static boolean performMorningKiss(Player player, EntityMaid maid, boolean playKissSound) {
+        return executeKiss(player, maid, true, false, false, playKissSound);
     }
 
     public static void applyMaidsPrayer(Player player, EntityMaid maid, int duration) {
@@ -140,10 +146,10 @@ public class KissMaidHandler {
     }
 
     private static boolean executeKiss(Player player, EntityMaid maid) {
-        return executeKiss(player, maid, false, true, true);
+        return executeKiss(player, maid, false, true, true, true);
     }
 
-    private static boolean executeKiss(Player player, EntityMaid maid, boolean ignoreCooldown, boolean applyStandardBuffTracking, boolean allowFovZoom) {
+    private static boolean executeKiss(Player player, EntityMaid maid, boolean ignoreCooldown, boolean applyStandardBuffTracking, boolean allowFovZoom, boolean playKissSound) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return false;
@@ -188,9 +194,15 @@ public class KissMaidHandler {
         double midX = (player.getX() + maid.getX()) / 2.0;
         double midY = (player.getEyeY() + maid.getEyeY()) / 2.0;
         double midZ = (player.getZ() + maid.getZ()) / 2.0;
-        player.level().playSound(null, midX, midY, midZ,
-                ModSounds.KISS.get(), SoundSource.PLAYERS,
-                1.0F, 1.0F);
+        if (playKissSound) {
+            ResourceLocation soundId = ResourceLocation.tryParse(MorningKissProfileData.getKissSoundEventId());
+            SoundEvent kissSound = SoundEvent.createVariableRangeEvent(soundId == null
+                    ? new ResourceLocation(TouhouMaidAffection.MOD_ID, "touhou_maid_affection.kiss")
+                    : soundId);
+            player.level().playSound(null, midX, midY, midZ,
+                    kissSound, SoundSource.PLAYERS,
+                    1.0F, 1.0F);
+        }
 
         // Broadcast particle packet to all tracking clients
         KissMaidPayload payload = new KissMaidPayload(maid.getId(), player.getId(), allowFovZoom);

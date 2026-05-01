@@ -8,6 +8,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public record RescueVoiceConfigPayload(
@@ -18,7 +20,8 @@ public record RescueVoiceConfigPayload(
         String tlmSelectedClip,
         String customPlayMode,
         String fixedFile,
-        boolean useCommonFallback
+        boolean useCommonFallback,
+        List<String> selectedVoiceIds
 ) implements CustomPacketPayload {
     public static final Type<RescueVoiceConfigPayload> TYPE =
             new Type<>(new ResourceLocation(TouhouMaidAffection.MOD_ID, "rescue_voice_config"));
@@ -42,6 +45,8 @@ public record RescueVoiceConfigPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.customPlayMode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.fixedFile());
         ByteBufCodecs.BOOL.encode(buf, payload.useCommonFallback());
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
+                .encode(buf, new ArrayList<>(payload.selectedVoiceIds()));
     }
 
     private static RescueVoiceConfigPayload decode(ByteBuf buf) {
@@ -53,7 +58,8 @@ public record RescueVoiceConfigPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.BOOL.decode(buf)
+                ByteBufCodecs.BOOL.decode(buf),
+                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf)
         );
     }
 }

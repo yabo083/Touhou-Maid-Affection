@@ -5,12 +5,8 @@ import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundReloadPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncChunkPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncClearPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncCompletePayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncManifestPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.LinkedHashSet;
@@ -30,7 +26,8 @@ public final class BondClientPayloadHandler {
                         payload.morningKissVoiceMode(),
                         payload.morningKissVoiceGroup(),
                         payload.morningKissVoiceClip(),
-                        payload.morningKissVoicePack()
+                        payload.morningKissVoicePack(),
+                        payload.morningKissSelectedVoiceIds()
                 ),
                 EmergencyRescueVoiceSettings.of(
                         payload.rescueVoiceSourceMode(),
@@ -39,8 +36,13 @@ public final class BondClientPayloadHandler {
                         payload.rescueVoiceTlmClip(),
                         payload.rescueVoiceCustomPlayMode(),
                         payload.rescueVoiceFixedFile(),
-                        payload.rescueVoiceUseCommonFallback()
+                        payload.rescueVoiceUseCommonFallback(),
+                        payload.rescueSelectedVoiceIds()
                 ),
+                payload.morningKissDataPackVoiceMode(),
+                payload.morningKissDataPackVoiceFiles(),
+                payload.rescueDataPackVoiceMode(),
+                payload.rescueDataPackVoiceFiles(),
                 new LapPillowPoseSnapshot(
                         com.github.touhoumaidaffection.bond.lap.LapPillowMode.fromName(payload.lapPillowMode()),
                         payload.lapPillowMaidOffsetX(),
@@ -63,23 +65,7 @@ public final class BondClientPayloadHandler {
         context.enqueueWork(() -> MorningKissVoicePlayback.play(payload));
     }
 
-    public static void handleRescueSoundSyncManifest(RescueSoundSyncManifestPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> EmergencyRescueServerSoundSyncClient.handleManifest(payload));
-    }
-
-    public static void handleRescueSoundSyncClear(RescueSoundSyncClearPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> EmergencyRescueServerSoundSyncClient.handleClear(payload));
-    }
-
-    public static void handleRescueSoundSyncChunk(RescueSoundSyncChunkPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> EmergencyRescueServerSoundSyncClient.handleChunk(payload));
-    }
-
-    public static void handleRescueSoundSyncComplete(RescueSoundSyncCompletePayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> EmergencyRescueServerSoundSyncClient.handleComplete(payload));
-    }
-
-    public static void handleRescueSoundReload(RescueSoundReloadPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> EmergencyRescueServerSoundSyncClient.handleReload(payload));
+    public static void handleMorningKissDataVoicePlay(MorningKissDataVoicePlayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> MorningKissVoicePlayback.playDataPackVoice(payload));
     }
 }

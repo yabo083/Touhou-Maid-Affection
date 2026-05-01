@@ -20,13 +20,10 @@ public record MaidRescuePopPayload(
         String rescueVoiceTlmMode,
         String rescueVoiceTlmGroup,
         String rescueVoiceTlmClip,
-        String rescueVoiceCustomPlayMode,
-        String rescueVoiceFixedFile,
-        boolean rescueVoiceUseCommonFallback,
+        String rescueVoiceSelectedId,
         String rescueSoundEventId,
-        boolean allowClientCustomSound,
-        double maxClientCustomSoundDurationSeconds,
-        String requiredClientCustomSoundFormat
+        String dataPackVoiceFileName,
+        byte[] dataPackVoiceData
 ) implements CustomPacketPayload {
     public static final Type<MaidRescuePopPayload> TYPE =
             new Type<>(new ResourceLocation(TouhouMaidAffection.MOD_ID, "maid_rescue_pop"));
@@ -54,13 +51,10 @@ public record MaidRescuePopPayload(
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmMode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmGroup());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceTlmClip());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceCustomPlayMode());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceFixedFile());
-        ByteBufCodecs.BOOL.encode(buf, payload.rescueVoiceUseCommonFallback());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueVoiceSelectedId());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.rescueSoundEventId());
-        ByteBufCodecs.BOOL.encode(buf, payload.allowClientCustomSound());
-        ByteBufCodecs.DOUBLE.encode(buf, payload.maxClientCustomSoundDurationSeconds());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.requiredClientCustomSoundFormat());
+        ByteBufCodecs.STRING_UTF8.encode(buf, payload.dataPackVoiceFileName());
+        ByteBufCodecs.BYTE_ARRAY.encode(buf, payload.dataPackVoiceData());
     }
 
     private static MaidRescuePopPayload decode(ByteBuf buf) {
@@ -79,11 +73,8 @@ public record MaidRescuePopPayload(
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.BOOL.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.BOOL.decode(buf),
-                ByteBufCodecs.DOUBLE.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf)
+                ByteBufCodecs.BYTE_ARRAY.decode(buf)
         );
     }
 }

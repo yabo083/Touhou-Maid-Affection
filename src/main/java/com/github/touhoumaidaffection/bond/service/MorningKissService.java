@@ -2,13 +2,20 @@ package com.github.touhoumaidaffection.bond.service;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.ChatClientInfo;
+import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMSite;
+import com.github.tartaricacid.touhoulittlemaid.config.subconfig.AIConfig;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
+import com.github.touhoumaidaffection.bond.VoicePoolIds;
+import com.github.touhoumaidaffection.bond.VoicePoolSelection;
 import com.github.touhoumaidaffection.bond.service.MorningKissScheduleRules.DialoguePool;
 import com.github.touhoumaidaffection.handler.KissMaidHandler;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
@@ -64,6 +71,7 @@ public final class MorningKissService {
     );
 
     private static final Map<UUID, PendingMorningKiss> TASKS = new HashMap<>();
+    private static final Map<String, Integer> VOICE_SEQUENCE_INDEX = new HashMap<>();
     private static final double KISS_REACH_DISTANCE_SQR = 3.24D;
     private static final double LAX_KISS_REACH_DISTANCE_SQR = 5.76D;
     private static final double MAX_VERTICAL_DELTA = 2.5D;
@@ -297,7 +305,9 @@ public final class MorningKissService {
             }
 
             maid.getNavigation().stop();
-            if (!KissMaidHandler.performMorningKiss(player, maid)) {
+            ResolvedMorningKissVoice selectedVoice = resolveSelectedVoicePoolEntry(player, maid);
+            boolean playKissSound = shouldPlayMorningKissSoundWithVoice(player, maid, selectedVoice);
+            if (!KissMaidHandler.performMorningKiss(player, maid, playKissSound)) {
                 failTask(iterator, task, player, null);
                 continue;
             }
@@ -308,8 +318,10 @@ public final class MorningKissService {
             }
 
             if (!task.dialogueShown()) {
-                maybeShowDialogue(player, maid, task.dialoguePool());
-                playConfiguredVoice(player, maid);
+                boolean aiDialogueDispatched = maybeShowDialogue(player, maid, task.dialoguePool());
+                if (!aiDialogueDispatched) {
+                    playDataDrivenOrConfiguredVoice(player, maid, selectedVoice);
+                }
                 task = task.withDialogueShown(true);
             }
             if (!lapPillowSessionMaid) {
@@ -500,16 +512,86 @@ public final class MorningKissService {
         return dx * dx + dz * dz;
     }
 
-    private static void maybeShowDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+    private static boolean maybeShowDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+        if (tryShowAiDialogue(player, maid, dialoguePool)) {
+            return true;
+        }
+        MorningKissProfileParser.MorningKissProfile profile = MorningKissProfileData.getActiveProfile();
+        List<String> configuredPool = profile.dialogues().getOrDefault(dialoguePool, List.of());
+        if (configuredPool.isEmpty()) {
+            configuredPool = profile.dialogues().getOrDefault(DialoguePool.GENERAL, List.of());
+        }
+        if (!configuredPool.isEmpty()) {
+            if (profile.dialogueMode() == MorningKissProfileParser.DialogueMode.APPEND) {
+                int vanillaCount = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL)).length;
+                int index = player.getRandom().nextInt(configuredPool.size() + vanillaCount);
+                if (index >= configuredPool.size()) {
+                    showBuiltinDialogue(player, maid, dialoguePool, index - configuredPool.size());
+                    return false;
+                }
+            }
+            showConfiguredDialogue(player, maid, dialoguePool, configuredPool);
+            return false;
+        }
+        showBuiltinDialogue(player, maid, dialoguePool, -1);
+        return false;
+    }
+
+    private static void showConfiguredDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool, List<String> configuredPool) {
+        String raw = configuredPool.get(player.getRandom().nextInt(configuredPool.size()));
+        showMorningKissMessage(player, Component.literal(renderTemplate(raw, player, maid, dialoguePool)));
+    }
+
+    private static void showBuiltinDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool, int preferredIndex) {
         String[] pool = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL));
-        String key = pool[player.getRandom().nextInt(pool.length)];
+        int index = preferredIndex >= 0 && preferredIndex < pool.length ? preferredIndex : player.getRandom().nextInt(pool.length);
+        String key = pool[index];
         showMorningKissMessage(player, Component.translatable(key, getResolvedNameForMode(maid, isChatMode())));
     }
 
-    private static void playConfiguredVoice(ServerPlayer player, EntityMaid maid) {
+    private static boolean tryShowAiDialogue(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+        MorningKissProfileParser.AiDialogue aiDialogue = MorningKissProfileData.getActiveProfile().aiDialogue();
+        if (!aiDialogue.enabled()) {
+            return false;
+        }
+        try {
+            if (!AIConfig.LLM_ENABLED.get()) {
+                return false;
+            }
+            LLMSite site = maid.getAiChatManager().getLLMSite();
+            if (site == null || !site.enabled()) {
+                return false;
+            }
+            String prompt = renderTemplate(aiDialogue.prompt(), player, maid, dialoguePool);
+            ChatClientInfo clientInfo = new ChatClientInfo(
+                    aiDialogue.language(),
+                    MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString(),
+                    List.of()
+            );
+            maid.getAiChatManager().chat(prompt, clientInfo, player);
+            return true;
+        } catch (Throwable throwable) {
+            TouhouMaidAffection.LOGGER.warn("Failed to dispatch morning kiss AI dialogue, falling back to static dialogue.", throwable);
+            return false;
+        }
+    }
+
+    private static String renderTemplate(String raw, ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String maidName = MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString();
+        return raw
+                .replace("{maid}", maidName)
+                .replace("{player}", player.getName().getString())
+                .replace("{pool}", dialoguePool.name().toLowerCase(Locale.ROOT))
+                .replace("{time}", getAllowedTimeRangesText());
+    }
+
+    private static boolean playConfiguredVoice(ServerPlayer player, EntityMaid maid) {
         String soundPackId = maid.getSoundPackId();
         if (soundPackId == null || soundPackId.isBlank()) {
-            return;
+            return false;
         }
         MorningKissVoiceSettings settings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID()).withSoundPackId(soundPackId);
         TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MorningKissVoicePlayPayload(
@@ -518,8 +600,235 @@ public final class MorningKissService {
                 soundPackId,
                 settings.mode().serializedName(),
                 settings.selectedGroup(),
-                settings.selectedClip()
+                settings.selectedClip(),
+                selectTlmFallbackVoiceId(settings, soundPackId)
         ));
+        return true;
+    }
+
+    private static String selectTlmFallbackVoiceId(MorningKissVoiceSettings settings, String soundPackId) {
+        if (settings.mode() == MorningKissVoiceSettings.Mode.SPECIFIC_CLIP && !settings.selectedClip().isBlank()) {
+            return VoicePoolIds.tlm(settings.selectedClip());
+        }
+        return "";
+    }
+
+    private static boolean shouldPlayMorningKissSoundWithVoice(ServerPlayer player, EntityMaid maid, ResolvedMorningKissVoice selectedVoice) {
+        if (MorningKissProfileData.shouldPlayKissSoundWithVoice()) {
+            return true;
+        }
+        if (selectedVoice != null) {
+            return selectedVoice.isBuiltin();
+        }
+        return !hasMorningKissVoiceCandidate(player, maid);
+    }
+
+    private static boolean hasMorningKissVoiceCandidate(ServerPlayer player, EntityMaid maid) {
+        if (InteractionVoiceProfileData.resolveMorningKiss(maid).hasVoices()) {
+            return true;
+        }
+        if (MorningKissProfileData.hasDataPackVoices()) {
+            return true;
+        }
+        return maid.getSoundPackId() != null && !maid.getSoundPackId().isBlank();
+    }
+
+    private static void playDataDrivenOrConfiguredVoice(ServerPlayer player, EntityMaid maid, ResolvedMorningKissVoice selectedVoice) {
+        if (playResolvedVoicePoolEntry(player, maid, selectedVoice)) {
+            return;
+        }
+        InteractionVoiceProfileData.ResolvedVoiceProfile interactionProfile = InteractionVoiceProfileData.resolveMorningKiss(maid);
+        boolean hasUnifiedDataPackVoices = interactionProfile.hasVoices();
+        MorningKissProfileParser.MorningKissProfile profile = MorningKissProfileData.getActiveProfile();
+        boolean hasDataPackVoices = MorningKissProfileData.hasDataPackVoices();
+        boolean hasConfiguredVoice = maid.getSoundPackId() != null && !maid.getSoundPackId().isBlank();
+        if (hasUnifiedDataPackVoices) {
+            if (interactionProfile.voiceMode() == InteractionVoiceProfileParser.VoiceMode.APPEND && hasConfiguredVoice) {
+                if (player.getRandom().nextBoolean()) {
+                    if (playUnifiedDataPackVoice(player, maid, interactionProfile)) {
+                        return;
+                    }
+                    playConfiguredVoice(player, maid);
+                    return;
+                }
+                if (playConfiguredVoice(player, maid)) {
+                    return;
+                }
+                playUnifiedDataPackVoice(player, maid, interactionProfile);
+                return;
+            }
+            if (playUnifiedDataPackVoice(player, maid, interactionProfile)) {
+                return;
+            }
+            if (interactionProfile.voiceMode() != InteractionVoiceProfileParser.VoiceMode.REPLACE) {
+                playConfiguredVoice(player, maid);
+            }
+            return;
+        }
+        if (profile.voiceMode() == MorningKissProfileParser.VoiceMode.APPEND && hasDataPackVoices && hasConfiguredVoice) {
+            if (player.getRandom().nextBoolean()) {
+                if (playDataPackVoice(player, maid)) {
+                    return;
+                }
+                playConfiguredVoice(player, maid);
+                return;
+            }
+            if (playConfiguredVoice(player, maid)) {
+                return;
+            }
+            playDataPackVoice(player, maid);
+            return;
+        }
+        if (playDataPackVoice(player, maid)) {
+            return;
+        }
+        if (!hasDataPackVoices || profile.voiceMode() != MorningKissProfileParser.VoiceMode.REPLACE) {
+            playConfiguredVoice(player, maid);
+        }
+    }
+
+    private static ResolvedMorningKissVoice resolveSelectedVoicePoolEntry(ServerPlayer player, EntityMaid maid) {
+        String soundPackId = maid.getSoundPackId() == null ? "" : maid.getSoundPackId();
+        MorningKissVoiceSettings settings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID()).withSoundPackId(soundPackId);
+        InteractionVoiceProfileData.ResolvedVoiceProfile profile = InteractionVoiceProfileData.resolveMorningKiss(maid);
+        List<String> selectedIds = effectiveMorningKissVoiceIds(settings.selectedVoiceIds(), profile);
+        if (selectedIds.isEmpty()) {
+            return null;
+        }
+        String selectedId = selectVoiceId(selectedIds, settings.mode(), "morning:" + maid.getUUID(), player.getRandom());
+        if (selectedId.isBlank()) {
+            return null;
+        }
+        if (VoicePoolIds.BUILTIN_MORNING_KISS.equals(selectedId)) {
+            return ResolvedMorningKissVoice.builtin();
+        }
+        if (VoicePoolIds.isDataPack(selectedId)) {
+            return InteractionVoiceProfileData.selectVoiceByFile(profile, VoicePoolIds.value(selectedId))
+                    .map(voice -> ResolvedMorningKissVoice.dataPack(selectedId, voice))
+                    .orElse(null);
+        }
+        if (VoicePoolIds.isTlm(selectedId) && !soundPackId.isBlank()) {
+            return ResolvedMorningKissVoice.tlm(selectedId);
+        }
+        return null;
+    }
+
+    private static List<String> effectiveMorningKissVoiceIds(List<String> savedIds, InteractionVoiceProfileData.ResolvedVoiceProfile profile) {
+        List<String> defaults = defaultMorningKissVoiceIds(profile);
+        boolean includeBasePool = VoicePoolSelection.shouldIncludeBasePool(
+                profile.voiceMode().name().toLowerCase(Locale.ROOT),
+                profile.fileNames()
+        );
+        if (savedIds == null || savedIds.isEmpty()) {
+            return defaults;
+        }
+        if (includeBasePool) {
+            return savedIds;
+        }
+        List<String> dataPackOnly = savedIds.stream()
+                .filter(VoicePoolIds::isDataPack)
+                .filter(id -> profile.fileNames().contains(VoicePoolIds.value(id)))
+                .distinct()
+                .toList();
+        return dataPackOnly.isEmpty() ? defaults : dataPackOnly;
+    }
+
+    private static List<String> defaultMorningKissVoiceIds(InteractionVoiceProfileData.ResolvedVoiceProfile profile) {
+        ArrayList<String> ids = new ArrayList<>();
+        boolean includeBasePool = VoicePoolSelection.shouldIncludeBasePool(
+                profile.voiceMode().name().toLowerCase(Locale.ROOT),
+                profile.fileNames()
+        );
+        if (includeBasePool) {
+            ids.add(VoicePoolIds.BUILTIN_MORNING_KISS);
+        }
+        ids.addAll(profile.fileNames().stream().map(VoicePoolIds::dataPack).toList());
+        return ids;
+    }
+
+    private static boolean playResolvedVoicePoolEntry(ServerPlayer player, EntityMaid maid, ResolvedMorningKissVoice selectedVoice) {
+        if (selectedVoice == null) {
+            return false;
+        }
+        if (selectedVoice.isBuiltin()) {
+            return true;
+        }
+        if (selectedVoice.dataPackVoice() != null) {
+            InteractionVoiceProfileData.DataPackVoice voice = selectedVoice.dataPackVoice();
+            TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MorningKissDataVoicePlayPayload(
+                    maid.getId(),
+                    maid.getUUID(),
+                    voice.fileName(),
+                    voice.data()
+            ));
+            return true;
+        }
+        if (VoicePoolIds.isTlm(selectedVoice.selectedId())) {
+            String soundPackId = maid.getSoundPackId() == null ? "" : maid.getSoundPackId();
+            if (soundPackId.isBlank()) {
+                return false;
+            }
+            MorningKissVoiceSettings settings = BondManager.getMorningKissVoiceSettings(player, maid.getUUID()).withSoundPackId(soundPackId);
+            TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MorningKissVoicePlayPayload(
+                    maid.getId(),
+                    maid.getUUID(),
+                    soundPackId,
+                    settings.mode().serializedName(),
+                    "",
+                    VoicePoolIds.value(selectedVoice.selectedId()),
+                    selectedVoice.selectedId()
+            ));
+            return true;
+        }
+        return false;
+    }
+
+    private static String selectVoiceId(List<String> ids, MorningKissVoiceSettings.Mode mode, String key, RandomSource random) {
+        if (ids == null || ids.isEmpty()) {
+            return "";
+        }
+        return switch (mode) {
+            case RANDOM_ALL -> ids.get(random.nextInt(ids.size()));
+            case RANDOM_GROUP -> {
+                int index = VOICE_SEQUENCE_INDEX.getOrDefault(key, 0);
+                VOICE_SEQUENCE_INDEX.put(key, (index + 1) % ids.size());
+                yield ids.get(Math.floorMod(index, ids.size()));
+            }
+            case SPECIFIC_CLIP -> ids.getFirst();
+        };
+    }
+
+    private static boolean playDataPackVoice(ServerPlayer player, EntityMaid maid) {
+        return MorningKissProfileData.selectVoice(player.getRandom())
+                .map(voice -> {
+                    TouhouMaidAffection.LOGGER.info("Sending morning kiss data-pack voice '{}' ({} bytes) to {}",
+                            voice.fileName(), voice.data().length, player.getGameProfile().getName());
+                    TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MorningKissDataVoicePlayPayload(
+                            maid.getId(),
+                            maid.getUUID(),
+                            voice.fileName(),
+                            voice.data()
+                    ));
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    private static boolean playUnifiedDataPackVoice(ServerPlayer player, EntityMaid maid,
+                                                    InteractionVoiceProfileData.ResolvedVoiceProfile profile) {
+        return InteractionVoiceProfileData.selectVoice(profile, player.getRandom())
+                .map(voice -> {
+                    TouhouMaidAffection.LOGGER.info("Sending unified morning kiss data-pack voice '{}' ({} bytes) to {}",
+                            voice.fileName(), voice.data().length, player.getGameProfile().getName());
+                    TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MorningKissDataVoicePlayPayload(
+                            maid.getId(),
+                            maid.getUUID(),
+                            voice.fileName(),
+                            voice.data()
+                    ));
+                    return true;
+                })
+                .orElse(false);
     }
 
     private static void showMorningKissMessage(ServerPlayer player, Component message) {
@@ -572,6 +881,24 @@ public final class MorningKissService {
     }
 
     private record ActiveTimeWindow(int index, String windowId, long windowStartTick, long windowEndTick, MorningKissScheduleRules.TimeRange range) {
+    }
+
+    private record ResolvedMorningKissVoice(String selectedId, InteractionVoiceProfileData.DataPackVoice dataPackVoice) {
+        private static ResolvedMorningKissVoice builtin() {
+            return new ResolvedMorningKissVoice(VoicePoolIds.BUILTIN_MORNING_KISS, null);
+        }
+
+        private static ResolvedMorningKissVoice dataPack(String selectedId, InteractionVoiceProfileData.DataPackVoice voice) {
+            return new ResolvedMorningKissVoice(selectedId, voice);
+        }
+
+        private static ResolvedMorningKissVoice tlm(String selectedId) {
+            return new ResolvedMorningKissVoice(selectedId, null);
+        }
+
+        private boolean isBuiltin() {
+            return VoicePoolIds.BUILTIN_MORNING_KISS.equals(selectedId);
+        }
     }
 
     private enum TriggerSource {

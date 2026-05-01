@@ -2,7 +2,7 @@
 
 ## 1. 项目全局意图
 
-`Touhou Maid: Affection` 是一个构建在 `Touhou Little Maid` 之上的 Forge 扩展模组，目标不是重写女仆系统，而是在原有“女仆归属、好感度、模型与音包生态”之上，增加一条更强调陪伴感与长期成长的互动层。
+`Touhou Maid: Affection` 是一个构建在 `Touhou Little Maid` 之上的 NeoForge 扩展模组，目标不是重写女仆系统，而是在原有“女仆归属、好感度、模型与音包生态”之上，增加一条更强调陪伴感与长期成长的互动层。
 
 它当前的核心业务闭环可以概括为四件事：
 
@@ -17,17 +17,17 @@
 
 ### 2.1 语言与运行时
 
-- `Java 17`
+- `Java 21`
 - `Gradle`
-- `ForgeGradle 6.x`
-- Minecraft `1.20.1`
-- Forge `47.4.16`
-- Official mappings `1.20.1`
+- `NeoForge ModDev 2.0.95`
+- Minecraft `1.21.1`
+- NeoForge `21.1.18`
+- Parchment mappings `2024.11.17`
 
 ### 2.2 核心依赖与生态关系
 
-- `Touhou Little Maid 1.5.0+`：唯一强依赖，提供女仆实体、好感度、GUI、音包、交互事件等基础能力。
-- `Forge Capability / EventBus / SimpleChannel`：用于挂接状态、监听事件、注册网络消息（并通过兼容层复用 NeoForge 风格 payload 处理接口）。
+- `Touhou Little Maid 1.5.1+`：唯一强依赖，当前编译目标为 `1.5.2-neoforge+mc1.21.1`，提供女仆实体、好感度、GUI、音包、交互事件与新版 AI 聊天架构等基础能力。
+- `NeoForge Attachment / EventBus / Payload API`：用于挂接状态、监听事件、注册网络消息。
 - `Mixin`：用于改写 TLM 的 GUI 名称渲染与“副手诱饵物品”行为。
 - `Yes Steve Model (YSM)`：软兼容，仅在存在时触发动画或读取动作资源。
 - `CarryOn`：软兼容，仅用于规避按键/右键交互冲突。
@@ -35,7 +35,7 @@
 
 ### 2.3 工程环境判断
 
-- 工程是标准单模块 Forge 模组工程，没有额外子模块。
+- 工程是标准单模块 NeoForge 模组工程，没有额外子模块。
 - 运行端是“单包内同时包含服务端逻辑与客户端逻辑”的典型 Mod 结构。
 - 服务端是真正的状态来源；客户端主要承担缓存、界面、视觉和音频表现。
 
@@ -74,7 +74,7 @@
 ├─ src/main/java/com/github/touhoumaidaffection
 │  ├─ TouhouMaidAffection.java
 │  ├─ ModConfig.java
-│  ├─ ModCapabilities.java
+│  ├─ ModAttachments.java
 │  ├─ ModEffects.java
 │  ├─ ModSounds.java
 │  ├─ bond
@@ -86,7 +86,11 @@
 │  │  ├─ lap
 │  │  ├─ rescue
 │  │  └─ service
-│  │     └─ MorningKissScheduleRules.java
+│  │     ├─ InteractionVoiceProfileData.java
+│  │     ├─ InteractionVoiceProfileParser.java
+│  │     ├─ MorningKissScheduleRules.java
+│  │     ├─ MorningKissProfileData.java
+│  │     └─ MorningKissProfileParser.java
 │  ├─ client
 │  │  ├─ BondClientPayloadHandler.java
 │  │  ├─ BondClientStateCache.java
@@ -105,13 +109,15 @@
 │  │  └─ PowerPointInventoryHelper.java
 │  └─ ysm
 └─ src/main/resources
-   ├─ META-INF/mods.toml
+   ├─ META-INF/neoforge.mods.toml
    ├─ touhou_maid_affection.mixins.json
    ├─ assets/touhou_maid_affection
    │  ├─ lang
    │  ├─ sounds
    │  └─ textures
    └─ data/touhou_maid_affection
+      ├─ morning_kiss/profile.json
+      ├─ emergency_rescue/profile.json
       ├─ rescue_sound/profile.json
       └─ tags/items
 ```
@@ -121,15 +127,15 @@
 #### 根级启动与注册文件
 
 - `TouhouMaidAffection.java`
-  - 负责：模组启动、配置注册、音效/效果/Capability 与实体注册、Payload 注册、全局事件挂接。
+  - 负责：模组启动、配置注册、音效/效果/Attachment 注册、Payload 注册、全局事件挂接。
   - 不负责：具体业务判定、UI 绘制、具体能力实现。
 
 - `ModConfig.java`
   - 负责：全部公共配置项定义与枚举解析。
   - 不负责：运行时状态保存；它只描述规则，不保存结果。
 
-- `ModCapabilities.java` / `ModEffects.java` / `ModSounds.java` / `ModEntityTypes.java`
-  - 负责：Forge 注册表对象声明与全局能力令牌声明。
+- `ModAttachments.java` / `ModEffects.java` / `ModSounds.java`
+  - 负责：NeoForge 注册表对象声明。
   - 不负责：业务调度。
 
 #### `bond/`：羁绊域模型层
@@ -148,13 +154,14 @@
 
 - `bond/service/`
   - 负责：长生命周期、持续 tick 驱动的业务编排。
-  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析与数值修正的 `MorningKissScheduleRules`。
+  - 当前主要包含 `MorningKissService`、`RandomGiftService`，以及用于晨安吻时间窗解析、数据包 profile 解析与数值修正的 `MorningKissScheduleRules` / `MorningKissProfileData` / `MorningKissProfileParser`。
+  - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData` 是早安吻与残血救护共享的数据包语音入口，但配置文件按功能隔离：早安吻读取 `data/touhou_maid_affection/morning_kiss/profile.json` 与 `morning_kiss/voices/`，残血救护读取 `data/touhou_maid_affection/emergency_rescue/profile.json` 与 `emergency_rescue/voices/`。每个功能目录只保留一份 `profile.json`，不再拆出额外的语音池 JSON，也不再把两个功能混在同一个根文件里。
 
 - `bond/rescue/`
   - 负责：紧急救援能力的独立状态与触发逻辑。
-  - 特点是通过 `Capability` 承载 `EmergencyRescueAttachment`（每日救援电量等运行态），并与 `BondData` 中的女仆档案信息协作。
-  - 该目录维护“救援者池 canonical id（优先 `provider:<stable_id>`，缺失时降级 `maid:<uuid>`）”与 legacy/provider 兼容解析，用稳定贡献者标识去重同一女仆的复活/重建实体。
-  - 该目录还维护服务端数据包音效配置（`rescue_sound/profile.json`）、预定义语音自动下发服务（`RescueSoundSyncService`）与玩家个人开关状态。
+  - 特点是同时使用 `Attachment` 存放“每日救援电量”，与 `BondData` 中的女仆档案信息协作。
+  - 该目录维护“救援者池 canonical id（`maid:<uuid>`）”与 legacy/provider 兼容解析，并基于 provider 贡献者身份做跨 UUID 去重，避免同一女仆复活后重复计入。
+  - 该目录还维护服务端数据包音效配置（兼容 `rescue_sound/profile.json`）与玩家个人开关状态；救援预录语音统一改由 `InteractionVoiceProfileData` 读取并随触发 payload 下发，不再维护旧的服务器/客户端文件同步服务。
 
 - `bond/lap/`
   - 负责：膝枕姿态配置、会话状态与中间锚点实体抽象。
@@ -178,9 +185,8 @@
 - 不负责：业务逻辑。
 
 设计上很干净：每个消息一个 `record`，字段即协议本体。
-紧急救援音频链路目前包含两类协议：
-- 触发与播放参数：`MaidRescuePopPayload`
-- 资源同步：`RescueSoundSyncManifestPayload` / `RescueSoundSyncClearPayload` / `RescueSoundSyncChunkPayload` / `RescueSoundSyncCompletePayload` / `RescueSoundReloadPayload`
+晨安吻数据包语音链路新增 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的 OGG 语音按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音”和“TLM 声包选择”混成同一个协议。
+紧急救援音频链路收敛到 `MaidRescuePopPayload`：触发 payload 同时携带女仆档案、TLM 音包选择、兜底 sound event，以及可选的数据包 OGG 字节。旧的救援音频资源同步 payload 已移除。
 
 #### `client/`：客户端展示与缓存层
 
@@ -194,9 +200,7 @@
 
 - `Kiss*` / `EmergencyRescue*` / `MorningKissVoice*`
   - 负责：镜头、粒子、按键、救援弹出、语音检索与播放。
-  - `EmergencyRescue*` 额外负责“客户端本地救援音效覆盖 + 服务端预定义语音落盘”：
-    - 自定义文件优先级：女仆本地目录 -> 本地通用目录 -> 服务器同步女仆目录 -> 服务器同步通用目录 -> 旧版 `custom_rescue.ogg` -> 服务端事件音效。
-    - 女仆本地目录使用 `名字_短ID` 生成，目录内 `voice.json` 持久化 `source_mode / play_mode / fixed_file / use_common_fallback`。
+  - `EmergencyRescueSoundPlayer` 现在只处理两类主要语音源：随 payload 下发的数据包 OGG，以及 TLM 模型/音源包中的语音；若两者都不可用，才播放服务端指定的兜底 sound event。
   - 不负责：服务端状态存储。
 
 - `screen/` 与 `screen/component/`
@@ -223,7 +227,7 @@
 
 #### `resources/`
 
-- `META-INF/mods.toml`：模组元信息与依赖声明。
+- `META-INF/neoforge.mods.toml`：模组元信息与依赖声明。
 - `touhou_maid_affection.mixins.json`：Mixin 装配清单。
 - `assets/...`：语言、贴图、声音。
 - `data/.../tags/items`：随机礼物池/黑名单数据定义。
@@ -331,13 +335,15 @@
 - 调用 `BondManager` 读写调度元数据。
 - 调用 `KissMaidHandler` 复用亲吻主逻辑。
 - 调用 `YSMActionBridge` 播放晨安吻动作。
-- 调用 `MorningKissVoicePlayback` 所对应的 payload 在客户端播音。
+- 调用 `MorningKissVoicePlayback` 所对应的 payload 在客户端播音；语音来源现在先由服务端按玩家保存的动态语音池命中一个条目，再下发“命中项 id”或数据包 OGG 字节给客户端播放。
+- 通过服务端数据包 `data/touhou_maid_affection/morning_kiss/profile.json` 读取早安吻台词池、亲吻 sound event、AI 提示词与预录 OGG 语音池。`dialogue_mode` 控制数据包台词与内置 lang 台词是 `replace` 覆盖还是 `append` 追加；`voice_mode` 控制数据包 OGG 进入玩家可选池的方式：`append` 会保留 mod 原声/TLM 基础池并追加数据包项，`replace` 在存在数据包语音时会把基础池整体排除，只保留数据包项；`dialogue` 静态台词池支持 `{maid}` / `{player}` / `{pool}` / `{time}` 占位符；`play_kiss_sound_with_voice` 用于控制早安吻预录/TLM 语音与原生亲吻音效是否同时播放。
 - 在膝枕会话中，晨安吻只允许“当前膝枕女仆”继续调度与执行；同玩家的其它女仆晨安吻任务会被拦截或撤销，避免多源并发抢占。
 
 #### 设计评价
 
 - 这是“服务器权威任务编排 + 客户端纯表现”的正确分层。
 - 自动调度、任务推进、对话/语音仍在一个服务内闭环；时间窗解析和亲吻次数边界修正已抽到 `MorningKissScheduleRules`，可独立测试与复用。
+- 台词/AI 提示词已从 lang 硬编码推进到 server data profile；跨功能预录语音已进一步抽到 `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`，以统一 JSON 表达“场景语音池 + 女仆匹配覆盖”。`MorningKissProfileParser` 与 `InteractionVoiceProfileParser` 都保持为纯 Java 解析器以便普通 JUnit 覆盖。
 - 该服务仍是复杂度热点，但职责边界已从“全量混合”向“调度主干 + 规则模块”过渡。
 - `LapPillowState` 现在同时承担“会话互斥信号”的职责：晨安吻流程会把它作为前置门禁，允许膝枕女仆内联亲吻，但阻止其它女仆插入任务。
 
@@ -373,11 +379,11 @@
 
 ### 4.6 紧急救援系统
 
-这是当前唯一同时使用 `Capability(EmergencyRescueAttachment)` 与 `BondData` 协作的模块。
+这是当前唯一同时使用 `Attachment` 与 `BondData` 协作的模块。
 
 #### 生命周期
 
-- 救援链路改为事件驱动：`EmergencyHealListener` 监听 `LivingHurtEvent` 与 `LivingDeathEvent`，不再使用玩家 tick 轮询。
+- 救援链路改为事件驱动：`EmergencyHealListener` 监听 `LivingDamageEvent.Pre` 与 `LivingDeathEvent`，不再使用玩家 tick 轮询。
 - 事件入口最前置执行轻量门禁：仅检查服务端玩家类型、`ModConfig` 全局开关与 `Attachment` 玩家个人开关，未通过直接返回。
 - 仅当伤害进入“致命或阈值窗口”时，才懒刷新每日次数并进入救援计算；常规伤害不触发重逻辑。
 - `LivingDeathEvent` 作为兜底链路，覆盖极端伤害流程，避免漏救援。
@@ -390,12 +396,11 @@
 
 #### 数据流向
 
-- `EmergencyRescueAttachment`（通过 Forge `Capability` 挂载在玩家实体）
-  - 保存每日剩余可用救援者列表（列表元素为 canonical id：优先 `provider:<stable_id>`，回退 `maid:<uuid>`）
-  - 保存已注册过的救援者列表（同样按 canonical id；登录/触发时会做 legacy/provider 规范化）
+- `EmergencyRescueAttachment`
+  - 保存每日剩余可用救援者列表（列表元素为 canonical id：`maid:<uuid>`）
+  - 保存已注册过的救援者列表（同样按 canonical id；登录/触发时会做 legacy/provider 规范化与贡献者去重）
   - 保存最后补充日
   - 保存玩家个人残血救护开关
-  - 同步写入 `player.persistentData` 的 backup 快照，并在 `PlayerEvent.Clone`/`PlayerRespawnEvent` 链路中恢复，确保玩家死亡后不会因为 capability 重建而错误补满
 - `BondData`
   - 保存女仆模型、显示名、语音包 ID、YSM 配置、救援动作、救护语音来源设置等档案信息
   - 额外保存 `maidUuid -> rescue provider id` 映射，用于 legacy 恢复、女仆互转后的历史兼容与冲突判定
@@ -406,19 +411,20 @@
 
 #### 模块交互
 
-- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData` + `RescueSoundSyncService`
-- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer` + `EmergencyRescueServerSoundSyncClient`
+- 服务端：`EmergencyHealListener` + `EmergencyRescueData` + `MaidRescueContributorSyncHandler` + `EmergencyRescueSoundProfileData` + `InteractionVoiceProfileData`
+- 客户端：`EmergencyRescueVisualHandler` + `EmergencyRescueOverlayRenderer` + `EmergencyRescueSoundPlayer`
 - YSM：若女仆模型支持，则在 overlay 中播放预设动作
 - overlay 渲染已改为“仅依赖 payload 构造临时女仆实体”，不再克隆世界内已加载女仆，避免睡姿/坐姿串扰。
-- 音效来源支持 `TLM语音包` 与 `自定义文件` 两种模式；TLM 模式改为使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安），自定义模式按 `voice.json` 的播放模式选曲。
-- 服务端预定义语音目录按 `server_predefined/{maids,common}` 扫描，按 `size + mtime + sha1` 做增量同步，客户端落盘到 `rescue/server_synced/<serverId>/...`。
-- 管理指令补充：`/tma rescue clear`（`/tma rescue reset` 同义）为 OP 命令，会清空 `EmergencyRescueAttachment`（Capability 数据）的可用池/已注册列表，并把该玩家档案中所有女仆的 `emergency_heal` 解锁位重置为未激活，便于单女仆链路测试与脏状态清理。
+- 音效来源收敛为 `数据包 OGG` 与 `TLM语音包` 两种模式：数据包模式由 `emergency_rescue/profile.json` 提供，并随 `MaidRescuePopPayload` 下发；TLM 模式使用 `RescueTlmVoiceIndex` 扫描 `sounds/maid/**` 全量语音（不再限定晨安/晚安）。触发时服务端按玩家保存的动态池选出一个命中项，数据包项随 payload 下发 OGG 字节，TLM 项随 payload 下发命中 id 由客户端播放。
+- `voice_mode=replace` 时，匹配到的数据包救援 OGG 作为硬边界覆盖 TLM 包语音，即使女仆之前保存过 TLM 项也会被当前可用池过滤；`voice_mode=append` 时，数据包 OGG 默认追加到 TLM 全量池。数据包只决定哪些 OGG 进入可选池以及进入方式，不再决定具体哪位女仆播放哪条语音。
+- 旧的“服务端预定义语音目录同步到客户端落盘”链路已移除，避免维护服务器文件同步、客户端目录缓存与数据包语音三套并行方案。
+- 管理指令补充：`/tma rescue clear`（`/tma rescue reset` 同义）为 OP 命令，会清空 `EmergencyRescueAttachment` 的可用池/已注册列表，并把该玩家档案中所有女仆的 `emergency_heal` 解锁位重置为未激活，便于单女仆链路测试与脏状态清理。
 
 #### 架构意义
 
-- `Capability` 在这里承载的是“运行中的玩家能力槽位”。
+- `Attachment` 在这里承载的是“运行中的玩家能力槽位”。
 - `BondData` 承载的是“可展示、可回放的女仆身份档案”。
-- 救援池主键改为“`provider:<stable_id>` 优先 + `maid:<uuid>` 回退”双轨 canonical 策略：既保持历史兼容，又能从系统层避免同一女仆复活后重复计数。
+- `maid:<uuid>` 作为救援池与 payload 的主键，仍用于稳定客户端展示；同时引入 provider 贡献者身份作为“去重维度”，用于消除同女仆多 UUID 档案导致的重复救援次数。
 - 同一能力同时提供“服务端总开关 + 玩家个人开关”，把玩法自由度控制与反作弊统计解耦。
 - 这两层分工是合理的，也说明项目已经开始出现多种状态容器并存的趋势。
 
@@ -438,7 +444,7 @@
 - 玩家处于 lying 分支时，服务端会主动解除玩家与锚点的乘骑关系，并让锚点在该模式下拒绝新增乘客，彻底切断“躺姿回流到骑乘链路”的路径。
 - 躺姿分支采用“`noGravity` + 零动量 + 阈值纠偏”策略：只在偏移超过阈值时才进行安全高度探测与传送修正，同时持续清零 `deltaMovement` 与 `fallDistance`，避免每 tick 传送导致的网络抖动。
 - 客户端睡姿桥接在 `exitRequested` 置位后会立刻停止续期，防止退出膝枕后残留躺姿。
-- 客户端渲染仍保留“双层桥接”作为兼容兜底：主链路在 `LivingEntityRenderer#render` 改写 `isPassenger`，并通过 `EntityRenderDispatcher` 渲染深度门禁启用 `Entity#isPassenger` / `Entity#getVehicle` / `Entity#hasPose(SLEEPING)` / `Entity#getPose` / `Entity#onGround` / `LivingEntity#isSleeping` 的渲染期局部覆写，兼容替换渲染器与动画管线差异。
+- 客户端渲染仍保留“双层桥接”作为兼容兜底：主链路在 `LivingEntityRenderer#render` 改写 `isPassenger`，并通过 `EntityRenderDispatcher` 渲染深度门禁启用 `Entity#isPassenger` / `Entity#getVehicle` / `Entity#hasPose(SLEEPING)` / `Entity#getPose` / `LivingEntity#isSleeping` 的渲染期局部覆写，兼容替换渲染器与动画管线差异。
 - 睡姿桥接坚持“仅渲染期生效”边界：`Entity` 与 `LivingEntity` 相关覆写必须受渲染深度门禁约束，避免影响常规游戏逻辑、网络 `SetPassengersPacket` 与原版睡眠界面状态机。
 - 锚点实体本身带有 owner / maid 语义与自清理逻辑，因此即便玩家强制传送、跨维度或会话状态异常，也能在服务端自行清理残留非法锚点。
 - 角度冻结由独立的 `LapPillowAngleLockPayload` 上报到服务端，状态保存在 `LapPillowState`；冻结时只锁定会话内实体姿态（玩家模型、女仆、锚点朝向），不接管第三人称镜头旋转。
@@ -451,9 +457,9 @@
 - 这是“客户端热键发起，服务端会话维持”的姿态状态机；实际空间基准依赖中间锚点实体，玩家传送只作为超阈值偏移时的纠偏手段而非常态更新路径。
 - `BondData` 负责保存长期配置，`LapPillowState` 负责保存一次交互会话，这让“配置”与“运行中状态”第一次在膝枕系统里被明确拆开。
 - `LapPillowState` 新增“当前会话女仆判定”接口，供晨安吻/随机礼物等外部服务复用，形成统一的会话互斥边界而非分散补丁。
-- 客户端仍保留乐观启动，但新增 `startPending` 上下文确认：只有检测到座位或匹配锚点后才切换到 active，会话超时会自动回收，结合 `BondClientStateCache` 姿态配置与渲染桥接共同完成自校正。
+- 客户端仍保留乐观启动，但会通过锚点实体 tag、同步到 `BondClientStateCache` 的膝枕姿态配置、以及 mixin 睡姿桥接在渲染层自校正。
 - 玩家 lying 分支当前采用“非乘骑 + forced pose + 客户端渲染桥接”组合，未正式接入 fake-bed 睡眠链路；此前对 `sleepingPos` 的试探性接入已回退，因为它会把玩家拖入原版真正睡眠流程并引入黑屏与坐立抖动。当前策略优先保证跨渲染器稳定躺姿，而不是回到原版睡眠状态机。
-- 为兼容会在 tick 中改写玩家姿态的第三方模组（如 TACZ / crawl 姿态链路），膝枕 lying 会话新增“姿态写入护栏”：客户端与服务端会阻断非 `Pose.SLEEPING` 的 `setPose` / `setForcedPose` 覆写；退出会话时先清理会话态再恢复姿态，避免外部 `null` 或 `SWIMMING` 覆写导致“悬空站立”。
+- 为兼容会在 tick 中改写玩家姿态的第三方模组（如 crawl / 枪械姿态链路），膝枕 lying 会话新增“forced pose 写入护栏”：客户端与服务端在会话期间仅接受 `Pose.SLEEPING`，会话退出先撤销会话态再恢复 `forcedPose`，避免外部 `null/SWIMMING` 覆写导致“悬空站立”。
 - 当玩家处于 lying 分支时，锚点仍负责局部坐标求解与会话存活判定，但不再承担玩家乘客挂点输出。
 - 女仆处于 lying 分支时，仍借由睡眠姿态接口触发躺姿，但已避免“每 tick 同时强制传送 + startSleeping”这类抖动放大组合。
 - 历史的 `GoldenDream` 效果已从注册与膝枕链路中移除，避免与当前复合效果职责重复。
@@ -475,7 +481,7 @@
 - 进入页面时立刻向服务端请求 `BondStateRequestPayload`。
 - 服务端回包后更新 `BondClientStateCache`。
 - 页面根据缓存决定按钮状态、已解锁能力、礼物队列、晨安吻语音配置与膝枕姿态配置等。
-- 残血救护二级页已升级为“语音来源页”：支持 `TLM语音包 / 自定义文件` 下拉切换；TLM 分支复用晨安吻列表选择，自定义分支提供 `随机/顺序/固定`、固定文件选择与通用池回退开关，并在保存时同步写回女仆目录 `voice.json`。
+- 早安吻与残血救护语音二级页统一改为动态语音池配置页：服务端回包同步数据包候选项，客户端扫描 TLM 音包候选项，页面通过可复用 `BondVoicePoolList` 展示多源语音并允许玩家多选；弹窗尺寸必须限制在一级羁绊页内部，避免遮挡 TLM 原生 tab/侧边按钮；批量操作使用单个动态按钮在 `全选 / 全不选` 间切换；底部播放模式按钮仅循环切换 `随机 / 顺序`，固定播放由“只勾选一条语音”自然表达，保存后把所选池写回女仆档案。
 - 膝枕二级页已从单点偏移页演进为“双坐标点编辑页”：左侧同屏展示玩家/女仆在锚点坐标系下的二维相对位置，点击坐标点即可切换当前编辑对象，滚轮单独修改该对象的 Y 高度。
 - 膝枕页顶部不再保留独立的“四模式”下拉，而是改成“女仆动作 + 玩家动作”两个短下拉；默认坐/躺组合会反推出四种基础模式，自定义动作则建立在这个基础姿态之上。
 - 配置操作再回发新的 payload 给服务端保存。
@@ -545,8 +551,8 @@
    - 玩家维度、女仆粒度的长期持久化羁绊档案。
    - 适合保存“是否已解锁、队列数、语音配置、档案快照”。
 
-3. `Capability`
-   - 玩家当前能力槽、每日次数等更偏运行态的数据（当前由 `EmergencyRescueAttachment` 承载）。
+3. `Attachment`
+   - 玩家当前能力槽、每日次数等更偏运行态的数据。
    - 适合像紧急救援这样的独立子系统。
 
 4. 内存表 `Map/Task Registry`
@@ -610,7 +616,7 @@
 
 凡是跨 tick 的功能，都应参考 `MorningKissService` 与 `RandomGiftService`：
 
-- 持久态写入 `BondData` 或 `Capability`
+- 持久态写入 `BondData` 或 `Attachment`
 - 运行态保存在内存任务表
 - 每 tick 只推进任务，不把所有历史都留在内存
 
@@ -642,7 +648,7 @@
 后续若继续扩展：
 
 - 至少保持 key 前缀命名统一
-- 同一特性的数据 key 必须集中写在对应 `Data/Capability` 类中
+- 同一特性的数据 key 必须集中写在对应 `Data/Attachment` 类中
 - 不允许在 handler 或 screen 中直接拼接 persistentData key
 
 #### 规范 H：新增功能先判定其归属层
@@ -650,7 +656,7 @@
 添加任意新功能前，先回答这四个问题：
 
 1. 它是“能力”还是“基础互动”？
-2. 它的长期状态放 `BondData`、`Capability` 还是根本不持久化？
+2. 它的长期状态放 `BondData`、`Attachment` 还是根本不持久化？
 3. 它是否需要单独 payload？
 4. 它是客户端表现增强，还是服务端业务新增？
 

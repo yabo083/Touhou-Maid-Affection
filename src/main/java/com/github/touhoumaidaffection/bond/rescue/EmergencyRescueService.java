@@ -5,6 +5,10 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
+import com.github.touhoumaidaffection.bond.VoicePoolIds;
+import com.github.touhoumaidaffection.bond.VoicePoolSelection;
+import com.github.touhoumaidaffection.bond.service.InteractionVoiceProfileData;
+import com.github.touhoumaidaffection.bond.service.InteractionVoiceProfileParser;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -12,12 +16,14 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraftforge.network.PacketDistributor;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 public final class EmergencyRescueService {
     private static final String EMERGENCY_HEAL_ABILITY_ID = "emergency_heal";
     private static final Map<UUID, Long> LAST_RESCUE_SUCCESS_TICK = new HashMap<>();
+    private static final Map<String, Integer> VOICE_SEQUENCE_INDEX = new HashMap<>();
 
     private EmergencyRescueService() {
     }
@@ -121,6 +127,22 @@ public final class EmergencyRescueService {
         debugRescueResolve(consumedRescuerId, resolvedProfile, rescueVoiceSettings, trigger);
 
         EmergencyRescueSoundProfileData.EmergencyRescueSoundProfile soundProfile = EmergencyRescueSoundProfileData.getActiveProfile();
+        InteractionVoiceProfileData.ResolvedVoiceProfile dataPackProfile =
+                InteractionVoiceProfileData.resolveEmergencyRescue(resolvedProfile.maidUuidForPayload(), profile);
+        String selectedVoiceId = selectRescueVoiceId(player, resolvedProfile.maidUuidForPayload(), rescueVoiceSettings, dataPackProfile);
+        InteractionVoiceProfileData.DataPackVoice selectedDataPackVoice;
+        if (VoicePoolIds.isDataPack(selectedVoiceId)) {
+            selectedDataPackVoice = InteractionVoiceProfileData.selectVoiceByFile(dataPackProfile, VoicePoolIds.value(selectedVoiceId)).orElse(null);
+        } else if (selectedVoiceId.isBlank()) {
+            selectedDataPackVoice = selectDataPackRescueVoice(player, profile, dataPackProfile);
+        } else {
+            selectedDataPackVoice = null;
+        }
+        if (selectedDataPackVoice != null) {
+            selectedVoiceId = VoicePoolIds.dataPack(selectedDataPackVoice.fileName());
+        }
+        InteractionVoiceProfileParser.RescueOptions rescueOptions = dataPackProfile.rescueOptions();
+        String soundEventId = rescueOptions.soundEventId() == null ? soundProfile.soundEventId() : rescueOptions.soundEventId();
         TouhouMaidAffection.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new MaidRescuePopPayload(
                 resolvedProfile.maidUuidForPayload(),
                 profile.modelId().isBlank() ? resolvedProfile.maidUuidForPayload() : profile.modelId(),
@@ -134,14 +156,67 @@ public final class EmergencyRescueService {
                 rescueVoiceSettings.tlmPlayMode().serializedName(),
                 rescueVoiceSettings.tlmSelectedGroup(),
                 rescueVoiceSettings.tlmSelectedClip(),
-                rescueVoiceSettings.customPlayMode().serializedName(),
-                rescueVoiceSettings.fixedFile(),
-                rescueVoiceSettings.useCommonFallback(),
-                soundProfile.soundEventId(),
-                soundProfile.allowClientOverride(),
-                soundProfile.maxClientSoundDurationSeconds(),
-                soundProfile.requiredClientSoundFormat()
+                selectedVoiceId,
+                soundEventId,
+                selectedDataPackVoice == null ? "" : selectedDataPackVoice.fileName(),
+                selectedDataPackVoice == null ? new byte[0] : selectedDataPackVoice.data()
         ));
+    }
+
+    private static String selectRescueVoiceId(ServerPlayer player, String maidUuid, EmergencyRescueVoiceSettings settings,
+                                              InteractionVoiceProfileData.ResolvedVoiceProfile dataPackProfile) {
+        if (settings == null) {
+            return "";
+        }
+        List<String> ids = effectiveRescueVoiceIds(settings.selectedVoiceIds(), dataPackProfile);
+        if (ids.isEmpty()) {
+            return "";
+        }
+        return switch (settings.customPlayMode()) {
+            case RANDOM -> ids.get(player.getRandom().nextInt(ids.size()));
+            case SEQUENTIAL -> {
+                String key = "rescue:" + maidUuid;
+                int index = VOICE_SEQUENCE_INDEX.getOrDefault(key, 0);
+                VOICE_SEQUENCE_INDEX.put(key, (index + 1) % ids.size());
+                yield ids.get(Math.floorMod(index, ids.size()));
+            }
+            case FIXED -> ids.get(player.getRandom().nextInt(ids.size()));
+        };
+    }
+
+    private static List<String> effectiveRescueVoiceIds(List<String> savedIds, InteractionVoiceProfileData.ResolvedVoiceProfile dataPackProfile) {
+        List<String> defaults = dataPackProfile.fileNames().stream().map(VoicePoolIds::dataPack).toList();
+        boolean includeBasePool = VoicePoolSelection.shouldIncludeBasePool(
+                dataPackProfile.voiceMode().name().toLowerCase(java.util.Locale.ROOT),
+                dataPackProfile.fileNames()
+        );
+        if (savedIds == null || savedIds.isEmpty()) {
+            return defaults;
+        }
+        if (includeBasePool) {
+            return savedIds;
+        }
+        List<String> dataPackOnly = savedIds.stream()
+                .filter(VoicePoolIds::isDataPack)
+                .filter(id -> dataPackProfile.fileNames().contains(VoicePoolIds.value(id)))
+                .distinct()
+                .toList();
+        return dataPackOnly.isEmpty() ? defaults : dataPackOnly;
+    }
+
+    private static InteractionVoiceProfileData.DataPackVoice selectDataPackRescueVoice(
+            ServerPlayer player,
+            BondData.MaidProfileSnapshot profile,
+            InteractionVoiceProfileData.ResolvedVoiceProfile dataPackProfile
+    ) {
+        if (dataPackProfile == null || !dataPackProfile.hasVoices()) {
+            return null;
+        }
+        boolean hasTlmVoice = profile.soundPackId() != null && !profile.soundPackId().isBlank();
+        if (dataPackProfile.voiceMode() == InteractionVoiceProfileParser.VoiceMode.APPEND && hasTlmVoice && player.getRandom().nextBoolean()) {
+            return null;
+        }
+        return InteractionVoiceProfileData.selectVoice(dataPackProfile, player.getRandom()).orElse(null);
     }
 
     private static ResolvedRescueProfile resolveRescueProfile(ServerPlayer player, String rescuerId) {

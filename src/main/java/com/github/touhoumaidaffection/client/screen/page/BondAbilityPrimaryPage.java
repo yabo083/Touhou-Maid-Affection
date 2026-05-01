@@ -1,7 +1,6 @@
 package com.github.touhoumaidaffection.client.screen.page;
 
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
-import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
@@ -154,12 +153,9 @@ public final class BondAbilityPrimaryPage {
             }
         }
         if (host.isEmergencyHealAbility(ability) && abilityUnlocked && hasSecondaryButton) {
-            EmergencyRescueVoiceSettings rescueVoiceSettings = BondClientStateCache.getEmergencyRescueVoiceSettings(host.getMaid().getUUID());
             result.add(Component.translatable(
                     "bond.emergency_rescue.voice.selected_source",
-                    Component.translatable(rescueVoiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK
-                            ? "bond.emergency_rescue.voice.source.tlm"
-                            : "bond.emergency_rescue.voice.source.custom")
+                    Component.translatable("bond.emergency_rescue.voice.source.tlm")
             ).withStyle(ChatFormatting.GRAY));
             if (host.isRescueActionConfigAvailable()) {
                 result.add(Component.translatable("bond.emergency_rescue.action.selected", resolveRescueActionLabel()).withStyle(ChatFormatting.GRAY));
@@ -218,12 +214,9 @@ public final class BondAbilityPrimaryPage {
             if (host.isRescueActionConfigAvailable()) {
                 secondaryText = Component.translatable("bond.emergency_rescue.action.selected_compact", resolveRescueActionLabel());
             } else {
-                EmergencyRescueVoiceSettings rescueVoiceSettings = BondClientStateCache.getEmergencyRescueVoiceSettings(host.getMaid().getUUID());
                 secondaryText = Component.translatable(
                         "bond.emergency_rescue.voice.selected_source_compact",
-                        Component.translatable(rescueVoiceSettings.sourceMode() == EmergencyRescueVoiceSettings.SourceMode.TLM_PACK
-                                ? "bond.emergency_rescue.voice.source.tlm"
-                                : "bond.emergency_rescue.voice.source.custom")
+                        Component.translatable("bond.emergency_rescue.voice.source.tlm")
                 );
             }
         } else {

@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.bond;
 
 import java.util.Locale;
+import java.util.List;
 
 public record EmergencyRescueVoiceSettings(
         SourceMode sourceMode,
@@ -9,25 +10,32 @@ public record EmergencyRescueVoiceSettings(
         String tlmSelectedClip,
         CustomPlayMode customPlayMode,
         String fixedFile,
-        boolean useCommonFallback
+        boolean useCommonFallback,
+        List<String> selectedVoiceIds
 ) {
     public static final EmergencyRescueVoiceSettings DEFAULT = new EmergencyRescueVoiceSettings(
-            SourceMode.CUSTOM_FS,
+            SourceMode.TLM_PACK,
             TlmPlayMode.RANDOM_ALL,
             "",
             "",
             CustomPlayMode.RANDOM,
             "",
-            true
+            true,
+            List.of()
     );
 
     public EmergencyRescueVoiceSettings {
-        sourceMode = sourceMode == null ? SourceMode.CUSTOM_FS : sourceMode;
+        sourceMode = sourceMode == null ? SourceMode.TLM_PACK : sourceMode;
         tlmPlayMode = tlmPlayMode == null ? TlmPlayMode.RANDOM_ALL : tlmPlayMode;
         tlmSelectedGroup = normalize(tlmSelectedGroup);
         tlmSelectedClip = normalize(tlmSelectedClip);
         customPlayMode = customPlayMode == null ? CustomPlayMode.RANDOM : customPlayMode;
         fixedFile = normalize(fixedFile);
+        selectedVoiceIds = selectedVoiceIds == null ? List.of() : selectedVoiceIds.stream()
+                .map(EmergencyRescueVoiceSettings::normalize)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .toList();
     }
 
     public static EmergencyRescueVoiceSettings of(
@@ -39,6 +47,19 @@ public record EmergencyRescueVoiceSettings(
             String fixedFile,
             boolean useCommonFallback
     ) {
+        return of(sourceMode, tlmPlayMode, tlmSelectedGroup, tlmSelectedClip, customPlayMode, fixedFile, useCommonFallback, List.of());
+    }
+
+    public static EmergencyRescueVoiceSettings of(
+            String sourceMode,
+            String tlmPlayMode,
+            String tlmSelectedGroup,
+            String tlmSelectedClip,
+            String customPlayMode,
+            String fixedFile,
+            boolean useCommonFallback,
+            List<String> selectedVoiceIds
+    ) {
         return new EmergencyRescueVoiceSettings(
                 SourceMode.fromSerializedName(sourceMode),
                 TlmPlayMode.fromSerializedName(tlmPlayMode),
@@ -46,7 +67,8 @@ public record EmergencyRescueVoiceSettings(
                 tlmSelectedClip,
                 CustomPlayMode.fromSerializedName(customPlayMode),
                 fixedFile,
-                useCommonFallback
+                useCommonFallback,
+                selectedVoiceIds
         );
     }
 
@@ -70,22 +92,22 @@ public record EmergencyRescueVoiceSettings(
 
         public static SourceMode fromSerializedName(String raw) {
             if (raw == null) {
-                return CUSTOM_FS;
+                return TLM_PACK;
             }
             String normalized = raw.trim().toLowerCase(Locale.ROOT);
             if (normalized.isEmpty()) {
-                return CUSTOM_FS;
+                return TLM_PACK;
             }
             return switch (normalized) {
                 case "tlm_pack", "tlm", "tlmpack", "tlm-pack", "sound_pack", "soundpack", "pack" -> TLM_PACK;
-                case "custom_fs", "custom", "custom-file", "custom_file", "filesystem", "fs", "file", "local" -> CUSTOM_FS;
+                case "custom_fs", "custom", "custom-file", "custom_file", "filesystem", "fs", "file", "local" -> TLM_PACK;
                 default -> {
                     for (SourceMode mode : values()) {
                         if (mode.serializedName.equalsIgnoreCase(normalized)) {
                             yield mode;
                         }
                     }
-                    yield CUSTOM_FS;
+                    yield TLM_PACK;
                 }
             };
         }
@@ -135,6 +157,9 @@ public record EmergencyRescueVoiceSettings(
 
         public static CustomPlayMode fromSerializedName(String raw) {
             if (raw != null) {
+                if ("fixed".equalsIgnoreCase(raw.trim())) {
+                    return RANDOM;
+                }
                 for (CustomPlayMode mode : values()) {
                     if (mode.serializedName.equalsIgnoreCase(raw.trim())) {
                         return mode;

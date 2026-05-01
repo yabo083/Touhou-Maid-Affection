@@ -1,18 +1,26 @@
 package com.github.touhoumaidaffection.bond;
 
+import java.util.List;
+
 public record MorningKissVoiceSettings(
         Mode mode,
         String selectedGroup,
         String selectedClip,
-        String soundPackId
+        String soundPackId,
+        List<String> selectedVoiceIds
 ) {
-    public static final MorningKissVoiceSettings DEFAULT = new MorningKissVoiceSettings(Mode.RANDOM_ALL, "", "", "");
+    public static final MorningKissVoiceSettings DEFAULT = new MorningKissVoiceSettings(Mode.RANDOM_ALL, "", "", "", List.of());
 
     public MorningKissVoiceSettings {
         mode = mode == null ? Mode.RANDOM_ALL : mode;
         selectedGroup = normalize(selectedGroup);
         selectedClip = normalize(selectedClip);
         soundPackId = normalize(soundPackId);
+        selectedVoiceIds = selectedVoiceIds == null ? List.of() : selectedVoiceIds.stream()
+                .map(MorningKissVoiceSettings::normalize)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .toList();
     }
 
     public boolean usesGroupSelection() {
@@ -24,11 +32,15 @@ public record MorningKissVoiceSettings(
     }
 
     public MorningKissVoiceSettings withSoundPackId(String currentSoundPackId) {
-        return new MorningKissVoiceSettings(mode, selectedGroup, selectedClip, currentSoundPackId);
+        return new MorningKissVoiceSettings(mode, selectedGroup, selectedClip, currentSoundPackId, selectedVoiceIds);
     }
 
     public static MorningKissVoiceSettings of(String mode, String selectedGroup, String selectedClip, String soundPackId) {
-        return new MorningKissVoiceSettings(Mode.fromSerializedName(mode), selectedGroup, selectedClip, soundPackId);
+        return of(mode, selectedGroup, selectedClip, soundPackId, List.of());
+    }
+
+    public static MorningKissVoiceSettings of(String mode, String selectedGroup, String selectedClip, String soundPackId, List<String> selectedVoiceIds) {
+        return new MorningKissVoiceSettings(Mode.fromSerializedName(mode), selectedGroup, selectedClip, soundPackId, selectedVoiceIds);
     }
 
     private static String normalize(String value) {
@@ -52,6 +64,9 @@ public record MorningKissVoiceSettings(
 
         public static Mode fromSerializedName(String value) {
             if (value != null) {
+                if ("specific_clip".equalsIgnoreCase(value.trim())) {
+                    return RANDOM_ALL;
+                }
                 for (Mode mode : values()) {
                     if (mode.serializedName.equalsIgnoreCase(value.trim())) {
                         return mode;

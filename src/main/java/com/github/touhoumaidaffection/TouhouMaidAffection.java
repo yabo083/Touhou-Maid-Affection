@@ -24,15 +24,11 @@ import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundReloadPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncChunkPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncClearPayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncCompletePayload;
-import com.github.touhoumaidaffection.network.rescue.RescueSoundSyncManifestPayload;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
@@ -56,7 +52,7 @@ public class TouhouMaidAffection {
     public static final String MOD_ID = "touhou_maid_affection";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    private static final String PROTOCOL_VERSION = "1.7.1.1-forge";
+    private static final String PROTOCOL_VERSION = "1.7.2-forge";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MOD_ID, "main"),
@@ -95,11 +91,7 @@ public class TouhouMaidAffection {
         id = registerMessage(id, RescueVoiceConfigPayload.class, RescueVoiceConfigPayload.STREAM_CODEC, RescueVoiceConfigHandler::handle);
         id = registerMessage(id, MorningKissVoiceConfigPayload.class, MorningKissVoiceConfigPayload.STREAM_CODEC, MorningKissVoiceConfigHandler::handle);
         id = registerMessage(id, MorningKissVoicePlayPayload.class, MorningKissVoicePlayPayload.STREAM_CODEC, BondClientPayloadHandler::handleMorningKissVoicePlay);
-        id = registerMessage(id, RescueSoundSyncManifestPayload.class, RescueSoundSyncManifestPayload.STREAM_CODEC, BondClientPayloadHandler::handleRescueSoundSyncManifest);
-        id = registerMessage(id, RescueSoundSyncClearPayload.class, RescueSoundSyncClearPayload.STREAM_CODEC, BondClientPayloadHandler::handleRescueSoundSyncClear);
-        id = registerMessage(id, RescueSoundSyncChunkPayload.class, RescueSoundSyncChunkPayload.STREAM_CODEC, BondClientPayloadHandler::handleRescueSoundSyncChunk);
-        id = registerMessage(id, RescueSoundSyncCompletePayload.class, RescueSoundSyncCompletePayload.STREAM_CODEC, BondClientPayloadHandler::handleRescueSoundSyncComplete);
-        id = registerMessage(id, RescueSoundReloadPayload.class, RescueSoundReloadPayload.STREAM_CODEC, BondClientPayloadHandler::handleRescueSoundReload);
+        id = registerMessage(id, MorningKissDataVoicePlayPayload.class, MorningKissDataVoicePlayPayload.STREAM_CODEC, BondClientPayloadHandler::handleMorningKissDataVoicePlay);
         id = registerMessage(id, LapPillowStartPayload.class, LapPillowStartPayload.STREAM_CODEC, LapPillowHandler::handleStart);
         id = registerMessage(id, LapPillowExitPayload.class, LapPillowExitPayload.STREAM_CODEC, LapPillowHandler::handleExit);
         id = registerMessage(id, LapPillowPoseConfigPayload.class, LapPillowPoseConfigPayload.STREAM_CODEC, LapPillowPoseConfigHandler::handle);

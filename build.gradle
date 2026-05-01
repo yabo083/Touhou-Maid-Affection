@@ -60,7 +60,9 @@ dependencies {
     // Touhou Little Maid - compile only, not bundled
     compileOnly fg.deobf("maven.modrinth:touhou-little-maid:${tlm_version}")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'com.google.code.gson:gson:2.10.1'
 }
 
 tasks.named('processResources', ProcessResources).configure {

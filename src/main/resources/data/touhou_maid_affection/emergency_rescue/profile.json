@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "voice_mode": "append",
+  "voice_files": [],
+  "sound_event": "minecraft:entity.player.levelup"
+}
