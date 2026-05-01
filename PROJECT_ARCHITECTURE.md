@@ -77,6 +77,8 @@
 │  ├─ ModAttachments.java
 │  ├─ ModEffects.java
 │  ├─ ModSounds.java
+│  ├─ ai
+│  │  └─ mimo
 │  ├─ bond
 │  │  ├─ BondConfig.java
 │  │  ├─ BondData.java
@@ -140,6 +142,16 @@
   - 负责：NeoForge 注册表对象声明。
   - 不负责：业务调度。
 
+#### `ai/`：外部 AI 服务适配层
+
+- `ai/mimo/`
+  - 负责：把小米 MiMo 的 OpenAI 风格接口适配为 TLM 新版 AI 聊天架构可识别的 `LLM / TTS` 站点。
+  - 通过 `@LittleMaidExtension` 与 `ILittleMaid#registerAIChatSerializer` 注册序列化器，运行时由 TLM 的站点配置系统创建具体客户端。
+  - `MimoProtocol` 只负责 chat/TTS 请求 JSON、文本响应与 TTS 音频 base64 解码；LLM 入口复用 TLM 原生 `LLMOpenAIClient` 以保留工具调用语义，TTS 入口落在 `MimoTTSClient`。
+  - LLM 站点保持为 TLM OpenAI 编辑器可识别的站点子类，以便沿用原生站点编辑页；TMA 不再注册或接管 STT，语音识别完全回到 TLM 原生供应商链路。
+  - `ModConfig` 的 `tmaMimoAdapter` 段只提供默认 URL、空 API key、默认模型与 TTS 音色/音频格式；TLM 仍会把用户实际启用的站点配置保存到自己的 `config/touhou_little_maid/sites` 下。
+  - 不负责：保存密钥、接管 TLM AI/STT 总开关、生成数据包资源，或把远程服务失败变成阻断性错误。
+
 #### `bond/`：羁绊域模型层
 
 - `BondData.java`
@@ -189,7 +201,7 @@
 - 不负责：业务逻辑。
 
 设计上很干净：每个消息一个 `record`，字段即协议本体。
-晨安吻 OGG 字节语音链路使用 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的 OGG 语音或运行时 AI/TTS 预生成 OGG 按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音/运行时字节流”和“TLM 声包选择”混成同一个协议。
+晨安吻字节语音链路使用 `MorningKissDataVoicePlayPayload`，用于把服务端数据包内的语音或运行时 AI/TTS 预生成音频按触发时机发送给对应客户端播放；它与 TLM 音包语音 payload 分离，避免把“数据包预录语音/运行时字节流”和“TLM 声包选择”混成同一个协议。
 紧急救援音频链路收敛到 `MaidRescuePopPayload`：触发 payload 同时携带女仆档案、TLM 音包选择、兜底 sound event，以及可选的数据包 OGG 字节。旧的救援音频资源同步 payload 已移除。
 
 #### `client/`：客户端展示与缓存层
@@ -250,6 +262,7 @@
 6. `膝枕姿态系统`
 7. `客户端羁绊页与配置子页`
 8. `YSM / CarryOn / TLM GUI / TLM SoundPack 兼容桥接`
+9. `TMA MiMo AI 适配器`
 
 下面按真实生命周期展开。
 
@@ -327,7 +340,7 @@
   - 推进已创建的晨安吻任务。
 - 启动任务后，女仆会寻路接近玩家。
 - 进入可亲吻距离后，调用 `KissMaidHandler.performMorningKiss` 执行连续亲吻。
-- 非晨安吻活跃时间内，`MorningKissGeneratedDialogueService` 会按 `ModConfig` 中可配置的频率与距离扫描附近已解锁早安吻且具备 TLM LLM 配置的女仆，异步预生成各台词池候选；若女仆也配置了可返回 OGG 字节的远程 TTS，则同时为候选台词生成对应 OGG。
+- 非晨安吻活跃时间内，`MorningKissGeneratedDialogueService` 会按 `ModConfig` 中可配置的频率与距离扫描附近已解锁早安吻且具备 TLM LLM 配置的女仆，异步预生成各台词池候选；若女仆也配置了可返回 TLM 可播放字节的远程 TTS，则同时为候选台词生成对应语音缓存。
 - 任务结束后记录“本时间窗成功/失败”状态，避免同一时间窗重复触发。
 
 #### 数据流向
@@ -532,8 +545,33 @@
 
 - Mixin 改写 GUI 中的显示名称来源。
 - `MorningKissVoiceIndex` / `MorningKissVoicePlayback` 直接复用 TLM 的音包缓存系统。
+- 羁绊页一级面板额外提供一个紧凑的 `MiMo` 入口按钮：它不保存 AI 站点状态，只跳转到 TLM 原生 `AIChatSettingsHubScreen`，让用户在 TLM 的配置页中启用或调整 TMA MiMo 的 LLM/TTS 站点。
 
 这类桥接都遵循同一原则：存在即增强，不存在即静默降级。
+
+### 4.10 TMA MiMo AI 适配器
+
+这是当前项目面向 TLM 新版 AI 架构新增的可插拔适配层，定位是“提供站点类型”，而不是替代 TLM 的 AI 管理器。
+
+#### 生命周期
+
+- TLM 扫描到 `TmaMimoAdapterExtension` 后调用 `registerAIChatSerializer`。
+- 若 `ModConfig.tmaMimoAdapter.enabled=false`，适配器只打一次日志并跳过注册；若为 `true`，分别注册 `tma_mimo_chat`、`tma_mimo_tts` 两类站点。
+- TLM 负责展示站点、保存用户启用状态和具体密钥；TMA 的 TOML 只作为默认值来源，默认 API key 必须保持空字符串。
+- 用户在羁绊页点击 `MiMo` 按钮时，客户端跳转到 TLM AI 设置页，避免在 TMA 内重复实现一套密钥表单与站点选择 UI。
+
+#### 数据流向
+
+- LLM：`MimoLLMSite` 继承 TLM OpenAI 站点并使用原生 `LLMOpenAIClient` 发送请求，这样 TLM 的 tool calls、tool responses 与 token 统计仍走上游实现。
+- TTS：`MimoTTSClient` 使用 `mimo-v2.5-tts-voicedesign` 作为默认模型，请求体包含 voice design prompt 与待播文本，并从 `choices[0].message.audio.data` 解析 base64 音频字节交给 TLM 播放链路；适配器默认请求 MP3，以匹配 TLM 原生音频流播放器。
+- STT：不再由 TMA MiMo 适配器提供。TLM 原生 STT 类型、配置页与快捷键流程保持上游行为，避免 TMA 合成供应商状态与上游固定枚举互相干扰。
+- 两条链路兼容 `Authorization: Bearer` 与 `api-key` header；代码和资源中不内置用户密钥。
+
+#### 架构边界
+
+- 适配器类集中放在 `ai/mimo/`，避免把第三方模型协议散落进晨安吻、羁绊页或 TLM GUI 桥接代码。
+- 早安吻 AI 预生成只依赖 TLM 已启用的 LLM/TTS 站点，因此 MiMo 适配器启用后会自然进入现有异步缓存链路；未启用或请求失败时仍按原有静态台词、数据包语音与 TLM 音包策略短路回退。TTS 结果只缓存 TLM 可直接播放的格式，避免把 WAV 一类数据写入播放队列后在客户端崩掉。
+- 该层采用接近 OpenAI chat completions 的消息结构，未来更换模型时应优先扩展协议 helper 或新增同级 provider 包，而不是改写晨安吻业务服务。
 
 ## 5. 代码编写与演进规范
 
@@ -640,6 +678,7 @@
 与 `YSM / CarryOn / TLM` 的适配代码应继续放在：
 
 - `ysm/`
+- `ai/<provider>/`
 - `mixin/`
 - 或对应 feature 的小型 bridge/helper
 

@@ -45,10 +45,11 @@ public final class EmergencyHealListener {
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+        // Logout happens during integrated-server teardown; keep this handler side-effect free
+        // so shutdown does not try to re-enter the rescue service path.
+        if (!(event.getEntity() instanceof ServerPlayer)) {
             return;
         }
-        EmergencyRescueService.clearRuntimeState(player);
     }
 
     public static void ensureRescueChargesUpToDate(ServerPlayer player) {

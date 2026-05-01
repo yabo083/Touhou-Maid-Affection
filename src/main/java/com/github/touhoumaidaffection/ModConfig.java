@@ -1,5 +1,6 @@
 package com.github.touhoumaidaffection;
 
+import com.github.touhoumaidaffection.ai.mimo.MimoProtocol;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.Locale;
@@ -128,6 +129,15 @@ public class ModConfig {
     public static final ModConfigSpec.DoubleValue FOV_CARRIED_SIDE_OFFSET;
     public static final ModConfigSpec.DoubleValue FOV_CARRIED_FORWARD_OFFSET;
     public static final ModConfigSpec.DoubleValue FOV_CARRIED_VERTICAL_OFFSET;
+
+    // TMA MiMo adapter for Touhou Little Maid AI services
+    public static final ModConfigSpec.BooleanValue TMA_MIMO_ADAPTER_ENABLED;
+    public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_API_KEY;
+    public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_CHAT_URL;
+    public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_TTS_URL;
+    public static final ModConfigSpec.IntValue TMA_MIMO_MAX_COMPLETION_TOKENS;
+    public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_TTS_VOICE_PROMPT;
+    public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_TTS_AUDIO_FORMAT;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -620,6 +630,43 @@ public class ModConfig {
         FOV_CARRIED_VERTICAL_OFFSET = builder
                 .comment("Princess-carry camera target vertical offset from player eye (default: -0.10)")
                 .defineInRange("carriedVerticalOffset", -0.10, -1.0, 1.0);
+
+        builder.pop();
+
+        builder.comment("TMA MiMo adapter defaults for Touhou Little Maid AI chat/TTS",
+                        "These values seed the TLM site editor defaults; per-site edits are still stored by TLM under config/touhou_little_maid/sites.",
+                        "Do not publish your API key. Leave it blank here if you prefer entering it in the TLM AI settings GUI.")
+                .push("tmaMimoAdapter");
+
+        TMA_MIMO_ADAPTER_ENABLED = builder
+                .comment("Register TMA MiMo chat and TTS providers into Touhou Little Maid AI settings")
+                .define("enabled", true);
+
+        TMA_MIMO_API_KEY = builder
+                .comment("Default Xiaomi MiMo API key used when creating the TLM MiMo sites",
+                        "Blank by default; the TLM site editor can store it separately")
+                .define("apiKey", "");
+
+        TMA_MIMO_CHAT_URL = builder
+                .comment("Default MiMo OpenAI-compatible chat completions endpoint")
+                .define("chatUrl", "https://api.xiaomimimo.com/v1/chat/completions");
+
+        TMA_MIMO_TTS_URL = builder
+                .comment("Default MiMo TTS endpoint; MiMo V2.5 TTS uses the chat completions API")
+                .define("ttsUrl", "https://api.xiaomimimo.com/v1/chat/completions");
+
+        TMA_MIMO_MAX_COMPLETION_TOKENS = builder
+                .comment("Default max_completion_tokens for MiMo chat requests sent through the TMA adapter")
+                .defineInRange("maxCompletionTokens", 1024, 1, 8192);
+
+        TMA_MIMO_TTS_VOICE_PROMPT = builder
+                .comment("Default voice design prompt for mimo-v2.5-tts-voicedesign")
+                .define("ttsVoicePrompt", "温柔、清澈、亲近的年轻女性声音，语速自然，适合 Minecraft 女仆角色。");
+
+        TMA_MIMO_TTS_AUDIO_FORMAT = builder
+                .comment("Default requested MiMo TTS audio format",
+                        "MiMo V2.5 docs support mp3, wav, pcm, and pcm16; mp3 fits TLM playback best")
+                .define("ttsAudioFormat", MimoProtocol.DEFAULT_TTS_AUDIO_FORMAT);
 
         builder.pop();
 

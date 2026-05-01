@@ -61,8 +61,9 @@ public final class MorningKissVoicePlayback {
         }
         TouhouMaidAffection.LOGGER.info("Received morning kiss data-pack voice '{}' ({} bytes)",
                 payload.fileName(), payload.data().length);
-        OggReader.Type oggType = getOggType(payload.data(), payload.fileName());
-        if (oggType == null) {
+        boolean mp3 = isMp3(payload.data(), payload.fileName());
+        OggReader.Type oggType = mp3 ? null : getOggType(payload.data(), payload.fileName());
+        if (oggType == null && !mp3) {
             return;
         }
 
@@ -74,6 +75,7 @@ public final class MorningKissVoicePlayback {
                 STREAM_ANCHOR_SOUND_EVENT,
                 payload.data(),
                 oggType,
+                mp3,
                 payload.fileName(),
                 entity,
                 x,
@@ -95,6 +97,18 @@ public final class MorningKissVoicePlayback {
             TouhouMaidAffection.LOGGER.warn("Failed to inspect morning kiss data-pack voice '{}'", fileName, ex);
         }
         return null;
+    }
+
+    private static boolean isMp3(byte[] data, String fileName) {
+        if (data == null || data.length < 3) {
+            return false;
+        }
+        boolean magic = (data[0] == 'I' && data[1] == 'D' && data[2] == '3')
+                || ((data[0] & 0xFF) == 0xFF && (data[1] & 0xE0) == 0xE0);
+        if (magic) {
+            TouhouMaidAffection.LOGGER.info("Detected morning kiss MP3 voice '{}'", fileName);
+        }
+        return magic;
     }
 
     private static MorningKissVoiceIndex.VoiceEntry selectEntry(String soundPackId, MorningKissVoicePlayPayload payload) {

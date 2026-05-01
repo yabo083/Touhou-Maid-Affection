@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
+import com.github.tartaricacid.touhoulittlemaid.client.sound.data.Mp3AudioStream;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.data.OpusAudioStream;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import net.minecraft.Util;
@@ -20,16 +21,18 @@ import java.util.concurrent.CompletableFuture;
 public final class MorningKissDataVoiceSoundInstance extends AbstractTickableSoundInstance {
     private final byte[] data;
     private final OggReader.Type oggType;
+    private final boolean mp3;
     private final String fileName;
     private final Entity trackedEntity;
 
     public MorningKissDataVoiceSoundInstance(SoundEvent soundEvent, byte[] data, OggReader.Type oggType,
-                                             String fileName, Entity trackedEntity,
+                                             boolean mp3, String fileName, Entity trackedEntity,
                                              double x, double y, double z,
                                              float volume, float pitch) {
         super(soundEvent, SoundSource.PLAYERS, SoundInstance.createUnseededRandom());
         this.data = data;
         this.oggType = oggType;
+        this.mp3 = mp3;
         this.fileName = fileName;
         this.trackedEntity = trackedEntity;
         this.x = x;
@@ -65,12 +68,15 @@ public final class MorningKissDataVoiceSoundInstance extends AbstractTickableSou
         TouhouMaidAffection.LOGGER.info(
                 "Morning kiss data-pack voice getStream invoked: file='{}', oggType={}, bytes={}, looping={}",
                 fileName,
-                oggType,
+                mp3 ? "MP3" : oggType,
                 data == null ? -1 : data.length,
                 looping
         );
         return CompletableFuture.supplyAsync(() -> {
             try {
+                if (mp3) {
+                    return new Mp3AudioStream(data);
+                }
                 if (oggType == OggReader.Type.OPUS) {
                     return new OpusAudioStream(data);
                 }

@@ -219,13 +219,14 @@ public final class MorningKissGeneratedDialogueService {
 
                 @Override
                 public void onSuccess(byte[] data) {
-                    if (!MorningKissGeneratedDialogueCache.isMaybeOgg(data)) {
-                        TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS for maid {} pool {} did not return OGG data; cached text only.",
+                    String extension = MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(data).orElse("");
+                    if (extension.isBlank()) {
+                        TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS for maid {} pool {} did not return playable audio data; cached text only.",
                                 maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
                         CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
                         return;
                     }
-                    String fileName = "generated/" + maid.getUUID() + "/" + pool.name().toLowerCase(Locale.ROOT) + "/" + Integer.toHexString(line.hashCode()) + ".ogg";
+                    String fileName = "generated/" + maid.getUUID() + "/" + pool.name().toLowerCase(Locale.ROOT) + "/" + Integer.toHexString(line.hashCode()) + "." + extension;
                     CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, fileName, data));
                     TouhouMaidAffection.LOGGER.info("Cached morning kiss AI dialogue voice '{}' ({} bytes) for maid {} pool {}.",
                             fileName, data.length, maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));

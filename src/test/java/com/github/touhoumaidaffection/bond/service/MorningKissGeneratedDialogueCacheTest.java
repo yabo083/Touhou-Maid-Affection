@@ -48,9 +48,14 @@ class MorningKissGeneratedDialogueCacheTest {
     }
 
     @Test
-    void onlyAcceptsOggBytesForGeneratedVoiceCache() {
-        assertTrue(MorningKissGeneratedDialogueCache.isMaybeOgg("OggSdata".getBytes(StandardCharsets.US_ASCII)));
-        assertFalse(MorningKissGeneratedDialogueCache.isMaybeOgg("RIFFdata".getBytes(StandardCharsets.US_ASCII)));
-        assertFalse(MorningKissGeneratedDialogueCache.isMaybeOgg(new byte[]{'O', 'g', 'g'}));
+    void acceptsTlmPlayableBytesForGeneratedVoiceCache() {
+        assertEquals(Optional.of("ogg"), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
+                "OggSdata".getBytes(StandardCharsets.US_ASCII)));
+        assertEquals(Optional.of("mp3"), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
+                new byte[] {(byte) 0xFF, (byte) 0xFB, 0x10, 0x44}));
+        assertEquals(Optional.empty(), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
+                "RIFFdata".getBytes(StandardCharsets.US_ASCII)));
+        assertEquals(Optional.empty(), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
+                new byte[]{'O', 'g', 'g'}));
     }
 }
