@@ -2,147 +2,117 @@
   <img src="image/README/1773209564540.png" alt="Kiss your maid!" width="600"/>
 </p>
 
-<h1 align="center">💋 Touhou Maid: Affection</h1>
+<h1 align="center">Touhou Maid: Affection</h1>
 
 <p align="center">
-  <b>Kiss your Touhou Little Maid. Because she deserves it.</b>
+  <b>An affection and bond expansion for Touhou Little Maid.</b>
 </p>
 
 <p align="center">
-  <a href="README_zh.md">🌏 中文</a>
+  <a href="README_zh.md">中文</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Minecraft-1.21.1-green?style=flat-square" alt="MC 1.21.1"/>
   <img src="https://img.shields.io/badge/NeoForge-21.1.x-orange?style=flat-square" alt="NeoForge"/>
-  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.0+-blue?style=flat-square" alt="TLM"/>
+  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.1+-blue?style=flat-square" alt="TLM"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT"/>
 </p>
 
 ---
 
-## 📒 Changelog
+## Latest Release
 
-- Full release history now lives in [CHANGELOG.md](CHANGELOG.md).
-- This README keeps usage docs and only brief highlights.
+`1.7.2` focuses on custom voice packs and AI-assisted Morning Kiss:
 
-## ✨ Features
+- Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
+- Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
+- Optional AI-generated Morning Kiss dialogue and TTS pre-generation through TLM AI sites.
+- TMA MiMo adapter sites for TLM AI chat and TTS.
+- A new targeted-maid kiss key action for crosshair-based kissing.
 
-### 💋 Kiss System
+Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
-| Feature | Description |
+## Features
+
+### Kiss Interaction
+
+Sneak with an empty hand and right-click your maid to kiss her. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect.
+
+When CarryOn is installed, the right-click condition changes to avoid interaction conflicts. A dedicated keybind also supports kissing a princess-carried maid.
+
+### Targeted Kiss Key
+
+Controls include a targeted kiss action. When your crosshair points at an owned maid within range, the client sends only the entity id; the server re-checks ownership, distance, line of sight, cooldown, and normal kiss rules before applying the interaction.
+
+### Bond System
+
+High-affection maids can become bonded companions. Bond abilities currently include:
+
+| Ability | Purpose |
 |---|---|
-| 💋 **Kiss Interaction** | Sneak + empty hand + right-click your maid to kiss her |
-| 💕 **Heart Particles** | Romantic heart particles spawn between you and your maid |
-| 🔊 **Kiss Sound Effects** | Plays crisp kissing sounds (7 random variants) |
-| 📈 **Favorability Boost** | Each kiss grants **+3 favorability** (30s cooldown) |
-| 👀 **Maid Gaze** | Your maid turns to look at you during the kiss |
-| ⏱️ **Tiered Cooldown** | Cooldown decreases as maid favorability rises: 5s → 3s → 1s → 0s |
-| 🎥 **Zero-Distance Camera** | Camera smoothly zooms into the maid's face on kiss — true face-to-face close-up |
-| 💞 **Romantic Particle System v2** | Hearts now emit in timed bursts with configurable shapes (RING/HALO/SPIRAL), reducing face occlusion while keeping a dreamy look |
+| Lap Pillow | Rest with your maid using configurable sit/lie poses and optional YSM actions. |
+| Morning Kiss | Schedule or manually call a morning greeting with kisses, dialogue, and voice playback. |
+| Emergency Rescue | Let bonded maids contribute daily rescue chances and rescue voice lines. |
+| Random Gift | Let bonded maids accumulate and deliver small gifts over time. |
 
-### 🤲 Princess-Carry Kiss Key
+The server remains authoritative for unlocks, costs, distance checks, cooldowns, and ability execution. The client UI is a display and configuration surface.
 
-When you princess-carry a maid with a saddle (maid riding player), right-click can be awkward.  
-This mod adds a dedicated keybind in Controls:
+### Custom Dialogue And Voices
 
-```
-Touhou Maid: Affection -> Kiss Carried Maid (default: V)
-```
+Version `1.7.2` adds datapack-driven voice pools:
 
-- Works only while carrying a maid as passenger
-- Keeps original right-click kiss behavior unchanged for normal state
-- Uses a dedicated carried-kiss camera target for better head-to-head framing
-
-### 🙏 Maid's Prayer (少女祈祷)
-
-Kiss **3 times within 10 seconds** to trigger the **Maid's Prayer** buff on both you and your maid.
-
-- Custom MobEffect with built-in regeneration (not vanilla Regeneration)
-- Regen strength **scales with favorability level**:
-  - Level 0: Regen I
-  - Level 1: Regen II
-  - Level 2: Regen III *(beyond vanilla!)*
-  - Level 3: Regen V *(the power of love!)*
-- Duration: 30 seconds (configurable)
-
-### 🧲 Offhand Maid Attraction
-
-In vanilla TouhouLittleMaid, only **main hand** cake attracts maids. This mod extends that behavior via Mixin:
-
-```
-Offhand holding temptation item (default: cake) → Maid is also attracted
+```text
+data/touhou_maid_affection/morning_kiss/profile.json
+data/touhou_maid_affection/morning_kiss/voices/*.ogg
+data/touhou_maid_affection/emergency_rescue/profile.json
+data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-### 📦 CarryOn Compatibility
+Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the ready-to-zip sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
 
-Auto-detects CarryOn mod. When installed, kiss trigger changes to avoid conflict:
+### AI And MiMo
 
-```
-Sneak + Main Hand Empty + Offhand Holding Any Item + Right-click maid
-```
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior is configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files.
 
-> 💡 **Tip**: Hold cake in offhand to attract your maid, then sneak + right-click to kiss — seamless!
+TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
 
-### ⚙️ Fully Configurable
+### Compatibility
 
-All values are tunable in `config/touhou_maid_affection-common.toml`:
-- Kiss cooldown per favorability level
-- Kiss camera timing: adjust only `fov.zoomInTicks`, `fov.holdTicks`, `fov.zoomOutTicks`
-- Favorability points and cooldown
-- Maid's Prayer thresholds, duration, regen amplifiers
-- FOV zoom strength and timing
-- Princess-carry camera offsets:
-  - `carriedSideOffset` (default `0.48`)
-  - `carriedForwardOffset` (default `0.16`)
-  - `carriedVerticalOffset` (default `-0.10`)
-- Advanced particle controls:
-  - anti-occlusion anchor tuning: `offsetY`, `forwardOffset`, `avoidViewStrength`
-  - geometry + motion: `shapeMode`, `spreadRadius`, `upwardSpeed`, `radialSpeed`, `swirlSpeed`
-  - timing: `phaseBursts`, `phaseIntervalTicks`, `phaseRamp`
-  - size simulation: `clusterCopies`, `clusterJitter`
-  - romantic accents: `accentEnabled`, `accentType`, `accentChance`, `favorabilityColorAccent`
-- Particle counts
+- Touhou Little Maid: required dependency.
+- Yes Steve Model: optional action playback and action discovery.
+- CarryOn: optional right-click conflict avoidance.
+- TLM GUI and sound packs: soft integration where available, silent fallback where absent.
 
-## 📥 Installation
+## Installation
 
-1. Install **Minecraft 1.21.1** + **NeoForge 21.1.x**
-2. Install **[Touhou Little Maid](https://modrinth.com/mod/touhou-little-maid)** 1.5.0+
-3. Drop `touhou-maid-affection-x.x.x.jar` into your `.minecraft/mods/` folder
-4. Launch the game!
+1. Install Minecraft `1.21.1` with NeoForge `21.1.x`.
+2. Install Touhou Little Maid `1.5.1+`.
+3. Put `touhou-maid-affection-1.7.2.jar` into your `mods` folder.
+4. Launch the game.
 
-## 🛠️ Build from Source
+## Build From Source
 
 ```bash
-git clone https://github.com/yabo083/maid-affection.git
-cd maid-affection
+git clone https://github.com/yabo083/Touhou-Maid-Affection.git
+cd Touhou-Maid-Affection
 ./gradlew build
 ```
 
-Output jar at `build/libs/touhou-maid-affection-x.x.x.jar`.
+Output jar:
 
-## 📚 Maintenance Docs
+```text
+build/libs/touhou-maid-affection-<version>.jar
+```
 
-- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md): Core architecture boundaries and module responsibilities
-- [CHANGELOG.md](CHANGELOG.md): User-facing release history (Added/Changed/Fixed/Removed)
-- [TESTING.md](TESTING.md): Testing scope, conventions, and regression commands
-- [DEPLOYMENT.md](DEPLOYMENT.md): Build/release constraints and pre-release checklist
+## Maintenance Docs
 
-## 📋 Technical Details
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md): architecture boundaries and module responsibilities.
+- [CHANGELOG.md](CHANGELOG.md): user-facing release history.
+- [早安吻文本修改教程.md](早安吻文本修改教程.md): datapack text, voice, and AI setup guide.
+- [TESTING.md](TESTING.md): test scope and regression commands.
+- [DEPLOYMENT.md](DEPLOYMENT.md): release constraints and pre-release checklist.
 
-- **Mod ID**: `touhou_maid_affection`
-- **API**: Uses TouhouLittleMaid's `InteractMaidEvent` event API
-- **Networking**: `KissMaidPayload` (Server → Client) for effects + `KissCarryRequestPayload` (Client → Server) for princess-carry key trigger
-- **Compatibility**: Soft-detects CarryOn via `ModList.isLoaded()`, zero hard dependencies
-- **Favorability**: Uses TLM's built-in `FavorabilityManager` + custom `Type("Kiss", 3, 600)`
-- **Client Effects**: FOV zoom via `ComputeFovModifierEvent` + camera angles via `ViewportEvent.ComputeCameraAngles`
+## License
 
-## 📄 License
-
-[MIT License](LICENSE) — Free to use, modify, and distribute.
-
----
-
-<p align="center">
-  <i>Made with ❤️ for the Touhou Little Maid community</i>
-</p>
+[MIT License](LICENSE)

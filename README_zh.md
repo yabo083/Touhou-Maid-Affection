@@ -2,147 +2,117 @@
   <img src="image/README/1773209564540.png" alt="亲亲你的女仆！" width="600"/>
 </p>
 
-<h1 align="center">💋 Touhou Maid: Affection — 女仆亲亲</h1>
+<h1 align="center">Touhou Maid: Affection - 女仆亲亲</h1>
 
 <p align="center">
-  <b>亲亲你的女仆吧，她值得。</b>
+  <b>为 Touhou Little Maid 增加亲密互动、羁绊能力与长期陪伴感。</b>
 </p>
 
 <p align="center">
-  <a href="README.md">🌏 English</a>
+  <a href="README.md">English</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Minecraft-1.21.1-green?style=flat-square" alt="MC 1.21.1"/>
   <img src="https://img.shields.io/badge/NeoForge-21.1.x-orange?style=flat-square" alt="NeoForge"/>
-  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.0+-blue?style=flat-square" alt="TLM"/>
+  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.1+-blue?style=flat-square" alt="TLM"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT"/>
 </p>
 
 ---
 
-## 📒 更新日志
+## 最新版本
 
-- 完整版本更新历史统一维护在 [CHANGELOG.md](CHANGELOG.md)。
-- 本 README 以功能介绍和使用说明为主，仅保留简要版本摘要。
+`1.7.2` 重点完善自定义语音包与早安吻 AI 化：
 
-## ✨ 功能特性
+- 早安吻与残血救护拆分为各自独立的数据包语音池。
+- 早安吻支持静态台词包，台词可使用 `{maid}` 与 `{player}` 占位符。
+- 早安吻可选 AI 台词与 TTS 预生成，复用 TLM AI 站点。
+- 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
+- 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
 
-### 💋 亲吻系统
+完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
-| 特性 | 描述 |
+## 功能特性
+
+### 亲吻互动
+
+潜行、空手右击自己的女仆即可亲吻。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。
+
+安装 CarryOn 时，右键触发条件会自动调整以避免冲突。公主抱女仆时，也可以使用专门的公主抱亲吻按键。
+
+### 准星亲吻按键
+
+按键设置中新增准星目标女仆亲吻入口。客户端只发送目标实体 id；服务端会重新校验归属、距离、视线、冷却和正常亲吻规则，再决定是否执行亲吻。
+
+### 羁绊系统
+
+高好感女仆可进入羁绊系统。当前能力包括：
+
+| 能力 | 作用 |
 |---|---|
-| 💋 **亲吻互动** | 潜行 + 空手右击你的女仆，触发亲吻 |
-| 💕 **爱心粒子** | 亲吻时在两人之间生成浪漫的爱心粒子效果 |
-| 🔊 **亲吻音效** | 播放清脆的亲吻音效（7 个随机变体） |
-| 📈 **好感度提升** | 每次亲吻为女仆增加 **+3 好感度**（30 秒冷却） |
-| 👀 **女仆凝视** | 亲吻时女仆会转头看向你 |
-| ⏱️ **分级冷却** | 冷却时间随好感度等级降低：5秒 → 3秒 → 1秒 → 0秒 |
-| 🎥 **零距离镜头** | 亲吻时镜头平滑推近到女仆面前——真正的面对面特写 |
-| 💞 **浪漫粒子系统 v2** | 爱心改为分阶段生成并支持 RING/HALO/SPIRAL 形态，可减少遮脸、提升氛围感 |
+| 休闲膝枕 | 与女仆一起坐下或躺下休息，可配置双方姿态与 YSM 动作。 |
+| 早安吻 | 定时或手动呼叫女仆问候，支持亲吻、台词与语音播放。 |
+| 残血救护 | 让已羁绊女仆贡献每日救援次数，并播放救援语音。 |
+| 随机礼物 | 女仆随时间积累并送出小礼物。 |
 
-### 🤲 公主抱亲吻按键
+解锁、消耗、距离、冷却和能力执行均由服务端判定；客户端羁绊页只负责展示与配置。
 
-当你用鞍把女仆公主抱起来（女仆作为玩家乘客）时，右键命中会变得困难。  
-本模组新增了原生可改键位：
+### 自定义文本与语音
 
-```
-女仆亲亲 -> 公主抱亲吻（默认：V）
-```
+`1.7.2` 新增数据包语音池结构：
 
-- 仅在“正在公主抱女仆”时生效
-- 不影响普通状态下的原有右键亲吻
-- 公主抱状态会使用专门的相机对焦逻辑，尽量保持头对头构图
-
-### 🙏 少女祈祷
-
-在 **10 秒内亲吻 3 次** 即可触发「少女祈祷」增益，同时施加给你和女仆。
-
-- 自定义药水效果，内置生命恢复（非原版再生）
-- 恢复强度**随好感度等级提升**：
-  - 等级 0：恢复 I
-  - 等级 1：恢复 II
-  - 等级 2：恢复 III *（超越原版！）*
-  - 等级 3：恢复 V *（爱的力量！）*
-- 持续时间：30 秒（可配置）
-
-### 🧲 副手吸引女仆
-
-原版 TouhouLittleMaid 中，只有**主手**持蛋糕才能吸引女仆。本模组通过 Mixin 扩展了这一行为：
-
-```
-副手持有诱惑物品（默认蛋糕）→ 女仆也会被吸引过来
+```text
+data/touhou_maid_affection/morning_kiss/profile.json
+data/touhou_maid_affection/morning_kiss/voices/*.ogg
+data/touhou_maid_affection/emergency_rescue/profile.json
+data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-### 📦 CarryOn 兼容
+早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。完整教程见 [早安吻文本修改教程.md](早安吻文本修改教程.md)，可直接压缩发布的示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
 
-自动检测 CarryOn 模组。安装后亲吻触发方式会自动调整以避免冲突：
+### AI 与 MiMo
 
-```
-潜行 + 主手为空 + 副手持有任意物品 + 右击女仆
-```
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关与提示词配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。
 
-> 💡 **提示**：副手放蛋糕吸引女仆过来，然后潜行右击亲吻——一气呵成！
+TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。适配器只提供供应商默认值；用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 
-### ⚙️ 完全可配置
+### 兼容性
 
-所有数值均可在 `config/touhou_maid_affection-common.toml` 中调整：
-- 各好感度等级的亲吻冷却时间
-- 亲吻镜头时长仅通过 `fov.zoomInTicks`、`fov.holdTicks`、`fov.zoomOutTicks` 调整
-- 好感度增加量和冷却
-- 少女祈祷的触发阈值、持续时间、恢复倍率
-- FOV 缩放强度和动画时长
-- 公主抱相机偏移参数：
-  - `carriedSideOffset`（默认 `0.48`）
-  - `carriedForwardOffset`（默认 `0.16`）
-  - `carriedVerticalOffset`（默认 `-0.10`）
-- 进阶粒子控制参数：
-  - 防遮挡锚点：`offsetY`、`forwardOffset`、`avoidViewStrength`
-  - 空间与运动：`shapeMode`、`spreadRadius`、`upwardSpeed`、`radialSpeed`、`swirlSpeed`
-  - 时间节奏：`phaseBursts`、`phaseIntervalTicks`、`phaseRamp`
-  - 大小模拟：`clusterCopies`、`clusterJitter`
-  - 浪漫陪衬：`accentEnabled`、`accentType`、`accentChance`、`favorabilityColorAccent`
-- 粒子数量
+- Touhou Little Maid：必需依赖。
+- Yes Steve Model：可选动作播放与动作列表扫描。
+- CarryOn：可选右键冲突规避。
+- TLM GUI 与音包：存在时增强，不存在时静默回退。
 
-## 📥 安装
+## 安装
 
-1. 安装 **Minecraft 1.21.1** + **NeoForge 21.1.x**
-2. 安装 **[Touhou Little Maid](https://modrinth.com/mod/touhou-little-maid)** 1.5.0+
-3. 将 `touhou-maid-affection-x.x.x.jar` 放入 `.minecraft/mods/` 文件夹
-4. 启动游戏！
+1. 安装 Minecraft `1.21.1` 与 NeoForge `21.1.x`。
+2. 安装 Touhou Little Maid `1.5.1+`。
+3. 将 `touhou-maid-affection-1.7.2.jar` 放入 `mods` 文件夹。
+4. 启动游戏。
 
-## 🛠️ 从源码构建
+## 从源码构建
 
 ```bash
-git clone https://github.com/yabo083/maid-affection.git
-cd maid-affection
+git clone https://github.com/yabo083/Touhou-Maid-Affection.git
+cd Touhou-Maid-Affection
 ./gradlew build
 ```
 
-构建产物在 `build/libs/touhou-maid-affection-x.x.x.jar`。
+构建产物：
 
-## 📚 维护文档
+```text
+build/libs/touhou-maid-affection-<version>.jar
+```
 
-- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)：核心架构边界与模块职责
-- [CHANGELOG.md](CHANGELOG.md)：面向用户的版本变更历史（Added/Changed/Fixed/Removed）
-- [TESTING.md](TESTING.md)：测试范围、约定与回归命令
-- [DEPLOYMENT.md](DEPLOYMENT.md)：构建发布约束与发版前检查清单
+## 维护文档
 
-## 📋 技术细节
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)：核心架构边界与模块职责。
+- [CHANGELOG.md](CHANGELOG.md)：面向用户的版本更新历史。
+- [早安吻文本修改教程.md](早安吻文本修改教程.md)：数据包文本、语音与 AI 配置教程。
+- [TESTING.md](TESTING.md)：测试范围、约定与回归命令。
+- [DEPLOYMENT.md](DEPLOYMENT.md)：构建发布约束与发版前检查清单。
 
-- **Mod ID**: `touhou_maid_affection`
-- **API**: 使用 TouhouLittleMaid 提供的 `InteractMaidEvent` 事件 API
-- **网络**: `KissMaidPayload`（Server → Client）用于特效同步，`KissCarryRequestPayload`（Client → Server）用于公主抱按键触发
-- **兼容性**: 通过 `ModList.isLoaded()` 软检测 CarryOn，零硬依赖
-- **好感度**: 使用 TLM 内置的 `FavorabilityManager` + 自定义 `Type("Kiss", 3, 600)`
-- **客户端效果**: FOV 缩放通过 `ComputeFovModifierEvent` + 镜头角度通过 `ViewportEvent.ComputeCameraAngles` 实现
+## 许可证
 
-## 📄 许可证
-
-[MIT License](LICENSE) — 自由使用、修改和分发。
-
----
-
-<p align="center">
-  <i>Made with ❤️ for the Touhou Little Maid community</i>
-</p>
+[MIT License](LICENSE)
