@@ -28,7 +28,8 @@
 - 早安吻与残血救护拆分为各自独立的数据包语音池。
 - 早安吻支持静态台词包，台词可使用 `{maid}` 与 `{player}` 占位符。
 - 早安吻可选 AI 台词与 TTS 预生成，复用 TLM AI 站点。
-- 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
+- 新增 TMA AI Hub 入口，向 TLM AI 设置页注册聊天与 TTS 站点类型。
+- 早安吻与残血救护语音列表支持点击试听。
 - 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
@@ -71,11 +72,11 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。完整教程见 [早安吻文本修改教程.md](早安吻文本修改教程.md)，可直接压缩发布的示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
 
-### AI 与 MiMo
+### AI Hub
 
 早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关与提示词配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。
 
-TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。适配器只提供供应商默认值；用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
+TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前供应商实现仍兼容 MiMo，但游戏内入口改为围绕 TMA 自身 AI 行为命名，方便后续聊天、TTS 与 STT 相关能力共用同一个入口。用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 
 ### 兼容性
 

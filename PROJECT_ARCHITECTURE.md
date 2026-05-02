@@ -9,7 +9,7 @@
 - 以亲吻作为基础互动入口，提供好感提升、冷却、镜头、粒子、音效与按键入口。
 - 以羁绊系统承载长期关系状态，并逐步解锁膝枕、早安吻、残血救护、随机礼物等能力。
 - 以服务端为权威状态来源，客户端只负责缓存、界面、音频和视觉表现。
-- 以数据包、TLM 音包、YSM 动作、TLM AI 站点与 MiMo 适配器形成可选增强，缺失时应降级而不是中断主流程。
+- 以数据包、TLM 音包、YSM 动作、TLM AI 站点与 TMA AI Hub 形成可选增强，缺失时应降级而不是中断主流程。
 
 ## 2. 技术栈与发布约束
 
@@ -75,7 +75,7 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。早安吻 AI/TTS 的运行时开关、提示词、扫描频率、缓存策略与 MiMo 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。早安吻 AI/TTS 的运行时开关、提示词、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
 
 ### 4.2 亲吻主链
 
@@ -124,13 +124,13 @@ src/main/resources
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。
+语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。早安吻与残血救护语音列表都支持试听：本地内置语音由客户端直接播放，数据包语音通过服务端校验后把目标字节发送回客户端播放。TLM 音包试听同样读取原始音频字节，但使用专用 preview stream：以 `minecraft:music.menu` 作为稳定声音事件锚点，走 `PLAYERS` 音量分类，并关闭位置衰减，避免右键试听依赖 TLM 音包自身的 sound event 注册状态或玩家的环境音量设置。TLM 音包实际播放仍由功能流程创建跟随女仆或触发点的流式 SoundInstance，避免把 Opus/Vorbis 兼容性压到 `SoundBuffer` 旧链路上。
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 
-### 4.8 AI / MiMo 适配层
+### 4.8 TMA AI Hub / MiMo 适配层
 
-`ai/mimo` 是第三方模型协议适配层。它通过 TLM 的扩展入口注册 `tma_mimo_chat` 与 `tma_mimo_tts` 站点类型：
+`ai/mimo` 是当前第三方模型协议适配层。用户界面统一称为 `TMA AI Hub`，内部包名与 `tma_mimo_chat` / `tma_mimo_tts` 站点类型保持稳定以兼容已有配置：
 
 - LLM 侧保持 OpenAI 风格站点兼容，尽量复用 TLM 原生聊天客户端和工具调用语义。
 - TTS 侧解析 MiMo chat-completions 风格响应中的 base64 音频，交给 TLM 播放链路。
@@ -187,6 +187,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `MorningKissVoicePlayPayload`：TLM 音包语音播放。
 - `MorningKissDataVoicePlayPayload`：数据包或运行时 TTS 字节语音播放。
 - `MaidRescuePopPayload`：救援弹出、救援者档案与可选救援音频字节。
+- `VoicePreviewRequestPayload` / `VoicePreviewDataPackPlayPayload`：语音配置页的数据包语音试听请求与回放，服务端负责女仆归属、能力解锁和文件存在性校验。
 
 ## 8. 演进规范
 

@@ -130,7 +130,7 @@ public class ModConfig {
     public static final ModConfigSpec.DoubleValue FOV_CARRIED_FORWARD_OFFSET;
     public static final ModConfigSpec.DoubleValue FOV_CARRIED_VERTICAL_OFFSET;
 
-    // TMA MiMo adapter for Touhou Little Maid AI services
+    // TMA AI Hub defaults for Touhou Little Maid AI services
     public static final ModConfigSpec.BooleanValue TMA_MIMO_ADAPTER_ENABLED;
     public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_API_KEY;
     public static final ModConfigSpec.ConfigValue<String> TMA_MIMO_CHAT_URL;
@@ -324,7 +324,7 @@ public class ModConfig {
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
                 .comment("Prompt template for Morning Kiss AI-generated dialogue",
                         "Placeholders: {maid}, {player}, {pool}, {time}")
-                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
+                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻或晚安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED = builder
                 .comment("Pregenerate AI Morning Kiss dialogue outside active Morning Kiss time windows to reduce trigger latency")
@@ -633,13 +633,13 @@ public class ModConfig {
 
         builder.pop();
 
-        builder.comment("TMA MiMo adapter defaults for Touhou Little Maid AI chat/TTS",
+        builder.comment("TMA AI Hub defaults for Touhou Little Maid AI chat/TTS",
                         "These values seed the TLM site editor defaults; per-site edits are still stored by TLM under config/touhou_little_maid/sites.",
                         "Do not publish your API key. Leave it blank here if you prefer entering it in the TLM AI settings GUI.")
                 .push("tmaMimoAdapter");
 
         TMA_MIMO_ADAPTER_ENABLED = builder
-                .comment("Register TMA MiMo chat and TTS providers into Touhou Little Maid AI settings")
+                .comment("Register TMA AI Hub chat and TTS providers into Touhou Little Maid AI settings")
                 .define("enabled", true);
 
         TMA_MIMO_API_KEY = builder

@@ -12,11 +12,11 @@ public class TmaMimoAdapterExtension implements ILittleMaid {
     @Override
     public void registerAIChatSerializer(SerializerRegister register) {
         if (!ModConfig.TMA_MIMO_ADAPTER_ENABLED.get()) {
-            TouhouMaidAffection.LOGGER.info("TMA MiMo adapter is disabled by config; skipping TLM AI serializer registration");
+            TouhouMaidAffection.LOGGER.info("TMA AI Hub is disabled by config; skipping TLM AI serializer registration");
             return;
         }
         register.register(ServiceType.LLM, MimoLLMSite.API_TYPE, new MimoLLMSite.Serializer());
         register.register(ServiceType.TTS, MimoTTSSite.API_TYPE, new MimoTTSSite.Serializer());
-        TouhouMaidAffection.LOGGER.info("Registered TMA MiMo adapter serializers for TLM AI chat and TTS");
+        TouhouMaidAffection.LOGGER.info("Registered TMA AI Hub serializers for TLM AI chat and TTS");
     }
 }

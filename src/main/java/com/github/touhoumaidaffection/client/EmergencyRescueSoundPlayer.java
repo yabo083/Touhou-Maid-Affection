@@ -6,7 +6,6 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
-import com.mojang.blaze3d.audio.SoundBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -134,15 +133,16 @@ public final class EmergencyRescueSoundPlayer {
     }
 
     private static boolean playTlmEntry(String soundPackId, RescueTlmVoiceIndex.VoiceEntry entry, Minecraft minecraft) {
-        SoundBuffer soundBuffer = RescueTlmVoiceIndex.loadSoundBuffer(soundPackId, entry.clipKey());
-        if (soundBuffer == null) {
-            debugLog("Emergency rescue TLM voice buffer missing: pack={}, clip={}", soundPackId, entry.clipKey());
+        RescueTlmVoiceIndex.VoiceData voiceData = RescueTlmVoiceIndex.loadVoiceData(soundPackId, entry.clipKey());
+        if (voiceData == null) {
+            debugLog("Emergency rescue TLM voice data missing: pack={}, clip={}", soundPackId, entry.clipKey());
             return false;
         }
         try {
             minecraft.getSoundManager().play(new EmergencyRescueTlmSoundInstance(
                     SoundEvent.createVariableRangeEvent(entry.soundEventId()),
-                    soundBuffer,
+                    voiceData.data(),
+                    voiceData.fileName(),
                     minecraft.player.getX(),
                     minecraft.player.getY(),
                     minecraft.player.getZ(),

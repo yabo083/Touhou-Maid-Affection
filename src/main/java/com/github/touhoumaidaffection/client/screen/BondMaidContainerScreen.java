@@ -10,6 +10,7 @@ import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
 import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
+import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.YsmModelActionIndex;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
@@ -126,6 +127,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (hasActiveSecondaryPage()) {
+            if (button == 1) {
+                return handleSecondaryPageClick(mouseX, mouseY, button);
+            }
             if (isMouseOverAnyMenuSlot(mouseX, mouseY)) {
                 return super.mouseClicked(mouseX, mouseY, button);
             }
@@ -211,6 +215,12 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
                 return true;
             }
             closeSecondaryPage();
+            return true;
+        }
+        if (hasActiveSecondaryPage()
+                && secondaryPage != null
+                && BondKeyMappings.VOICE_PREVIEW.matches(keyCode, scanCode)
+                && secondaryPage.previewSelectedVoice()) {
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

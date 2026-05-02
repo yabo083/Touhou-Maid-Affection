@@ -66,6 +66,17 @@ public final class MorningKissVoiceIndex {
         };
     }
 
+    public static VoiceData loadVoiceData(String soundPackId, String clipKey) {
+        VoiceEntry entry = getEntry(soundPackId, clipKey);
+        if (entry == null) {
+            return null;
+        }
+        return switch (entry.source()) {
+            case FileVoiceSource fileSource -> loadVoiceDataFromFile(fileSource.path(), fileSource.describe());
+            case ZipVoiceSource zipSource -> loadVoiceDataFromZip(zipSource.zipPath(), zipSource.entryName(), zipSource.describe());
+        };
+    }
+
     private static VoicePackIndex getPackIndex(String soundPackId) {
         if (soundPackId == null || soundPackId.isBlank()) {
             return VoicePackIndex.EMPTY;
@@ -208,6 +219,28 @@ public final class MorningKissVoiceIndex {
         }
     }
 
+    private static VoiceData loadVoiceDataFromFile(Path path, String displayName) {
+        try {
+            return new VoiceData(Files.readAllBytes(path), displayName);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private static VoiceData loadVoiceDataFromZip(Path zipPath, String entryName, String displayName) {
+        try (ZipFile zip = new ZipFile(zipPath.toFile())) {
+            ZipEntry entry = zip.getEntry(entryName);
+            if (entry == null) {
+                return null;
+            }
+            try (java.io.InputStream stream = zip.getInputStream(entry)) {
+                return new VoiceData(stream.readAllBytes(), displayName);
+            }
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
     private static SoundBuffer toSoundBuffer(List<SoundData> sounds) {
         if (sounds.isEmpty()) {
             return null;
@@ -257,6 +290,9 @@ public final class MorningKissVoiceIndex {
             int groupOrder,
             VoiceSource source
     ) {
+    }
+
+    public record VoiceData(byte[] data, String fileName) {
     }
 
     public record VoiceGroup(String key, String displayName, int entryCount, int order) {

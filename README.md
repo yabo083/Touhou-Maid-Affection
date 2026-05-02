@@ -28,7 +28,8 @@
 - Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
 - Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
 - Optional AI-generated Morning Kiss dialogue and TTS pre-generation through TLM AI sites.
-- TMA MiMo adapter sites for TLM AI chat and TTS.
+- TMA AI Hub site presets for TLM AI chat and TTS.
+- Click-to-preview voice lists for Morning Kiss and Emergency Rescue.
 - A new targeted-maid kiss key action for crosshair-based kissing.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
@@ -71,11 +72,11 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the ready-to-zip sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
 
-### AI And MiMo
+### AI Hub
 
 Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior is configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files.
 
-TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
+TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. The current provider implementation is MiMo-compatible, but the in-game entry is named around TMA AI behavior so future chat, TTS, and STT-facing features can share the same doorway. User API keys and enabled site state remain managed by Touhou Little Maid.
 
 ### Compatibility
 
