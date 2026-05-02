@@ -820,7 +820,7 @@ public final class MorningKissService {
                 VOICE_SEQUENCE_INDEX.put(key, (index + 1) % ids.size());
                 yield ids.get(Math.floorMod(index, ids.size()));
             }
-            case SPECIFIC_CLIP -> ids.getFirst();
+            case SPECIFIC_CLIP -> ids.get(0);
         };
     }
 

@@ -2,7 +2,6 @@ package com.github.touhoumaidaffection.network;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -21,7 +20,7 @@ public record MorningKissDataVoicePlayPayload(
 
     public static final StreamCodec<ByteBuf, MorningKissDataVoicePlayPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.INT, MorningKissDataVoicePlayPayload::maidEntityId,
-            UUIDUtil.STREAM_CODEC, MorningKissDataVoicePlayPayload::maidUuid,
+            ByteBufCodecs.UUID, MorningKissDataVoicePlayPayload::maidUuid,
             ByteBufCodecs.STRING_UTF8, MorningKissDataVoicePlayPayload::fileName,
             ByteBufCodecs.BYTE_ARRAY, MorningKissDataVoicePlayPayload::data,
             MorningKissDataVoicePlayPayload::new

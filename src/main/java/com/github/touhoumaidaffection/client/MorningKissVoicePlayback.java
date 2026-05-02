@@ -7,7 +7,6 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
-import com.mojang.blaze3d.audio.SoundBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -36,22 +35,21 @@ public final class MorningKissVoicePlayback {
             return;
         }
 
-        SoundBuffer soundBuffer = MorningKissVoiceIndex.loadSoundBuffer(payload.soundPackId(), entry.clipKey());
-        if (soundBuffer == null) {
+        MorningKissVoiceIndex.VoiceData voiceData = MorningKissVoiceIndex.loadVoiceData(payload.soundPackId(), entry.clipKey());
+        if (voiceData == null) {
             return;
         }
 
-        SoundEvent soundEvent = SoundEvent.createVariableRangeEvent(entry.soundEventId());
         Entity entity = minecraft.level.getEntity(payload.maidEntityId());
         if (entity instanceof EntityMaid maid) {
-            minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(soundEvent, soundBuffer, maid, maid.getX(), maid.getY(), maid.getZ(), 1.0F, 1.0F));
+            minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), maid, maid.getX(), maid.getY(), maid.getZ(), 1.0F, 1.0F));
             return;
         }
 
         double x = minecraft.player.getX();
         double y = minecraft.player.getY();
         double z = minecraft.player.getZ();
-        minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(soundEvent, soundBuffer, null, x, y, z, 1.0F, 1.0F));
+        minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), null, x, y, z, 1.0F, 1.0F));
     }
 
     public static void playDataPackVoice(MorningKissDataVoicePlayPayload payload) {

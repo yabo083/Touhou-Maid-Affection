@@ -14,5 +14,6 @@ public class KissKeyRegisterHandler {
         event.register(KissKeyMappings.KISS_TARGETED_MAID);
         event.register(BondKeyMappings.LAP_PILLOW);
         event.register(BondKeyMappings.LAP_PILLOW_ANGLE_LOCK);
+        event.register(BondKeyMappings.VOICE_PREVIEW);
     }
 }

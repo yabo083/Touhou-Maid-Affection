@@ -19,7 +19,8 @@
     "client.LivingEntityLapPillowSleepMixin",
     "client.EntityLapPillowPoseClientGuardMixin",
     "client.PlayerLapPillowForcedPoseClientGuardMixin",
-    "client.PlayerModelLapPillowSleepPoseMixin"
+    "client.PlayerModelLapPillowSleepPoseMixin",
+    "client.LLMSiteEditorScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

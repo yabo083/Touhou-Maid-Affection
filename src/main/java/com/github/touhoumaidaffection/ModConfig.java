@@ -323,7 +323,7 @@ public class ModConfig {
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
                 .comment("Prompt template for Morning Kiss AI-generated dialogue",
                         "Placeholders: {maid}, {player}, {pool}, {time}")
-                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
+                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻或晚安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED = builder
                 .comment("Pregenerate AI Morning Kiss dialogue outside active Morning Kiss time windows to reduce trigger latency")
@@ -664,7 +664,7 @@ public class ModConfig {
 
         TMA_MIMO_TTS_AUDIO_FORMAT = builder
                 .comment("Default requested MiMo TTS audio format",
-                        "MiMo V2.5 docs support mp3, wav, pcm, and pcm16; mp3 fits TLM playback best")
+                        "MiMo V2.5 TTS supports mp3, wav, pcm, and pcm16; TLM's AI TTS playback path supports mp3 most reliably")
                 .define("ttsAudioFormat", MimoProtocol.DEFAULT_TTS_AUDIO_FORMAT);
 
         builder.pop();

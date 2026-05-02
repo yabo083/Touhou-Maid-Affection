@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.ai.mimo;
 
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.TTSCallback;
+import com.github.tartaricacid.touhoulittlemaid.ai.service.ResponseCallback;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.tts.TTSClient;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.tts.TTSConfig;
 
@@ -30,7 +31,7 @@ public class MimoTTSClient implements TTSClient {
                 .whenComplete((response, error) -> handle(callback, response, error, request));
     }
 
-    private void handle(TTSCallback callback, HttpResponse<String> response, Throwable error, HttpRequest request) {
+    private void handle(ResponseCallback<byte[]> callback, HttpResponse<String> response, Throwable error, HttpRequest request) {
         if (error != null) {
             callback.onFailure(request, error, 0);
             return;

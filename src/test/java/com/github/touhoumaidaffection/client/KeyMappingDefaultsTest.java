@@ -16,4 +16,9 @@ class KeyMappingDefaultsTest {
         assertEquals(-1, TmaKeyDefaults.LAP_PILLOW_ANGLE_LOCK);
         assertNotEquals(TmaKeyDefaults.KISS_TARGETED_MAID, TmaKeyDefaults.LAP_PILLOW_ANGLE_LOCK);
     }
+
+    @Test
+    void voicePreviewDefaultsToRightMouseButton() {
+        assertEquals(1, TmaKeyDefaults.VOICE_PREVIEW);
+    }
 }

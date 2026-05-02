@@ -9,6 +9,7 @@ import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.ability.IBondAbility;
+import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
@@ -127,6 +128,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (hasActiveSecondaryPage()) {
+            if (button == 1) {
+                return handleSecondaryPageClick(mouseX, mouseY, button);
+            }
             if (isMouseOverAnyMenuSlot(mouseX, mouseY)) {
                 return super.mouseClicked(mouseX, mouseY, button);
             }
@@ -214,6 +218,12 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             closeSecondaryPage();
             return true;
         }
+        if (hasActiveSecondaryPage()
+                && secondaryPage != null
+                && BondKeyMappings.VOICE_PREVIEW.matches(keyCode, scanCode)
+                && secondaryPage.previewSelectedVoice()) {
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -265,9 +275,6 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     }
 
     private boolean handleSecondaryPageClick(double mouseX, double mouseY, int button) {
-        if (button != 0) {
-            return true;
-        }
         return secondaryPage != null && secondaryPage.mouseClicked(mouseX, mouseY, button);
     }
 

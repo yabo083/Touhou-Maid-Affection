@@ -84,6 +84,14 @@ class MimoProtocolTest {
     }
 
     @Test
+    void normalizesUnsupportedTtsAudioFormatToMp3() {
+        String request = MimoProtocol.buildTtsRequest("mimo-v2.5-tts-voicedesign", "温柔女声", "欢迎回来", "ogg");
+
+        JsonObject root = JsonParser.parseString(request).getAsJsonObject();
+        assertEquals("mp3", root.getAsJsonObject("audio").get("format").getAsString());
+    }
+
+    @Test
     void buildsPlainChatRequest() {
         String request = MimoProtocol.buildChatRequest(
                 "mimo-v2.5",

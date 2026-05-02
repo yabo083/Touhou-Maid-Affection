@@ -5,7 +5,9 @@ import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.bond.VoicePoolSelection;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
+import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.client.MorningKissVoiceIndex;
+import com.github.touhoumaidaffection.client.VoicePreviewPlayback;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
@@ -70,6 +72,9 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 1 || BondKeyMappings.VOICE_PREVIEW.matchesMouse(button)) {
+            return previewHoveredVoice(mouseX, mouseY);
+        }
         if (button != 0) {
             return true;
         }
@@ -108,6 +113,11 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         return voiceList.scroll(mouseX, mouseY, scrollY, voiceEntries.size());
+    }
+
+    @Override
+    public boolean previewSelectedVoice() {
+        return previewEntryId(firstSelectedOrFirstEntryId());
     }
 
     @Override
@@ -244,6 +254,26 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
 
     private List<String> allEntryIds() {
         return voiceEntries.stream().map(BondVoicePoolList.Entry::id).toList();
+    }
+
+    private boolean previewHoveredVoice(double mouseX, double mouseY) {
+        int optionIndex = voiceList.getHoveredIndex(mouseX, mouseY, voiceEntries.size());
+        if (optionIndex < 0 || optionIndex >= voiceEntries.size()) {
+            return true;
+        }
+        previewEntryId(voiceEntries.get(optionIndex).id());
+        return true;
+    }
+
+    private boolean previewEntryId(String id) {
+        return VoicePreviewPlayback.playMorningKiss(host.getMaid(), id);
+    }
+
+    private String firstSelectedOrFirstEntryId() {
+        if (!selectedIds.isEmpty()) {
+            return selectedIds.iterator().next();
+        }
+        return voiceEntries.isEmpty() ? "" : voiceEntries.get(0).id();
     }
 
     private void toggleAll() {

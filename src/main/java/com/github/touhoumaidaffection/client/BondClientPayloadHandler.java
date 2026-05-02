@@ -7,6 +7,7 @@ import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.LinkedHashSet;
@@ -67,5 +68,9 @@ public final class BondClientPayloadHandler {
 
     public static void handleMorningKissDataVoicePlay(MorningKissDataVoicePlayPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> MorningKissVoicePlayback.playDataPackVoice(payload));
+    }
+
+    public static void handleVoicePreviewDataPackPlay(VoicePreviewDataPackPlayPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> VoicePreviewPlayback.playDataPackVoice(payload));
     }
 }

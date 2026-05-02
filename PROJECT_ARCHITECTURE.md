@@ -2,7 +2,7 @@
 
 ## 1. 项目定位
 
-`Touhou Maid: Affection` 是 Touhou Little Maid 的 NeoForge 扩展模组。它不替代 TLM 的女仆、音包、模型或 AI 系统，而是在这些能力之上增加一层“以特定女仆与特定玩家关系为中心”的亲密互动与羁绊成长系统。
+`Touhou Maid: Affection` 是 Touhou Little Maid 的 Forge 1.20.1 扩展模组。它不替代 TLM 的女仆、音包、模型或 AI 系统，而是在这些能力之上增加一层“以特定女仆与特定玩家关系为中心”的亲密互动与羁绊成长系统。
 
 当前主闭环是：
 
@@ -13,12 +13,12 @@
 
 ## 2. 技术栈与发布约束
 
-- Java `21`
+- Java `17`
 - Gradle 单模块工程
-- Minecraft `1.21.1`
-- NeoForge `21.1.x`
-- Touhou Little Maid `1.5.1+`，当前编译目标为 `1.5.2-neoforge+mc1.21.1`
-- Parchment mappings `2024.11.17`
+- Minecraft `1.20.1`
+- Forge `47.4.16`
+- Touhou Little Maid `1.5.2-forge+mc1.20.1`
+- Official mappings `1.20.1`
 - Mixin 用于少量 TLM GUI、诱饵与膝枕渲染桥接
 - Modrinth Minotaur 用于发布任务
 
@@ -30,7 +30,7 @@
 src/main/java/com/github/touhoumaidaffection
 ├─ TouhouMaidAffection.java
 ├─ ModConfig.java
-├─ ModAttachments.java / ModEffects.java / ModSounds.java
+├─ ModCapabilities.java / ModEffects.java / ModSounds.java
 ├─ ai/mimo
 ├─ bond
 │  ├─ BondData.java / BondManager.java
@@ -54,7 +54,7 @@ src/main/java/com/github/touhoumaidaffection
 └─ ysm
 
 src/main/resources
-├─ META-INF/neoforge.mods.toml
+├─ META-INF/mods.toml
 ├─ touhou_maid_affection.mixins.json
 ├─ assets/touhou_maid_affection
 │  ├─ lang
@@ -124,7 +124,7 @@ src/main/resources
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。
+语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。列表项支持可改键的试听动作，默认右键由二级页优先处理，避免被底层 TLM 容器槽位吞掉；TLM 音包与内置音效改为直接以流式音频播放，数据包语音通过轻量预览请求向服务端取回字节后播放。
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 
@@ -132,9 +132,10 @@ src/main/resources
 
 `ai/mimo` 是第三方模型协议适配层。它通过 TLM 的扩展入口注册 `tma_mimo_chat` 与 `tma_mimo_tts` 站点类型：
 
-- LLM 侧保持 OpenAI 风格站点兼容，尽量复用 TLM 原生聊天客户端和工具调用语义。
-- TTS 侧解析 MiMo chat-completions 风格响应中的 base64 音频，交给 TLM 播放链路。
-- API key、启用状态与站点保存仍由 TLM 管理；TMA 只提供默认 URL、模型、格式与站点类型。
+- LLM 侧继承 TLM 1.5.2 的 `LLMOpenAISite` 以复用原生站点编辑器，但通过 `MimoLLMClient` 接入 `LLMCallback` 链路发送 MiMo 请求；保存时由窄 client mixin 将 TLM 编辑器构造出的普通 OpenAI 站点重新包装回 `MimoLLMSite`，避免丢失 `tma_mimo_chat` 类型。
+- TTS 侧实现 TLM 1.5.2 的 `TTSCallback` 与 `TTSSiteFormLayout` 旧接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM 播放链路；MiMo TTS 端点当前只接受 `mp3/wav/pcm/pcm16`，而 TLM 的 AI TTS 播放链路本身可直接消费 `mp3`，所以 TMA 默认请求 MP3 并让旧配置继续兼容 MP3。TLM 音包试听则走客户端流式播放，不再依赖伪造的 `SoundBuffer` 包装。
+- API key、启用状态、站点编辑 UI 与站点保存仍由 TLM 管理；TMA 只提供默认 URL、模型、格式与站点类型。
+- 羁绊页 “TMA AI Hub” 按钮直接打开 TLM 1.5.2 的 AI settings hub，用户仍在 TLM 站点配置里选择 `tma_mimo_chat` 与 `tma_mimo_tts`。
 - TMA 不接管 TLM STT，也不把远程服务失败变成阻断错误。
 
 ### 4.9 兼容层
@@ -149,7 +150,7 @@ src/main/resources
 |---|---|
 | `ModConfig` | 全局规则、AI 默认值、运行时开关。 |
 | `BondData` | 玩家-女仆长期关系档案。 |
-| NeoForge Attachment | 玩家当前能力槽、每日次数等独立运行态。 |
+| Forge Capability | 玩家当前能力槽、每日次数等独立运行态。 |
 | 内存任务表/缓存 | 当前服务器会话内的冷却、任务、AI 预生成结果。 |
 
 数据包不是运行时状态存储。`data/touhou_maid_affection/morning_kiss/profile.json` 和 `data/touhou_maid_affection/emergency_rescue/profile.json` 只描述可重载的静态资源入口。
@@ -187,6 +188,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `MorningKissVoicePlayPayload`：TLM 音包语音播放。
 - `MorningKissDataVoicePlayPayload`：数据包或运行时 TTS 字节语音播放。
 - `MaidRescuePopPayload`：救援弹出、救援者档案与可选救援音频字节。
+- `VoicePreviewRequestPayload` / `VoicePreviewDataPackPlayPayload`：语音列表试听时的数据包语音请求与客户端播放；TLM 音包试听优先走客户端本地索引，不占用服务端触发流程。
 
 ## 8. 演进规范
 

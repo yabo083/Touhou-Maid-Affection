@@ -2,7 +2,6 @@ package com.github.touhoumaidaffection.network;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -34,7 +33,7 @@ public record MorningKissVoiceConfigPayload(
     }
 
     private static void encode(ByteBuf buf, MorningKissVoiceConfigPayload payload) {
-        UUIDUtil.STREAM_CODEC.encode(buf, payload.maidUuid());
+        ByteBufCodecs.UUID.encode(buf, payload.maidUuid());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.mode());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.selectedGroup());
         ByteBufCodecs.STRING_UTF8.encode(buf, payload.selectedClip());
@@ -45,7 +44,7 @@ public record MorningKissVoiceConfigPayload(
 
     private static MorningKissVoiceConfigPayload decode(ByteBuf buf) {
         return new MorningKissVoiceConfigPayload(
-                UUIDUtil.STREAM_CODEC.decode(buf),
+                ByteBufCodecs.UUID.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),
                 ByteBufCodecs.STRING_UTF8.decode(buf),

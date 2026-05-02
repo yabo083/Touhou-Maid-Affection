@@ -11,6 +11,7 @@ import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.AudioStream;
 import net.minecraft.client.sounds.SoundBufferLibrary;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
@@ -18,18 +19,23 @@ import net.minecraft.world.entity.Entity;
 import java.io.ByteArrayInputStream;
 import java.util.concurrent.CompletableFuture;
 
-public final class MorningKissDataVoiceSoundInstance extends AbstractTickableSoundInstance {
+public final class VoicePreviewDataPackSoundInstance extends AbstractTickableSoundInstance {
+    private static final SoundEvent STREAM_ANCHOR_SOUND_EVENT =
+            SoundEvent.createVariableRangeEvent(new ResourceLocation("minecraft", "music.menu"));
+
+    private final String feature;
     private final byte[] data;
     private final OggReader.Type oggType;
     private final boolean mp3;
     private final String fileName;
     private final Entity trackedEntity;
 
-    public MorningKissDataVoiceSoundInstance(SoundEvent soundEvent, byte[] data, OggReader.Type oggType,
+    public VoicePreviewDataPackSoundInstance(String feature, byte[] data, OggReader.Type oggType,
                                              boolean mp3, String fileName, Entity trackedEntity,
                                              double x, double y, double z,
                                              float volume, float pitch) {
-        super(soundEvent, SoundSource.PLAYERS, SoundInstance.createUnseededRandom());
+        super(STREAM_ANCHOR_SOUND_EVENT, SoundSource.PLAYERS, SoundInstance.createUnseededRandom());
+        this.feature = feature;
         this.data = data;
         this.oggType = oggType;
         this.mp3 = mp3;
@@ -65,13 +71,6 @@ public final class MorningKissDataVoiceSoundInstance extends AbstractTickableSou
 
     @Override
     public CompletableFuture<AudioStream> getStream(SoundBufferLibrary library, Sound sound, boolean looping) {
-        TouhouMaidAffection.LOGGER.info(
-                "Morning kiss data-pack voice getStream invoked: file='{}', oggType={}, bytes={}, looping={}",
-                fileName,
-                mp3 ? "MP3" : oggType,
-                data == null ? -1 : data.length,
-                looping
-                );
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (mp3) {
@@ -83,9 +82,9 @@ public final class MorningKissDataVoiceSoundInstance extends AbstractTickableSou
                 if (oggType == OggReader.Type.VORBIS) {
                     return new OggAudioStream(new ByteArrayInputStream(data));
                 }
-                TouhouMaidAffection.LOGGER.warn("Morning kiss data-pack voice skipped: unsupported OGG type {}", oggType);
+                TouhouMaidAffection.LOGGER.warn("Preview voice '{}' skipped: unsupported OGG type {}", fileName, oggType);
             } catch (Exception ex) {
-                TouhouMaidAffection.LOGGER.warn("Failed to stream morning kiss data-pack voice '{}'", fileName, ex);
+                TouhouMaidAffection.LOGGER.warn("Failed to stream preview voice '{}'", fileName, ex);
             }
             return null;
         }, Util.backgroundExecutor());
