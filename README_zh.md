@@ -5,7 +5,7 @@
 <h1 align="center">Touhou Maid: Affection - 女仆亲亲</h1>
 
 <p align="center">
-  <b>为 Touhou Little Maid 增加亲密互动、羁绊能力与长期陪伴感。</b>
+  <b>为 Forge 1.20.1 的 Touhou Little Maid 增加亲密互动、羁绊能力与长期陪伴感。</b>
 </p>
 
 <p align="center">
@@ -13,9 +13,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-1.21.1-green?style=flat-square" alt="MC 1.21.1"/>
-  <img src="https://img.shields.io/badge/NeoForge-21.1.x-orange?style=flat-square" alt="NeoForge"/>
-  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.1+-blue?style=flat-square" alt="TLM"/>
+  <img src="https://img.shields.io/badge/Minecraft-1.20.1-green?style=flat-square" alt="MC 1.20.1"/>
+  <img src="https://img.shields.io/badge/Forge-47.4.x-orange?style=flat-square" alt="Forge"/>
+  <img src="https://img.shields.io/badge/Java-17-blue?style=flat-square" alt="Java 17"/>
+  <img src="https://img.shields.io/badge/Touhou_Little_Maid-1.5.x-informational?style=flat-square" alt="Touhou Little Maid"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT"/>
 </p>
 
@@ -23,13 +24,15 @@
 
 ## 最新版本
 
-`1.7.2` 重点完善自定义语音包与早安吻 AI 化：
+`1.7.2.1-forge1.20.1` 是 Forge 1.20.1 分支基于 1.7.2 功能线的短期增强版，重点完善自定义语音包、早安吻 AI 化与语音试听体验：
 
 - 早安吻与残血救护拆分为各自独立的数据包语音池。
 - 早安吻支持静态台词包，台词可使用 `{maid}` 与 `{player}` 占位符。
 - 早安吻可选 AI 台词与 TTS 预生成，复用 TLM AI 站点。
 - 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
 - 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
+- 早安吻与残血救护语音池页面支持试听。
+- `examples/TMA-Custom-Voice-Pack` 提供可直接压缩发布的示例数据包。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -60,7 +63,7 @@
 
 ### 自定义文本与语音
 
-`1.7.2` 新增数据包语音池结构：
+数据包语音池结构如下：
 
 ```text
 data/touhou_maid_affection/morning_kiss/profile.json
@@ -69,7 +72,9 @@ data/touhou_maid_affection/emergency_rescue/profile.json
 data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。完整教程见 [早安吻文本修改教程.md](早安吻文本修改教程.md)，可直接压缩发布的示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
+早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。语音池页面可以在保存前试听当前候选语音。
+
+完整教程见 [早安吻文本修改教程.md](早安吻文本修改教程.md)，示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
 
 ### AI 与 MiMo
 
@@ -79,16 +84,16 @@ TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。
 
 ### 兼容性
 
-- Touhou Little Maid：必需依赖。
+- Touhou Little Maid：必需依赖，本分支按 `1.5.2-forge+mc1.20.1` 构建。
 - Yes Steve Model：可选动作播放与动作列表扫描。
 - CarryOn：可选右键冲突规避。
-- TLM GUI 与音包：存在时增强，不存在时静默回退。
+- TLM GUI、AI 站点与音包：存在时增强，不存在时静默回退。
 
 ## 安装
 
-1. 安装 Minecraft `1.21.1` 与 NeoForge `21.1.x`。
-2. 安装 Touhou Little Maid `1.5.1+`。
-3. 将 `touhou-maid-affection-1.7.2.jar` 放入 `mods` 文件夹。
+1. 安装 Minecraft `1.20.1` 与 Forge `47.4.x`。
+2. 安装 Forge 1.20.1 对应的 Touhou Little Maid。
+3. 将 `touhou-maid-affection-1.7.2.1.jar` 放入 `mods` 文件夹。
 4. 启动游戏。
 
 ## 从源码构建

@@ -30,5 +30,6 @@ Windows PowerShell:
 
 ## Current Baseline
 
-- 目前已覆盖 `MorningKissScheduleRules` 的时间窗解析、跨午夜判断、默认回退和亲吻次数边界修正。
+- 已覆盖 `MorningKissScheduleRules` 的时间窗解析、跨午夜判断、默认回退和亲吻次数边界修正。
+- 已覆盖数据包语音池选择、早安吻 profile 解析、交互语音 profile 解析、MiMo 协议组包与客户端按键默认值等纯逻辑。
 - 每次维护任务至少执行一次 `test + compileJava`，作为提交前最小质量门禁。

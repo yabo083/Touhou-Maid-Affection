@@ -5,7 +5,7 @@
 <h1 align="center">Touhou Maid: Affection</h1>
 
 <p align="center">
-  <b>An affection and bond expansion for Touhou Little Maid.</b>
+  <b>An affection and bond expansion for Touhou Little Maid on Forge 1.20.1.</b>
 </p>
 
 <p align="center">
@@ -13,9 +13,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Minecraft-1.21.1-green?style=flat-square" alt="MC 1.21.1"/>
-  <img src="https://img.shields.io/badge/NeoForge-21.1.x-orange?style=flat-square" alt="NeoForge"/>
-  <img src="https://img.shields.io/badge/Requires-Touhou_Little_Maid_1.5.1+-blue?style=flat-square" alt="TLM"/>
+  <img src="https://img.shields.io/badge/Minecraft-1.20.1-green?style=flat-square" alt="MC 1.20.1"/>
+  <img src="https://img.shields.io/badge/Forge-47.4.x-orange?style=flat-square" alt="Forge"/>
+  <img src="https://img.shields.io/badge/Java-17-blue?style=flat-square" alt="Java 17"/>
+  <img src="https://img.shields.io/badge/Touhou_Little_Maid-1.5.x-informational?style=flat-square" alt="Touhou Little Maid"/>
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT"/>
 </p>
 
@@ -23,13 +24,15 @@
 
 ## Latest Release
 
-`1.7.2` focuses on custom voice packs and AI-assisted Morning Kiss:
+`1.7.2.1-forge1.20.1` is a short-lived Forge branch release based on the 1.7.2 feature line. It focuses on custom voice packs, AI-assisted Morning Kiss, and safer voice preview UX:
 
 - Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
 - Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
 - Optional AI-generated Morning Kiss dialogue and TTS pre-generation through TLM AI sites.
 - TMA MiMo adapter sites for TLM AI chat and TTS.
-- A new targeted-maid kiss key action for crosshair-based kissing.
+- Targeted-maid kiss key action for crosshair-based kissing.
+- Voice preview in the Morning Kiss and Emergency Rescue voice-pool pages.
+- Ready-to-zip sample datapack in `examples/TMA-Custom-Voice-Pack`.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
@@ -60,7 +63,7 @@ The server remains authoritative for unlocks, costs, distance checks, cooldowns,
 
 ### Custom Dialogue And Voices
 
-Version `1.7.2` adds datapack-driven voice pools:
+Datapack-driven voice pools use this layout:
 
 ```text
 data/touhou_maid_affection/morning_kiss/profile.json
@@ -69,7 +72,9 @@ data/touhou_maid_affection/emergency_rescue/profile.json
 data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the ready-to-zip sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
+Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. The voice-pool pages can preview selected voices before saving.
+
+See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
 
 ### AI And MiMo
 
@@ -79,16 +84,16 @@ TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings
 
 ### Compatibility
 
-- Touhou Little Maid: required dependency.
+- Touhou Little Maid: required dependency, built against `1.5.2-forge+mc1.20.1`.
 - Yes Steve Model: optional action playback and action discovery.
 - CarryOn: optional right-click conflict avoidance.
-- TLM GUI and sound packs: soft integration where available, silent fallback where absent.
+- TLM GUI, AI sites, and sound packs: soft integration where available, silent fallback where absent.
 
 ## Installation
 
-1. Install Minecraft `1.21.1` with NeoForge `21.1.x`.
-2. Install Touhou Little Maid `1.5.1+`.
-3. Put `touhou-maid-affection-1.7.2.jar` into your `mods` folder.
+1. Install Minecraft `1.20.1` with Forge `47.4.x`.
+2. Install Touhou Little Maid for Forge 1.20.1.
+3. Put `touhou-maid-affection-1.7.2.1.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source
