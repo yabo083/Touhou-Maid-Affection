@@ -23,14 +23,13 @@
 
 ## Latest Release
 
-`1.7.2` focuses on custom voice packs and AI-assisted Morning Kiss:
+`1.7.2.1` is a small follow-up release for voice preview polish:
 
-- Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
-- Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
-- Optional AI-generated Morning Kiss dialogue and TTS pre-generation through TLM AI sites.
-- TMA AI Hub site presets for TLM AI chat and TTS.
-- Click-to-preview voice lists for Morning Kiss and Emergency Rescue.
-- A new targeted-maid kiss key action for crosshair-based kissing.
+- Right-click voice preview in the Morning Kiss and Emergency Rescue voice lists.
+- Datapack voice previews are validated by the server before playback.
+- TLM native sound-pack previews use a dedicated player-centric stream path, fixing silent previews for built-in TLM voice packs.
+- Left-click now only selects a voice entry; preview playback is reserved for right-click.
+- TMA AI Hub naming is used consistently in player-facing text while preserving existing internal site ids.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
@@ -61,7 +60,7 @@ The server remains authoritative for unlocks, costs, distance checks, cooldowns,
 
 ### Custom Dialogue And Voices
 
-Version `1.7.2` adds datapack-driven voice pools:
+Version `1.7.2+` adds datapack-driven voice pools:
 
 ```text
 data/touhou_maid_affection/morning_kiss/profile.json
@@ -89,7 +88,7 @@ TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. Th
 
 1. Install Minecraft `1.21.1` with NeoForge `21.1.x`.
 2. Install Touhou Little Maid `1.5.1+`.
-3. Put `touhou-maid-affection-1.7.2.jar` into your `mods` folder.
+3. Put `touhou-maid-affection-1.7.2.1.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source
