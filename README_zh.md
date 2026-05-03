@@ -23,13 +23,10 @@
 
 ## 最新版本
 
-`1.7.2.1` 是一次语音试听体验修补版：
+`1.7.2.2` 是一次早安吻 AI/TTS 语言与缓存修补版：
 
-- 早安吻与残血救护语音列表支持右键试听。
-- 数据包语音试听会先由服务端校验，再回传音频给客户端播放。
-- TLM 原生音包试听改为专用的玩家中心流式播放路径，修复部分原生语音包右键试听无声的问题。
-- 左键现在只负责选择语音项，右键才触发试听，避免选择时误播放。
-- 玩家可见文本统一使用 TMA AI Hub 命名，同时保留旧内部站点 ID 兼容已有配置。
+- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成。
+- 切换语言或提示词后，可使用 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内已生成的早安吻 AI 语音缓存。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -73,7 +70,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI Hub
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关与提示词配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关、提示词与 `aiDialogueLanguage` 语言配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。切换语言或提示词后，管理员可执行 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内的已生成缓存，让后续扫描重新生成。
 
 TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前供应商实现仍兼容 MiMo，但游戏内入口改为围绕 TMA 自身 AI 行为命名，方便后续聊天、TTS 与 STT 相关能力共用同一个入口。用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 
@@ -88,7 +85,7 @@ TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前�
 
 1. 安装 Minecraft `1.21.1` 与 NeoForge `21.1.x`。
 2. 安装 Touhou Little Maid `1.5.1+`。
-3. 将 `touhou-maid-affection-1.7.2.1.jar` 放入 `mods` 文件夹。
+3. 将 `touhou-maid-affection-1.7.2.2.jar` 放入 `mods` 文件夹。
 4. 启动游戏。
 
 ## 从源码构建

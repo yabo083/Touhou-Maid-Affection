@@ -48,6 +48,27 @@ class MorningKissGeneratedDialogueCacheTest {
     }
 
     @Test
+    void clearsEntriesForOneMaidOrEntireCache() {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(2);
+        UUID firstMaid = UUID.randomUUID();
+        UUID secondMaid = UUID.randomUUID();
+
+        cache.add(firstMaid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("第一句", "第一句", "", new byte[0]));
+        cache.add(firstMaid, MorningKissScheduleRules.DialoguePool.EVENING,
+                new MorningKissGeneratedDialogueCache.Entry("第二句", "第二句", "", new byte[0]));
+        cache.add(secondMaid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("第三句", "第三句", "", new byte[0]));
+
+        assertEquals(2, cache.clear(firstMaid));
+        assertEquals(0, cache.size(firstMaid, MorningKissScheduleRules.DialoguePool.MORNING));
+        assertEquals(1, cache.size(secondMaid, MorningKissScheduleRules.DialoguePool.MORNING));
+
+        assertEquals(1, cache.clearAll());
+        assertEquals(0, cache.size(secondMaid, MorningKissScheduleRules.DialoguePool.MORNING));
+    }
+
+    @Test
     void acceptsTlmPlayableBytesForGeneratedVoiceCache() {
         assertEquals(Optional.of("ogg"), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
                 "OggSdata".getBytes(StandardCharsets.US_ASCII)));
@@ -57,5 +78,16 @@ class MorningKissGeneratedDialogueCacheTest {
                 "RIFFdata".getBytes(StandardCharsets.US_ASCII)));
         assertEquals(Optional.empty(), MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(
                 new byte[]{'O', 'g', 'g'}));
+    }
+
+    @Test
+    void appliesConfiguredLanguageToPregeneratedDialogueAndTts() {
+        String prompt = MorningKissGeneratedDialogueLanguage.appendLanguageInstruction("Base prompt", "en_us");
+
+        assertTrue(prompt.contains("English"));
+        assertTrue(prompt.contains("one line"));
+        assertEquals("en", MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts("en_us"));
+        assertEquals("zh", MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts("zh_cn"));
+        assertEquals("ja", MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts("ja_jp"));
     }
 }

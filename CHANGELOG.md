@@ -10,6 +10,14 @@
 
 ## [Unreleased]
 
+## [1.7.2.2] - 2026-05-03
+
+### Added
+- 新增 `/tma morning_kiss clear_ai_cache` 管理命令，可清空当前服务器会话内已预生成的早安吻 AI 台词与 TTS 语音缓存，便于切换语言或提示词后重新生成。
+
+### Fixed
+- 修复早安吻 AI/TTS 预生成未应用 `aiDialogueLanguage` 的问题：预生成 prompt 现在会追加语言覆盖指令，TTS 请求也会使用该配置归一化后的语言代码。
+
 ## [1.7.2.1] - 2026-05-02
 
 ### Added

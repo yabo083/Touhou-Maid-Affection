@@ -23,13 +23,10 @@
 
 ## Latest Release
 
-`1.7.2.1` is a small follow-up release for voice preview polish:
+`1.7.2.2` is a small Morning Kiss AI/TTS language and cache fix release:
 
-- Right-click voice preview in the Morning Kiss and Emergency Rescue voice lists.
-- Datapack voice previews are validated by the server before playback.
-- TLM native sound-pack previews use a dedicated player-centric stream path, fixing silent previews for built-in TLM voice packs.
-- Left-click now only selects a voice entry; preview playback is reserved for right-click.
-- TMA AI Hub naming is used consistently in player-facing text while preserving existing internal site ids.
+- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests.
+- After changing language or prompts, admins can run `/tma morning_kiss clear_ai_cache` to clear generated Morning Kiss AI voice cache for the current server session.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
@@ -73,7 +70,7 @@ Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, an
 
 ### AI Hub
 
-Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior is configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files.
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior, prompts, and the `aiDialogueLanguage` language setting are configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files. After changing language or prompt settings, admins can run `/tma morning_kiss clear_ai_cache` to clear generated cache for the current server session so later scans regenerate it.
 
 TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. The current provider implementation is MiMo-compatible, but the in-game entry is named around TMA AI behavior so future chat, TTS, and STT-facing features can share the same doorway. User API keys and enabled site state remain managed by Touhou Little Maid.
 
@@ -88,7 +85,7 @@ TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. Th
 
 1. Install Minecraft `1.21.1` with NeoForge `21.1.x`.
 2. Install Touhou Little Maid `1.5.1+`.
-3. Put `touhou-maid-affection-1.7.2.1.jar` into your `mods` folder.
+3. Put `touhou-maid-affection-1.7.2.2.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source

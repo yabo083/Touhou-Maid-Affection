@@ -75,7 +75,7 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。早安吻 AI/TTS 的运行时开关、提示词、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
 
 ### 4.2 亲吻主链
 
@@ -96,13 +96,14 @@ src/main/resources
 `bond/service` 承载 tick 驱动或跨时间窗的服务：
 
 - `MorningKissService`：早安吻调度、寻路、亲吻执行、台词展示与语音触发。
-- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；预生成 prompt 和 TTS 请求语言必须统一服从 `aiDialogueLanguage`。
+- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。
 - `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，不写回数据包，不触发 `/reload`。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
 - `RandomGiftService`：随机礼物积累与投递。
 
-早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；AI/TTS 运行时行为负责配置、生成、缓存和失败回退。
+早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。
 
 ### 4.5 残血救护
 
@@ -150,7 +151,7 @@ src/main/resources
 | `ModConfig` | 全局规则、AI 默认值、运行时开关。 |
 | `BondData` | 玩家-女仆长期关系档案。 |
 | NeoForge Attachment | 玩家当前能力槽、每日次数等独立运行态。 |
-| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、AI 预生成结果。 |
+| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、AI 预生成结果；早安吻 AI 缓存允许通过管理命令清理。 |
 
 数据包不是运行时状态存储。`data/touhou_maid_affection/morning_kiss/profile.json` 和 `data/touhou_maid_affection/emergency_rescue/profile.json` 只描述可重载的静态资源入口。
 
