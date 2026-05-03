@@ -24,7 +24,7 @@
 
 ## Latest Release
 
-`1.7.2.1-forge1.20.1` is a short-lived Forge branch release based on the 1.7.2 feature line. It focuses on custom voice packs, AI-assisted Morning Kiss, and safer voice preview UX:
+`1.7.2.2-forge1.20.1` is a short-lived Forge branch release based on the 1.7.2 feature line. It focuses on custom voice packs, AI-assisted Morning Kiss, safer voice preview UX, and a Morning Kiss AI/TTS language cache fix:
 
 - Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
 - Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
@@ -32,6 +32,8 @@
 - TMA MiMo adapter sites for TLM AI chat and TTS.
 - Targeted-maid kiss key action for crosshair-based kissing.
 - Voice preview in the Morning Kiss and Emergency Rescue voice-pool pages.
+- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests.
+- After changing language or prompts, admins can run `/tma morning_kiss clear_ai_cache` to clear generated Morning Kiss AI voice cache for the current server session.
 - Ready-to-zip sample datapack in `examples/TMA-Custom-Voice-Pack`.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
@@ -78,7 +80,7 @@ See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the sam
 
 ### AI And MiMo
 
-Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior is configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files.
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior, prompts, and the `aiDialogueLanguage` language setting are configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files. After changing language or prompt settings, admins can run `/tma morning_kiss clear_ai_cache` to clear generated cache for the current server session so later scans regenerate it.
 
 TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
 
@@ -93,7 +95,7 @@ TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings
 
 1. Install Minecraft `1.20.1` with Forge `47.4.x`.
 2. Install Touhou Little Maid for Forge 1.20.1.
-3. Put `touhou-maid-affection-1.7.2.1.jar` into your `mods` folder.
+3. Put `touhou-maid-affection-1.7.2.2.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source

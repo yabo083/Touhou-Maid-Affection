@@ -4,6 +4,7 @@ import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.BondData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueService;
+import com.github.touhoumaidaffection.bond.service.MorningKissGeneratedDialogueService;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -38,7 +39,11 @@ public final class RescueCommand {
                                 .executes(context -> clearPoolAndResetUnlock(context.getSource())))
                         .then(Commands.literal("reset")
                                 .requires(source -> source.hasPermission(2))
-                                .executes(context -> clearPoolAndResetUnlock(context.getSource())))));
+                                .executes(context -> clearPoolAndResetUnlock(context.getSource()))))
+                .then(Commands.literal("morning_kiss")
+                        .then(Commands.literal("clear_ai_cache")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(context -> clearMorningKissAiCache(context.getSource())))));
     }
 
     private static int executeSelfQuery(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -112,6 +117,15 @@ public final class RescueCommand {
                 true
         );
         return resetCount;
+    }
+
+    private static int clearMorningKissAiCache(CommandSourceStack source) {
+        int removed = MorningKissGeneratedDialogueService.clearCache();
+        source.sendSuccess(
+                () -> Component.translatable("command.touhou_maid_affection.morning_kiss.ai_cache.clear.done", removed),
+                true
+        );
+        return removed;
     }
 
 }

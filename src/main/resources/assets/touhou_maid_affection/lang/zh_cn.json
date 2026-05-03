@@ -126,6 +126,7 @@
   "command.touhou_maid_affection.rescue.personal.set_on": "已开启你的残血救护个人开关。",
   "command.touhou_maid_affection.rescue.personal.set_off": "已关闭你的残血救护个人开关。",
   "command.touhou_maid_affection.rescue.clear.done": "已清空残血救护池，并将 %s 位女仆的「残血救护」羁绊重置为未激活。",
+  "command.touhou_maid_affection.morning_kiss.ai_cache.clear.done": "已清空 %s 条早安吻 AI 语音缓存。",
   "command.touhou_maid_affection.rescue.sound.sync": "已触发残血救护预定义语音重扫与同步。",
   "command.touhou_maid_affection.rescue.sound.reload": "已请求客户端重载残血救护本地语音配置。",
   "command.touhou_maid_affection.rescue.refresh.tomorrow": "今日次数已刷新完毕，下一个 MC 日会再次补满。",

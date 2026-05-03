@@ -134,6 +134,29 @@ final class MorningKissGeneratedDialogueCache {
         return size(maidUuid, pool) == 0;
     }
 
+    synchronized int clear(UUID maidUuid) {
+        if (maidUuid == null) {
+            return 0;
+        }
+        int removed = 0;
+        for (MorningKissScheduleRules.DialoguePool pool : MorningKissScheduleRules.DialoguePool.values()) {
+            Deque<Entry> queue = entries.remove(new CacheKey(maidUuid, pool));
+            if (queue != null) {
+                removed += queue.size();
+            }
+        }
+        return removed;
+    }
+
+    synchronized int clearAll() {
+        int removed = 0;
+        for (Deque<Entry> queue : entries.values()) {
+            removed += queue.size();
+        }
+        entries.clear();
+        return removed;
+    }
+
     static String normalizeLine(String raw) {
         if (raw == null) {
             return "";

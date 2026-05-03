@@ -24,7 +24,7 @@
 
 ## 最新版本
 
-`1.7.2.1-forge1.20.1` 是 Forge 1.20.1 分支基于 1.7.2 功能线的短期增强版，重点完善自定义语音包、早安吻 AI 化与语音试听体验：
+`1.7.2.2-forge1.20.1` 是 Forge 1.20.1 分支基于 1.7.2 功能线的短期增强版，重点完善自定义语音包、早安吻 AI 化、语音试听体验，并修复早安吻 AI/TTS 语言缓存问题：
 
 - 早安吻与残血救护拆分为各自独立的数据包语音池。
 - 早安吻支持静态台词包，台词可使用 `{maid}` 与 `{player}` 占位符。
@@ -32,6 +32,8 @@
 - 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
 - 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
 - 早安吻与残血救护语音池页面支持试听。
+- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成。
+- 切换语言或提示词后，可使用 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内已生成的早安吻 AI 语音缓存。
 - `examples/TMA-Custom-Voice-Pack` 提供可直接压缩发布的示例数据包。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
@@ -78,7 +80,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI 与 MiMo
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关与提示词配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关、提示词与 `aiDialogueLanguage` 语言配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。切换语言或提示词后，管理员可执行 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内的已生成缓存，让后续扫描重新生成。
 
 TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。适配器只提供供应商默认值；用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 
@@ -93,7 +95,7 @@ TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。
 
 1. 安装 Minecraft `1.20.1` 与 Forge `47.4.x`。
 2. 安装 Forge 1.20.1 对应的 Touhou Little Maid。
-3. 将 `touhou-maid-affection-1.7.2.1.jar` 放入 `mods` 文件夹。
+3. 将 `touhou-maid-affection-1.7.2.2.jar` 放入 `mods` 文件夹。
 4. 启动游戏。
 
 ## 从源码构建

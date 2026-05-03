@@ -30,11 +30,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class MorningKissGeneratedDialogueService {
     private static final MorningKissGeneratedDialogueCache CACHE = new MorningKissGeneratedDialogueCache();
     private static final Set<RequestKey> IN_FLIGHT = ConcurrentHashMap.newKeySet();
+    private static final AtomicLong CACHE_REVISION = new AtomicLong();
 
     private MorningKissGeneratedDialogueService() {
     }
@@ -137,14 +139,15 @@ public final class MorningKissGeneratedDialogueService {
             if (CACHE.size(maid.getUUID(), pool) >= target) {
                 continue;
             }
-            requestGeneration(player, maid, pool, client, key);
+            requestGeneration(player, maid, pool, client, key, CACHE_REVISION.get());
             return;
         }
         IN_FLIGHT.remove(key);
     }
 
     private static void requestGeneration(ServerPlayer player, EntityMaid maid,
-                                          MorningKissScheduleRules.DialoguePool pool, LLMClient client, RequestKey key) {
+                                          MorningKissScheduleRules.DialoguePool pool, LLMClient client, RequestKey key,
+                                          long cacheRevision) {
         String prompt = buildPrompt(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, pool);
         List<LLMMessage> messages = List.of(
                 LLMMessage.systemChat(maid, "你正在生成 Minecraft 早安吻台词缓存。"),
@@ -161,6 +164,12 @@ public final class MorningKissGeneratedDialogueService {
 
             @Override
             public void onSuccess(ResponseChat responseChat) {
+                if (!isCurrentCacheRevision(cacheRevision)) {
+                    debug("Morning kiss AI dialogue warmup result discarded for {} pool {}: cache was cleared.",
+                            maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
+                    IN_FLIGHT.remove(key);
+                    return;
+                }
                 List<String> lines = MorningKissGeneratedDialogueCache.normalizeLines(responseChat.getChatText());
                 if (lines.isEmpty()) {
                     String fallback = MorningKissGeneratedDialogueCache.normalizeLine(responseChat.getChatText());
@@ -174,12 +183,13 @@ public final class MorningKissGeneratedDialogueService {
                     IN_FLIGHT.remove(key);
                     return;
                 }
-                if (tryWarmVoice(maid, pool, lines)) {
+                if (tryWarmVoice(maid, pool, lines, cacheRevision)) {
                     IN_FLIGHT.remove(key);
                     return;
                 }
                 for (String line : lines) {
-                    CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                    addIfCurrent(cacheRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
                 }
                 TouhouMaidAffection.LOGGER.info("Cached {} text-only morning kiss AI dialogue line(s) for maid {} pool {}.",
                         lines.size(), maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
@@ -188,7 +198,8 @@ public final class MorningKissGeneratedDialogueService {
         });
     }
 
-    private static boolean tryWarmVoice(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool, List<String> lines) {
+    private static boolean tryWarmVoice(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool, List<String> lines,
+                                        long cacheRevision) {
         if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED.get()) {
             return false;
         }
@@ -205,12 +216,8 @@ public final class MorningKissGeneratedDialogueService {
         if (lines.isEmpty()) {
             return false;
         }
-        String language = maid.getAiChatManager().getTTSLanguage();
-        String ttsLanguage = language;
-        int underscore = ttsLanguage.indexOf('_');
-        if (underscore > 0) {
-            ttsLanguage = ttsLanguage.substring(0, underscore);
-        }
+        String ttsLanguage = MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts(
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get());
         TTSConfig config = new TTSConfig(maid.getAiChatManager().getTTSModel(), ttsLanguage);
         for (String line : lines) {
             ttsClient.play(line, config, new TTSCallback(maid, line, -1L) {
@@ -218,7 +225,8 @@ public final class MorningKissGeneratedDialogueService {
                 public void onFailure(@Nullable java.net.http.HttpRequest request, Throwable throwable, int errorCode) {
                     TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS failed for maid {} pool {}: {}",
                             maid.getUUID(), pool.name().toLowerCase(Locale.ROOT), throwable.getMessage());
-                    CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                    addIfCurrent(cacheRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
                 }
 
                 @Override
@@ -227,17 +235,33 @@ public final class MorningKissGeneratedDialogueService {
                     if (extension.isBlank()) {
                         TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS for maid {} pool {} did not return playable audio data; cached text only.",
                                 maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
-                        CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                        addIfCurrent(cacheRevision, maid.getUUID(), pool,
+                                new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
                         return;
                     }
                     String fileName = "generated/" + maid.getUUID() + "/" + pool.name().toLowerCase(Locale.ROOT) + "/" + Integer.toHexString(line.hashCode()) + "." + extension;
-                    CACHE.add(maid.getUUID(), pool, new MorningKissGeneratedDialogueCache.Entry(line, line, fileName, data));
-                    TouhouMaidAffection.LOGGER.info("Cached morning kiss AI dialogue voice '{}' ({} bytes) for maid {} pool {}.",
-                            fileName, data.length, maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
+                    if (addIfCurrent(cacheRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, fileName, data))) {
+                        TouhouMaidAffection.LOGGER.info("Cached morning kiss AI dialogue voice '{}' ({} bytes) for maid {} pool {}.",
+                                fileName, data.length, maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
+                    }
                 }
             });
         }
         return true;
+    }
+
+    private static boolean addIfCurrent(long cacheRevision, UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+                                        MorningKissGeneratedDialogueCache.Entry entry) {
+        if (!isCurrentCacheRevision(cacheRevision)) {
+            return false;
+        }
+        CACHE.add(maidUuid, pool, entry);
+        return true;
+    }
+
+    private static boolean isCurrentCacheRevision(long cacheRevision) {
+        return CACHE_REVISION.get() == cacheRevision;
     }
 
     private static String buildPrompt(String rawPrompt, ServerPlayer player, EntityMaid maid, MorningKissScheduleRules.DialoguePool pool) {
@@ -248,7 +272,10 @@ public final class MorningKissGeneratedDialogueService {
                 .replace("{player}", playerName)
                 .replace("{pool}", pool.name().toLowerCase(Locale.ROOT))
                 .replace("{time}", MorningKissService.getAllowedTimeRangesText());
-        return prompt + "\n请输出 3 句候选台词，每句单独一行，不要编号，不要解释，不要重复，不要加引号。";
+        return MorningKissGeneratedDialogueLanguage.appendLanguageInstruction(
+                prompt,
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get()
+        );
     }
 
     private static void debug(String message, Object... args) {
@@ -263,6 +290,20 @@ public final class MorningKissGeneratedDialogueService {
 
     static boolean hasCachedLine(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool) {
         return hasCachedLine(maid.getUUID(), pool);
+    }
+
+    public static int clearCache() {
+        CACHE_REVISION.incrementAndGet();
+        int removed = CACHE.clearAll();
+        IN_FLIGHT.clear();
+        return removed;
+    }
+
+    public static int clearCache(UUID maidUuid) {
+        CACHE_REVISION.incrementAndGet();
+        int removed = CACHE.clear(maidUuid);
+        IN_FLIGHT.removeIf(key -> maidUuid != null && maidUuid.equals(key.maidUuid()));
+        return removed;
     }
 
     private record RequestKey(UUID playerUuid, UUID maidUuid) {

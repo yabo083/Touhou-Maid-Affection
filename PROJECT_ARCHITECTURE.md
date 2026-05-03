@@ -84,7 +84,7 @@ examples/TMA-Custom-Voice-Pack
 
 `TouhouMaidAffection.java` 是启动门面，负责配置注册、注册表、payload、事件监听、TLM AI 扩展和 tick 入口装配。它不应承载业务规则。
 
-`ModConfig.java` 保存全局规则、默认阈值、早安吻 AI/TTS 运行时开关、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
+`ModConfig.java` 保存全局规则、默认阈值、早安吻 AI/TTS 运行时开关、提示词、语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
 
 注册层的原则是“装配而非决策”：具体触发条件、资源解析、能力逻辑和错误回退应下放到 handler、service 或领域对象。
 
@@ -107,7 +107,8 @@ examples/TMA-Custom-Voice-Pack
 `bond/service` 承载跨 tick、跨时间窗或可重载资源相关的流程：
 
 - `MorningKissService`：早安吻调度、寻路、亲吻执行、台词选择与语音触发。
-- `MorningKissGeneratedDialogueService`：通过 TLM LLM/TTS 站点异步预生成早安吻台词和语音。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；预生成 prompt 和 TTS 请求语言必须统一服从 `aiDialogueLanguage`。
+- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。
 - `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，不写回数据包，不触发 `/reload`。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：解析早安吻和残血救护共享的数据包 OGG 语音池。
@@ -116,7 +117,8 @@ examples/TMA-Custom-Voice-Pack
 早安吻边界：
 
 - 数据包负责静态台词、亲吻 sound event 和预录 OGG。
-- `morningKissBehavior` TOML 配置负责运行时 AI/TTS、扫描频率、缓存目标数和失败回退。
+- `morningKissBehavior` TOML 配置负责运行时 AI/TTS、提示词、语言、扫描频率、缓存目标数和失败回退。
+- `/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。
 - AI/TTS 失败只影响增强体验，不能阻断静态台词或已有语音。
 
 ## 8. 残血救护
@@ -175,7 +177,7 @@ TMA 不接管 TLM STT，也不把远程服务失败变成阻断错误。
 | `ModConfig` | 全局规则、AI 默认值、运行时开关和兼容配置。 |
 | `BondData` | 玩家-女仆长期关系档案。 |
 | Forge Capability | 玩家当前能力槽、救援日次数等独立运行态。 |
-| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、语音预览、AI 预生成结果。 |
+| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、语音预览、AI 预生成结果；早安吻 AI 缓存允许通过管理命令清理。 |
 | 数据包 | 可 `/reload` 的静态文本、预录 OGG 和 sound event 声明。 |
 
 数据包不是运行时状态存储。AI 开关、API key、扫描频率、缓存策略和供应商默认值不应写进数据包。

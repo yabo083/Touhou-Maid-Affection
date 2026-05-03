@@ -317,7 +317,7 @@ public class ModConfig {
                 .define("aiDialogueEnabled", false);
 
         BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE = builder
-                .comment("Language passed to Touhou Little Maid AI chat for immediate Morning Kiss dialogue fallback")
+                .comment("Language used for Morning Kiss AI dialogue pregeneration, live fallback, and generated TTS requests")
                 .define("aiDialogueLanguage", "zh_cn");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
