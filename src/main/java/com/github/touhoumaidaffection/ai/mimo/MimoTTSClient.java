@@ -23,7 +23,8 @@ public class MimoTTSClient implements TTSClient {
         String model = config == null || config.model() == null || config.model().isBlank()
                 ? MimoProtocol.DEFAULT_TTS_MODEL
                 : config.model();
-        String body = MimoProtocol.buildTtsRequest(model, site.voicePrompt(), text, site.audioFormat());
+        String language = config == null ? "" : config.language();
+        String body = MimoProtocol.buildTtsRequest(model, site.voicePrompt(), text, site.audioFormat(), language);
         HttpRequest request = MimoHttp.requestBuilder(site.url(), site.secretKey())
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();

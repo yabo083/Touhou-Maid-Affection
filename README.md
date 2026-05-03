@@ -32,8 +32,8 @@
 - TMA MiMo adapter sites for TLM AI chat and TTS.
 - Targeted-maid kiss key action for crosshair-based kissing.
 - Voice preview in the Morning Kiss and Emergency Rescue voice-pool pages.
-- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests.
-- After changing language or prompts, admins can run `/tma morning_kiss clear_ai_cache` to clear generated Morning Kiss AI voice cache for the current server session.
+- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests; the default `tlm` value follows Touhou Little Maid's own language settings, and generated voice cache text follows TLM's TTS language button.
+- `/tma morning_kiss` shows AI/TTS status and cache statistics; admins can run `/tma morning_kiss ai on/off`, `/tma morning_kiss tts on/off`, or `/tma morning_kiss clear_ai_cache` while testing language and prompt changes.
 - Ready-to-zip sample datapack in `examples/TMA-Custom-Voice-Pack`.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
@@ -80,7 +80,7 @@ See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the sam
 
 ### AI And MiMo
 
-Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior, prompts, and the `aiDialogueLanguage` language setting are configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files. After changing language or prompt settings, admins can run `/tma morning_kiss clear_ai_cache` to clear generated cache for the current server session so later scans regenerate it.
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior, prompts, and the `aiDialogueLanguage` language setting are configured in `config/touhou_maid_affection-common.toml`; `tlm`, `auto`, or `default` follows Touhou Little Maid's own language settings. Text-only generation follows the maid chat language, while generated voice cache text follows TLM's TTS language button so the text sent to TTS matches the requested voice language. Explicit values such as `en_us` or `ja_jp` override both. Datapacks stay responsible for static text and pre-recorded OGG files. `/tma morning_kiss` reports the current AI/TTS settings, `/tma morning_kiss cache` reports generated cache details per maid, pool, text language, voice language, and in-flight request, and admins can use `ai on/off`, `tts on/off`, or `clear_ai_cache` while testing language or prompt settings. Generated cache capacity is enforced per maid and per time pool; with the default target of 4 and three pools, one maid keeps up to 12 generated entries total even if several languages appear in the cache details. By default, generated cache entries are reused without being consumed; set `aiDialogueCacheConsumeOnUse=true` if you prefer the old auto-refill behavior.
 
 TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
 

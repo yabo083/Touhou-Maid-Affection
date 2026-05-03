@@ -9,6 +9,9 @@ final class MorningKissGeneratedDialogueLanguage {
     static String appendLanguageInstruction(String rawPrompt, String rawLanguage) {
         String prompt = rawPrompt == null ? "" : rawPrompt;
         String language = normalizeLocaleCode(rawLanguage);
+        if (language.isBlank()) {
+            return prompt + "\n请输出 3 句候选台词，每句单独一行，不要编号，不要解释，不要重复，不要加引号。";
+        }
         return prompt + "\n" + generationInstruction(language);
     }
 
@@ -21,11 +24,52 @@ final class MorningKissGeneratedDialogueLanguage {
         return language;
     }
 
+    static String normalizeLanguageCodeForChat(String rawLanguage) {
+        return normalizeLocaleCode(rawLanguage);
+    }
+
+    static String resolveGeneratedTextLanguage(String configuredLanguage, String tlmTtsLanguage, String tlmChatLanguage) {
+        String configured = normalizeLanguageCodeForChat(configuredLanguage);
+        if (!configured.isBlank()) {
+            return configured;
+        }
+        String chat = normalizeLanguageCodeForChat(tlmChatLanguage);
+        if (!chat.isBlank()) {
+            return chat;
+        }
+        return normalizeLanguageCodeForChat(tlmTtsLanguage);
+    }
+
+    static String resolveGeneratedVoiceTextLanguage(String configuredLanguage, String tlmTtsLanguage, String tlmChatLanguage) {
+        String configured = normalizeLanguageCodeForChat(configuredLanguage);
+        if (!configured.isBlank()) {
+            return configured;
+        }
+        String tts = normalizeLanguageCodeForChat(tlmTtsLanguage);
+        if (!tts.isBlank()) {
+            return tts;
+        }
+        return normalizeLanguageCodeForChat(tlmChatLanguage);
+    }
+
+    static String systemInstruction(String rawLanguage) {
+        String language = normalizeLocaleCode(rawLanguage);
+        if (language.isBlank()) {
+            return "你正在生成 Minecraft 早安吻台词缓存。";
+        }
+        return "You are generating Minecraft Morning Kiss dialogue cache. "
+                + generationInstruction(language);
+    }
+
     private static String normalizeLocaleCode(String rawLanguage) {
         if (rawLanguage == null || rawLanguage.isBlank()) {
-            return "zh_cn";
+            return "";
         }
-        return rawLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        String value = rawLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        return switch (value) {
+            case "tlm", "auto", "default" -> "";
+            default -> value;
+        };
     }
 
     private static String generationInstruction(String language) {
@@ -41,6 +85,6 @@ final class MorningKissGeneratedDialogueLanguage {
             default -> "the language represented by locale code '" + language + "'";
         };
         return "Language override: output exactly 3 candidate lines in " + languageName
-                + ". Ignore conflicting language requirements in the template. Put one line per candidate; do not number, explain, repeat, or wrap lines in quotes.";
+                + ". This language override has higher priority than the template, including any request for Chinese or another language. Keep each line under 18 words. Put one line per candidate; do not number, explain, repeat, translate the instruction text, or wrap lines in quotes.";
     }
 }

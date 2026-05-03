@@ -14,9 +14,16 @@
 
 ### Added
 - 新增 `/tma morning_kiss clear_ai_cache` 管理命令，可清空当前服务器会话内已预生成的早安吻 AI 台词与 TTS 语音缓存，便于切换语言或提示词后重新生成。
+- `/tma morning_kiss` 现在提供状态与缓存查看入口，便于确认早安吻 AI/TTS 配置和当前会话缓存情况。
+- `/tma morning_kiss ai on/off` 与 `/tma morning_kiss tts on/off` 可在游戏内开关早安吻 AI 文本生成和生成式 TTS。
 
 ### Fixed
-- 修复早安吻 AI/TTS 预生成未应用 `aiDialogueLanguage` 的问题：预生成 prompt 现在会追加语言覆盖指令，TTS 请求也会使用该配置归一化后的语言代码。
+- 修复早安吻 AI/TTS 预生成未应用 `aiDialogueLanguage` 的问题：默认 `tlm` 会跟随 TLM 本体语言；当后台预生成会生成远程 TTS 时，待合成文本会优先跟随 TLM 原生“语音合成”语言按钮，避免中文文本被送进英文 TTS；显式配置 `zh_cn`、`en_us`、`ja_jp` 等语言时，预生成 prompt 和 TTS 请求会使用该配置统一覆盖。
+- 新增 `aiDialogueCacheConsumeOnUse` 配置，默认关闭缓存消费；早安吻触发会复用已生成台词和语音，不再因为播放而消耗缓存、反复补池，手动执行 `clear_ai_cache` 后才会重新预热生成。
+- 修复 TMA MiMo TTS 适配器未把 `TTSConfig.language` 写入请求的问题，生成式早安吻 TTS 现在会在请求体和 voice prompt 中显式声明目标语言。
+- 修复早安吻 AI 缓存统计提前结束进行中状态的问题：LLM 返回后若仍在等待 TTS 回调，`/tma morning_kiss cache` 会继续显示对应女仆的 in-flight 阶段和待完成语音数。
+- 修复早安吻 AI 缓存目标只作为触发阈值、不作为写入上限的问题：当某个时间池接近目标值时，新增生成结果会按剩余容量裁剪，并且 TTS 回调最终入池时也会再次检查上限；默认每名女仆三个时间池总计最多 12 条，不会因不同语种缓存而扩容。
+- 修复英文早安吻 AI 预生成结果被误判为过长而全部丢弃的问题：缓存文本过滤改为按显示宽度限制，英文短句可正常入池，过长中文仍会被过滤。
 
 ## [1.7.2.1] - 2026-05-02
 

@@ -36,13 +36,21 @@ public final class MimoProtocol {
     }
 
     public static String buildTtsRequest(String model, String voicePrompt, String text, String audioFormat) {
+        return buildTtsRequest(model, voicePrompt, text, audioFormat, "");
+    }
+
+    public static String buildTtsRequest(String model, String voicePrompt, String text, String audioFormat, String language) {
+        String normalizedLanguage = normalizeTtsLanguage(language);
         JsonObject root = new JsonObject();
         root.addProperty("model", blankToDefault(model, DEFAULT_TTS_MODEL));
+        if (!normalizedLanguage.isBlank()) {
+            root.addProperty("language", normalizedLanguage);
+        }
 
         JsonArray messages = new JsonArray();
         JsonObject user = new JsonObject();
         user.addProperty("role", "user");
-        user.addProperty("content", blankToDefault(voicePrompt, DEFAULT_TTS_VOICE_PROMPT));
+        user.addProperty("content", ttsVoicePromptWithLanguage(voicePrompt, normalizedLanguage));
         messages.add(user);
 
         JsonObject assistant = new JsonObject();
@@ -53,6 +61,9 @@ public final class MimoProtocol {
 
         JsonObject audio = new JsonObject();
         audio.addProperty("format", normalizeTtsAudioFormat(audioFormat));
+        if (!normalizedLanguage.isBlank()) {
+            audio.addProperty("language", normalizedLanguage);
+        }
         root.add("audio", audio);
         return GSON.toJson(root);
     }
@@ -136,6 +147,42 @@ public final class MimoProtocol {
             return value;
         }
         return DEFAULT_TTS_AUDIO_FORMAT;
+    }
+
+    public static String normalizeTtsLanguage(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        String value = raw.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        int underscore = value.indexOf('_');
+        if (underscore > 0) {
+            value = value.substring(0, underscore);
+        }
+        return switch (value) {
+            case "zh", "en", "ja", "ko", "fr", "de", "es", "ru" -> value;
+            default -> value;
+        };
+    }
+
+    private static String ttsVoicePromptWithLanguage(String voicePrompt, String language) {
+        String prompt = blankToDefault(voicePrompt, DEFAULT_TTS_VOICE_PROMPT);
+        String languageName = switch (language) {
+            case "zh" -> "Chinese";
+            case "en" -> "English";
+            case "ja" -> "Japanese";
+            case "ko" -> "Korean";
+            case "fr" -> "French";
+            case "de" -> "German";
+            case "es" -> "Spanish";
+            case "ru" -> "Russian";
+            case "" -> "";
+            default -> "language code '" + language + "'";
+        };
+        if (languageName.isBlank()) {
+            return prompt;
+        }
+        return prompt + "\nLanguage override: Speak the assistant text in " + languageName
+                + ". Keep the original meaning and do not translate voice-style instructions.";
     }
 
     public record Message(String role, String content) {

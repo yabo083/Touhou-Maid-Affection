@@ -56,6 +56,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_SCAN_DISTANCE;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL;
+    public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_VERBOSE_LOG;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ENABLED;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_AUTO_SCAN_INTERVAL_TICKS;
@@ -317,13 +318,14 @@ public class ModConfig {
                 .define("aiDialogueEnabled", false);
 
         BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE = builder
-                .comment("Language used for Morning Kiss AI dialogue pregeneration, live fallback, and generated TTS requests")
-                .define("aiDialogueLanguage", "zh_cn");
+                .comment("Language used for Morning Kiss AI dialogue pregeneration, live fallback, and generated TTS requests",
+                        "Use tlm/auto/default to follow Touhou Little Maid's per-maid chat/TTS language; set zh_cn, en_us, ja_jp, etc. to override")
+                .define("aiDialogueLanguage", "tlm");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
                 .comment("Prompt template for Morning Kiss AI-generated dialogue",
                         "Placeholders: {maid}, {player}, {pool}, {time}")
-                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻或晚安吻。请只输出自然、温柔、适合显示在游戏内的中文台词，不要解释，不要添加引号。");
+                .define("aiDialoguePrompt", "你正在扮演 Minecraft 中名为 {maid} 的女仆。现在是 {pool} 时段，你刚给玩家 {player} 送上早安吻或晚安吻。请只输出自然、温柔、适合显示在游戏内的简短台词，不要解释，不要添加引号。");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED = builder
                 .comment("Pregenerate AI Morning Kiss dialogue outside active Morning Kiss time windows to reduce trigger latency")
@@ -350,6 +352,11 @@ public class ModConfig {
         BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL = builder
                 .comment("Target number of pregenerated Morning Kiss lines kept per maid and time pool")
                 .defineInRange("aiDialogueCacheTargetPerPool", 4, 1, 8);
+
+        BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE = builder
+                .comment("Consume one pregenerated cache entry when Morning Kiss uses it",
+                        "Set false to reuse generated dialogue/voice until clear_ai_cache is run, saving LLM/TTS tokens")
+                .define("aiDialogueCacheConsumeOnUse", false);
 
         BOND_MORNING_KISS_AI_DIALOGUE_VERBOSE_LOG = builder
                 .comment("Enable verbose debug logs for Morning Kiss AI dialogue pregeneration")

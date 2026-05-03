@@ -84,6 +84,19 @@ class MimoProtocolTest {
     }
 
     @Test
+    void buildsTtsRequestWithExplicitLanguageInstruction() {
+        String request = MimoProtocol.buildTtsRequest("mimo-v2.5-tts-voicedesign", "温柔女声", "Welcome back", "", "en");
+
+        JsonObject root = JsonParser.parseString(request).getAsJsonObject();
+        JsonArray messages = root.getAsJsonArray("messages");
+        assertEquals("en", root.get("language").getAsString());
+        assertEquals("en", root.getAsJsonObject("audio").get("language").getAsString());
+        String userPrompt = messages.get(0).getAsJsonObject().get("content").getAsString();
+        assertEquals(true, userPrompt.contains("English"));
+        assertEquals(true, userPrompt.contains("Speak"));
+    }
+
+    @Test
     void normalizesUnsupportedTtsAudioFormatToMp3() {
         String request = MimoProtocol.buildTtsRequest("mimo-v2.5-tts-voicedesign", "温柔女声", "欢迎回来", "ogg");
 

@@ -32,8 +32,8 @@
 - 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
 - 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
 - 早安吻与残血救护语音池页面支持试听。
-- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成。
-- 切换语言或提示词后，可使用 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内已生成的早安吻 AI 语音缓存。
+- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成；默认值 `tlm` 会跟随 Touhou Little Maid 本体语言设置，且生成式语音缓存的待合成文本会跟随 TLM 原生语音合成语言按钮。
+- `/tma morning_kiss` 可查看 AI/TTS 状态与缓存统计；测试语言或提示词时，可使用 `/tma morning_kiss ai on/off`、`/tma morning_kiss tts on/off` 或 `/tma morning_kiss clear_ai_cache`。
 - `examples/TMA-Custom-Voice-Pack` 提供可直接压缩发布的示例数据包。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
@@ -80,7 +80,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI 与 MiMo
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关、提示词与 `aiDialogueLanguage` 语言配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。切换语言或提示词后，管理员可执行 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内的已生成缓存，让后续扫描重新生成。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关、提示词与 `aiDialogueLanguage` 语言配置位于 `config/touhou_maid_affection-common.toml`；`tlm`、`auto` 或 `default` 会跟随 TLM 本体语言设置。仅文本生成跟随女仆聊天语言；生成式语音缓存会让待合成文本跟随 TLM 原生“语音合成”语言按钮，确保送入 TTS 的文本语种和语音语种一致。显式填写 `en_us`、`ja_jp` 等值才会统一覆盖两者。数据包仍只负责静态文本和预录 OGG 文件。`/tma morning_kiss` 可查看当前 AI/TTS 配置，`/tma morning_kiss cache` 会按女仆、时间池、文本语种、语音语种和进行中请求展示生成缓存详情；测试语言或提示词时，管理员可使用 `ai on/off`、`tts on/off` 或 `clear_ai_cache`。生成缓存容量按女仆和时间池执行硬上限；默认每池 4 条、三个时间池合计 12 条，即使明细里出现多种语种也不会额外扩容。默认情况下生成缓存会复用不消耗，从而减少 LLM/TTS token；如果想保留旧的播放后补池行为，可设置 `aiDialogueCacheConsumeOnUse=true`。
 
 TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。适配器只提供供应商默认值；用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 

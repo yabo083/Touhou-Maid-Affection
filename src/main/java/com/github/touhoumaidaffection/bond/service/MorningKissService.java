@@ -589,11 +589,12 @@ public final class MorningKissService {
             }
             String prompt = renderTemplate(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, dialoguePool);
             ChatClientInfo clientInfo = new ChatClientInfo(
-                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                    MorningKissGeneratedDialogueService.resolveChatLanguage(maid),
                     MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString(),
                     List.of()
             );
-            TouhouMaidAffection.LOGGER.info("Dispatching live Morning Kiss AI dialogue for maid {} pool {}.", maid.getUUID(), dialoguePool.name().toLowerCase(Locale.ROOT));
+            TouhouMaidAffection.LOGGER.info("Dispatching live Morning Kiss AI dialogue for maid {} pool {}, chatLanguage={}.",
+                    maid.getUUID(), dialoguePool.name().toLowerCase(Locale.ROOT), clientInfo.language());
             maid.getAiChatManager().chat(prompt, clientInfo, player);
             return true;
         } catch (Throwable throwable) {

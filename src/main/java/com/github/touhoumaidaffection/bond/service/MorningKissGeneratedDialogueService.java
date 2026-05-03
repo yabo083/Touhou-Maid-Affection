@@ -19,26 +19,44 @@ import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.storage.LevelResource;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class MorningKissGeneratedDialogueService {
     private static final MorningKissGeneratedDialogueCache CACHE = new MorningKissGeneratedDialogueCache();
-    private static final Set<RequestKey> IN_FLIGHT = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentHashMap<RequestKey, InFlightRequest> IN_FLIGHT = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, AtomicLong> MAID_REVISIONS = new ConcurrentHashMap<>();
     private static final AtomicLong CACHE_REVISION = new AtomicLong();
+    private static volatile Path worldRoot;
 
     private MorningKissGeneratedDialogueService() {
+    }
+
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        loadPersistedCache(event.getServer());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        savePersistedCache();
+        worldRoot = null;
     }
 
     @SubscribeEvent
@@ -50,6 +68,9 @@ public final class MorningKissGeneratedDialogueService {
     }
 
     static void tick(MinecraftServer server) {
+        if (worldRoot == null) {
+            loadPersistedCache(server);
+        }
         if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_ENABLED.get()
                 || !ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED.get()
                 || !AIConfig.LLM_ENABLED.get()) {
@@ -69,14 +90,23 @@ public final class MorningKissGeneratedDialogueService {
     }
 
     static Optional<MorningKissGeneratedDialogueCache.Entry> pollCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
-        Optional<MorningKissGeneratedDialogueCache.Entry> entry = CACHE.pollRandom(maidUuid, pool, random);
+        Optional<MorningKissGeneratedDialogueCache.Entry> entry = selectCachedLine(maidUuid, pool, random);
         if (entry.isPresent()) {
             return entry;
         }
         if (pool != MorningKissScheduleRules.DialoguePool.GENERAL) {
-            return CACHE.pollRandom(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, random);
+            return selectCachedLine(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, random);
         }
         return Optional.empty();
+    }
+
+    private static Optional<MorningKissGeneratedDialogueCache.Entry> selectCachedLine(UUID maidUuid,
+                                                                                     MorningKissScheduleRules.DialoguePool pool,
+                                                                                     RandomSource random) {
+        if (ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE.get()) {
+            return CACHE.pollRandom(maidUuid, pool, random);
+        }
+        return CACHE.peekRandom(maidUuid, pool, random);
     }
 
     static boolean hasCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool) {
@@ -124,7 +154,9 @@ public final class MorningKissGeneratedDialogueService {
             return;
         }
         RequestKey key = new RequestKey(player.getUUID(), maid.getUUID());
-        if (!IN_FLIGHT.add(key)) {
+        String maidName = MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString();
+        InFlightRequest pending = new InFlightRequest(maid.getUUID(), maidName);
+        if (IN_FLIGHT.putIfAbsent(key, pending) != null) {
             debug("Morning kiss AI dialogue warmup skipped for {}: request already in flight.", maid.getUUID());
             return;
         }
@@ -139,7 +171,7 @@ public final class MorningKissGeneratedDialogueService {
             if (CACHE.size(maid.getUUID(), pool) >= target) {
                 continue;
             }
-            requestGeneration(player, maid, pool, client, key, CACHE_REVISION.get());
+            requestGeneration(player, maid, pool, client, key, pending, CACHE_REVISION.get(), maidRevision(maid.getUUID()));
             return;
         }
         IN_FLIGHT.remove(key);
@@ -147,13 +179,18 @@ public final class MorningKissGeneratedDialogueService {
 
     private static void requestGeneration(ServerPlayer player, EntityMaid maid,
                                           MorningKissScheduleRules.DialoguePool pool, LLMClient client, RequestKey key,
-                                          long cacheRevision) {
-        String prompt = buildPrompt(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, pool);
+                                          InFlightRequest inFlight, long cacheRevision, long maidRevision) {
+        String ttsLanguage = resolveTtsLanguage(maid);
+        boolean willWarmVoice = canWarmRemoteVoice(maid);
+        String chatLanguage = resolvePregeneratedTextLanguage(maid, willWarmVoice);
+        String prompt = buildPrompt(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, pool, chatLanguage);
+        inFlight.startLlm(pool, chatLanguage, ttsLanguage);
         List<LLMMessage> messages = List.of(
-                LLMMessage.systemChat(maid, "你正在生成 Minecraft 早安吻台词缓存。"),
+                LLMMessage.systemChat(maid, MorningKissGeneratedDialogueLanguage.systemInstruction(chatLanguage)),
                 LLMMessage.userChat(maid, prompt)
         );
-        debug("Requesting morning kiss AI dialogue warmup for maid {} pool {}.", maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
+        debug("Requesting morning kiss AI dialogue warmup for maid {} pool {}, chatLanguage={}, ttsLanguage={}.",
+                maid.getUUID(), pool.name().toLowerCase(Locale.ROOT), displayLanguage(chatLanguage), displayLanguage(ttsLanguage));
         client.chat(new LLMCallback(maid.getAiChatManager(), new java.util.ArrayList<>(messages), false) {
             @Override
             public void onFailure(@Nullable java.net.http.HttpRequest request, Throwable throwable, int errorCode) {
@@ -164,7 +201,7 @@ public final class MorningKissGeneratedDialogueService {
 
             @Override
             public void onSuccess(ResponseChat responseChat) {
-                if (!isCurrentCacheRevision(cacheRevision)) {
+                if (!isCurrentCacheRevision(cacheRevision, maid.getUUID(), maidRevision)) {
                     debug("Morning kiss AI dialogue warmup result discarded for {} pool {}: cache was cleared.",
                             maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
                     IN_FLIGHT.remove(key);
@@ -183,13 +220,22 @@ public final class MorningKissGeneratedDialogueService {
                     IN_FLIGHT.remove(key);
                     return;
                 }
-                if (tryWarmVoice(maid, pool, lines, cacheRevision)) {
+                int target = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get();
+                int currentSize = CACHE.size(maid.getUUID(), pool);
+                lines = MorningKissGeneratedDialogueCache.limitToRemainingCapacity(lines, currentSize, target);
+                if (lines.isEmpty()) {
+                    debug("Morning kiss AI dialogue warmup discarded for maid {} pool {}: cache already reached target {}.",
+                            maid.getUUID(), pool.name().toLowerCase(Locale.ROOT), target);
                     IN_FLIGHT.remove(key);
                     return;
                 }
+                if (willWarmVoice && tryWarmVoice(maid, pool, lines, chatLanguage, ttsLanguage, inFlight, key, cacheRevision, maidRevision)) {
+                    return;
+                }
                 for (String line : lines) {
-                    addIfCurrent(cacheRevision, maid.getUUID(), pool,
-                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                    addIfCurrent(cacheRevision, maidRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0],
+                                    chatLanguage, "", inFlight.maidName()));
                 }
                 TouhouMaidAffection.LOGGER.info("Cached {} text-only morning kiss AI dialogue line(s) for maid {} pool {}.",
                         lines.size(), maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
@@ -199,34 +245,28 @@ public final class MorningKissGeneratedDialogueService {
     }
 
     private static boolean tryWarmVoice(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool, List<String> lines,
-                                        long cacheRevision) {
-        if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED.get()) {
-            return false;
-        }
-        TTSSite ttsSite = maid.getAiChatManager().getTTSSite();
-        if (!AIConfig.TTS_ENABLED.get() || ttsSite == null || !ttsSite.enabled()) {
-            debug("Morning kiss AI dialogue TTS skipped for {}: TTS is disabled or not configured.", maid.getUUID());
-            return false;
-        }
-        TTSClient ttsClient = ttsSite.client();
-        if (ttsClient == null || ttsClient instanceof TTSSystemServices) {
-            debug("Morning kiss AI dialogue TTS skipped for {}: no remote TTS client.", maid.getUUID());
+                                        String chatLanguage, String ttsLanguage, InFlightRequest inFlight,
+                                        RequestKey key, long cacheRevision, long maidRevision) {
+        TTSSite ttsSite = maid == null || maid.getAiChatManager() == null ? null : maid.getAiChatManager().getTTSSite();
+        TTSClient ttsClient = ttsSite == null ? null : ttsSite.client();
+        if (!canWarmRemoteVoice(maid) || ttsClient == null) {
             return false;
         }
         if (lines.isEmpty()) {
             return false;
         }
-        String ttsLanguage = MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts(
-                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get());
         TTSConfig config = new TTSConfig(maid.getAiChatManager().getTTSModel(), ttsLanguage);
+        inFlight.startTts(lines.size());
         for (String line : lines) {
             ttsClient.play(line, config, new TTSCallback(maid, line, -1L) {
                 @Override
                 public void onFailure(@Nullable java.net.http.HttpRequest request, Throwable throwable, int errorCode) {
                     TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS failed for maid {} pool {}: {}",
                             maid.getUUID(), pool.name().toLowerCase(Locale.ROOT), throwable.getMessage());
-                    addIfCurrent(cacheRevision, maid.getUUID(), pool,
-                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                    addIfCurrent(cacheRevision, maidRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0],
+                                    chatLanguage, "", inFlight.maidName()));
+                    completeVoiceRequest(key, inFlight);
                 }
 
                 @Override
@@ -235,36 +275,87 @@ public final class MorningKissGeneratedDialogueService {
                     if (extension.isBlank()) {
                         TouhouMaidAffection.LOGGER.warn("Morning kiss AI dialogue TTS for maid {} pool {} did not return playable audio data; cached text only.",
                                 maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
-                        addIfCurrent(cacheRevision, maid.getUUID(), pool,
-                                new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0]));
+                        addIfCurrent(cacheRevision, maidRevision, maid.getUUID(), pool,
+                                new MorningKissGeneratedDialogueCache.Entry(line, line, "", new byte[0],
+                                        chatLanguage, "", inFlight.maidName()));
+                        completeVoiceRequest(key, inFlight);
                         return;
                     }
                     String fileName = "generated/" + maid.getUUID() + "/" + pool.name().toLowerCase(Locale.ROOT) + "/" + Integer.toHexString(line.hashCode()) + "." + extension;
-                    if (addIfCurrent(cacheRevision, maid.getUUID(), pool,
-                            new MorningKissGeneratedDialogueCache.Entry(line, line, fileName, data))) {
-                        TouhouMaidAffection.LOGGER.info("Cached morning kiss AI dialogue voice '{}' ({} bytes) for maid {} pool {}.",
-                                fileName, data.length, maid.getUUID(), pool.name().toLowerCase(Locale.ROOT));
+                    if (addIfCurrent(cacheRevision, maidRevision, maid.getUUID(), pool,
+                            new MorningKissGeneratedDialogueCache.Entry(line, line, fileName, data,
+                                    chatLanguage, ttsLanguage, inFlight.maidName()))) {
+                        TouhouMaidAffection.LOGGER.info("Cached morning kiss AI dialogue voice '{}' ({} bytes) for maid {} pool {}, chatLanguage={}, ttsLanguage={}.",
+                                fileName, data.length, maid.getUUID(), pool.name().toLowerCase(Locale.ROOT),
+                                displayLanguage(chatLanguage), displayLanguage(ttsLanguage));
                     }
+                    completeVoiceRequest(key, inFlight);
                 }
             });
         }
         return true;
     }
 
-    private static boolean addIfCurrent(long cacheRevision, UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+    private static void completeVoiceRequest(RequestKey key, InFlightRequest inFlight) {
+        if (inFlight.completeOneVoice()) {
+            IN_FLIGHT.remove(key, inFlight);
+        }
+    }
+
+    private static boolean addIfCurrent(long cacheRevision, long maidRevision, UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
                                         MorningKissGeneratedDialogueCache.Entry entry) {
-        if (!isCurrentCacheRevision(cacheRevision)) {
+        if (!isCurrentCacheRevision(cacheRevision, maidUuid, maidRevision)) {
             return false;
         }
-        CACHE.add(maidUuid, pool, entry);
+        int target = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get();
+        boolean added = CACHE.addIfBelowTarget(maidUuid, pool, entry, target);
+        if (added) {
+            savePersistedCache();
+        }
+        return added;
+    }
+
+    private static boolean isCurrentCacheRevision(long cacheRevision, UUID maidUuid, long maidRevision) {
+        return CACHE_REVISION.get() == cacheRevision && maidRevision(maidUuid) == maidRevision;
+    }
+
+    private static long maidRevision(UUID maidUuid) {
+        if (maidUuid == null) {
+            return 0L;
+        }
+        AtomicLong revision = MAID_REVISIONS.get(maidUuid);
+        return revision == null ? 0L : revision.get();
+    }
+
+    private static void invalidateMaid(UUID maidUuid) {
+        if (maidUuid != null) {
+            MAID_REVISIONS.computeIfAbsent(maidUuid, ignored -> new AtomicLong()).incrementAndGet();
+        }
+    }
+
+    private static boolean canWarmRemoteVoice(EntityMaid maid) {
+        if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED.get()) {
+            return false;
+        }
+        if (!AIConfig.TTS_ENABLED.get() || maid == null || maid.getAiChatManager() == null) {
+            return false;
+        }
+        TTSSite ttsSite = maid.getAiChatManager().getTTSSite();
+        if (ttsSite == null || !ttsSite.enabled()) {
+            debug("Morning kiss AI dialogue TTS skipped for {}: TTS is disabled or not configured.",
+                    maid == null ? "unknown" : maid.getUUID());
+            return false;
+        }
+        TTSClient ttsClient = ttsSite.client();
+        if (ttsClient == null || ttsClient instanceof TTSSystemServices) {
+            debug("Morning kiss AI dialogue TTS skipped for {}: no remote TTS client.", maid.getUUID());
+            return false;
+        }
         return true;
     }
 
-    private static boolean isCurrentCacheRevision(long cacheRevision) {
-        return CACHE_REVISION.get() == cacheRevision;
-    }
-
-    private static String buildPrompt(String rawPrompt, ServerPlayer player, EntityMaid maid, MorningKissScheduleRules.DialoguePool pool) {
+    private static String buildPrompt(String rawPrompt, ServerPlayer player, EntityMaid maid,
+                                      MorningKissScheduleRules.DialoguePool pool, String targetLanguage) {
         String maidName = MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString();
         String playerName = player.getName().getString();
         String prompt = rawPrompt == null ? "" : rawPrompt;
@@ -274,8 +365,42 @@ public final class MorningKissGeneratedDialogueService {
                 .replace("{time}", MorningKissService.getAllowedTimeRangesText());
         return MorningKissGeneratedDialogueLanguage.appendLanguageInstruction(
                 prompt,
-                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get()
+                targetLanguage
         );
+    }
+
+    static String resolvePregeneratedTextLanguage(EntityMaid maid, boolean forGeneratedVoice) {
+        String tlmTtsLanguage = maid == null || maid.getAiChatManager() == null ? "" : maid.getAiChatManager().getTTSLanguage();
+        String tlmChatLanguage = maid == null || maid.getAiChatManager() == null ? "" : maid.getAiChatManager().getChatLanguage();
+        if (forGeneratedVoice) {
+            return MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                    tlmTtsLanguage,
+                    tlmChatLanguage
+            );
+        }
+        return MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage(
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                tlmTtsLanguage,
+                tlmChatLanguage
+        );
+    }
+
+    static String resolveChatLanguage(EntityMaid maid) {
+        return resolvePregeneratedTextLanguage(maid, false);
+    }
+
+    static String resolveTtsLanguage(EntityMaid maid) {
+        String configured = MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts(
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get());
+        if (!configured.isBlank()) {
+            return configured;
+        }
+        return maid == null || maid.getAiChatManager() == null ? "" : maid.getAiChatManager().getTTSLanguage();
+    }
+
+    private static String displayLanguage(String language) {
+        return language == null || language.isBlank() ? "tlm/default" : language;
     }
 
     private static void debug(String message, Object... args) {
@@ -296,16 +421,190 @@ public final class MorningKissGeneratedDialogueService {
         CACHE_REVISION.incrementAndGet();
         int removed = CACHE.clearAll();
         IN_FLIGHT.clear();
+        savePersistedCache();
         return removed;
     }
 
     public static int clearCache(UUID maidUuid) {
-        CACHE_REVISION.incrementAndGet();
+        invalidateMaid(maidUuid);
         int removed = CACHE.clear(maidUuid);
-        IN_FLIGHT.removeIf(key -> maidUuid != null && maidUuid.equals(key.maidUuid()));
+        IN_FLIGHT.keySet().removeIf(key -> maidUuid != null && maidUuid.equals(key.maidUuid()));
+        savePersistedCache();
         return removed;
     }
 
+    public static int clearCache(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool) {
+        invalidateMaid(maidUuid);
+        int removed = CACHE.clear(maidUuid, pool);
+        IN_FLIGHT.keySet().removeIf(key -> maidUuid != null && maidUuid.equals(key.maidUuid()));
+        savePersistedCache();
+        return removed;
+    }
+
+    public static int removeCacheEntry(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, int zeroBasedIndex) {
+        int removed = CACHE.removeAt(maidUuid, pool, zeroBasedIndex);
+        if (removed > 0) {
+            savePersistedCache();
+        }
+        return removed;
+    }
+
+    public static boolean clearCacheEntryVoice(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, int zeroBasedIndex) {
+        boolean changed = CACHE.clearVoiceAt(maidUuid, pool, zeroBasedIndex);
+        if (changed) {
+            savePersistedCache();
+        }
+        return changed;
+    }
+
+    public static CacheStats cacheStats() {
+        MorningKissGeneratedDialogueCache.Stats stats = CACHE.stats(CACHE_REVISION.get(), IN_FLIGHT.size());
+        List<MaidCacheStats> maids = stats.maids().stream()
+                .map(maid -> new MaidCacheStats(
+                        maid.maidUuid(),
+                        maid.label(),
+                        maid.totalEntries(),
+                        maid.voiceEntries(),
+                        maid.pools().stream()
+                                .map(pool -> new PoolCacheStats(
+                                        pool.pool().name().toLowerCase(Locale.ROOT),
+                                        displayLanguage(pool.textLanguage()),
+                                        displayLanguage(pool.voiceLanguage()),
+                                        pool.totalEntries(),
+                                        pool.voiceEntries()
+                                ))
+                                .toList()
+                ))
+                .toList();
+        List<InFlightStats> inFlight = IN_FLIGHT.values().stream()
+                .map(request -> new InFlightStats(
+                        request.maidUuid(),
+                        request.maidName(),
+                        request.poolName(),
+                        displayLanguage(request.chatLanguage()),
+                        displayLanguage(request.ttsLanguage()),
+                        request.phase(),
+                        request.pendingVoiceCallbacks()
+                ))
+                .sorted((left, right) -> left.maidLabel().compareToIgnoreCase(right.maidLabel()))
+                .toList();
+        return new CacheStats(stats.totalEntries(), stats.maidCount(), stats.voiceEntries(), stats.revision(), stats.inFlightRequests(), maids, inFlight);
+    }
+
+    private static void loadPersistedCache(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        Path root = server.getWorldPath(LevelResource.ROOT);
+        worldRoot = root;
+        try {
+            CACHE.replaceAll(MorningKissGeneratedDialogueStorage.load(root));
+            CACHE_REVISION.incrementAndGet();
+            TouhouMaidAffection.LOGGER.info("Loaded persisted morning kiss AI dialogue cache from {}.",
+                    MorningKissGeneratedDialogueStorage.storageRoot(root));
+        } catch (IOException ex) {
+            TouhouMaidAffection.LOGGER.warn("Failed to load persisted morning kiss AI dialogue cache from {}.",
+                    MorningKissGeneratedDialogueStorage.storageRoot(root), ex);
+        }
+    }
+
+    private static void savePersistedCache() {
+        Path root = worldRoot;
+        if (root == null) {
+            return;
+        }
+        try {
+            MorningKissGeneratedDialogueStorage.save(root, CACHE.snapshot());
+        } catch (IOException ex) {
+            TouhouMaidAffection.LOGGER.warn("Failed to save persisted morning kiss AI dialogue cache to {}.",
+                    MorningKissGeneratedDialogueStorage.storageRoot(root), ex);
+        }
+    }
+
     private record RequestKey(UUID playerUuid, UUID maidUuid) {
+    }
+
+    private static final class InFlightRequest {
+        private final UUID maidUuid;
+        private final String maidName;
+        private final AtomicInteger pendingVoiceCallbacks = new AtomicInteger();
+        private volatile String poolName = "";
+        private volatile String chatLanguage = "";
+        private volatile String ttsLanguage = "";
+        private volatile String phase = "llm";
+
+        private InFlightRequest(UUID maidUuid, String maidName) {
+            this.maidUuid = maidUuid;
+            this.maidName = maidName == null || maidName.isBlank() ? maidUuid.toString() : maidName;
+        }
+
+        private void startLlm(MorningKissScheduleRules.DialoguePool pool, String chatLanguage, String ttsLanguage) {
+            this.poolName = pool == null ? "" : pool.name().toLowerCase(Locale.ROOT);
+            this.chatLanguage = chatLanguage == null ? "" : chatLanguage;
+            this.ttsLanguage = ttsLanguage == null ? "" : ttsLanguage;
+            this.phase = "llm";
+        }
+
+        private void startTts(int callbacks) {
+            pendingVoiceCallbacks.set(Math.max(0, callbacks));
+            phase = "tts";
+        }
+
+        private boolean completeOneVoice() {
+            return pendingVoiceCallbacks.decrementAndGet() <= 0;
+        }
+
+        private UUID maidUuid() {
+            return maidUuid;
+        }
+
+        private String maidName() {
+            return maidName;
+        }
+
+        private String poolName() {
+            return poolName;
+        }
+
+        private String chatLanguage() {
+            return chatLanguage;
+        }
+
+        private String ttsLanguage() {
+            return ttsLanguage;
+        }
+
+        private String phase() {
+            return phase;
+        }
+
+        private int pendingVoiceCallbacks() {
+            return Math.max(0, pendingVoiceCallbacks.get());
+        }
+    }
+
+    public record CacheStats(int totalEntries, int maidCount, int voiceEntries, long revision, int inFlightRequests,
+                             List<MaidCacheStats> maids, List<InFlightStats> inFlight) {
+        public int textOnlyEntries() {
+            return Math.max(0, totalEntries - voiceEntries);
+        }
+    }
+
+    public record MaidCacheStats(UUID maidUuid, String maidLabel, int totalEntries, int voiceEntries,
+                                 List<PoolCacheStats> pools) {
+        public int textOnlyEntries() {
+            return Math.max(0, totalEntries - voiceEntries);
+        }
+    }
+
+    public record PoolCacheStats(String pool, String textLanguage, String voiceLanguage, int totalEntries,
+                                 int voiceEntries) {
+        public int textOnlyEntries() {
+            return Math.max(0, totalEntries - voiceEntries);
+        }
+    }
+
+    public record InFlightStats(UUID maidUuid, String maidLabel, String pool, String chatLanguage, String ttsLanguage,
+                                String phase, int pendingVoiceCallbacks) {
     }
 }

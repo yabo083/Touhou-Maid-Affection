@@ -107,9 +107,10 @@ examples/TMA-Custom-Voice-Pack
 `bond/service` 承载跨 tick、跨时间窗或可重载资源相关的流程：
 
 - `MorningKissService`：早安吻调度、寻路、亲吻执行、台词选择与语音触发。
-- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；预生成 prompt 和 TTS 请求语言必须统一服从 `aiDialogueLanguage`。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；默认仅文本生成跟随 TLM 聊天语言；当后台预生成会生成远程 TTS 时，待合成文本跟随 TLM TTS 语言按钮，确保传给 TTS 的文本语种与请求语种一致；只有 `aiDialogueLanguage` 显式配置为具体语言时才统一覆盖。
 - `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。
-- `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，不写回数据包，不触发 `/reload`。
+- `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，缓存键必须至少包含女仆 UUID 与时间池，避免多名女仆共享同一生成池。
+- `MorningKissGeneratedDialogueStorage`：把早安吻 AI 生成文本与 TTS 音频持久化到世界目录下的 `generated_morning_kiss/<maidUuid>/<pool>/`，以 `001.json` + 可选 `001.ogg/mp3` 的形式提供外部可编辑入口；它是生成缓存的磁盘镜像，不属于数据包，也不触发 `/reload`。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：解析早安吻和残血救护共享的数据包 OGG 语音池。
 - `RandomGiftService`：随机礼物积累、选择和投递。
@@ -117,8 +118,8 @@ examples/TMA-Custom-Voice-Pack
 早安吻边界：
 
 - 数据包负责静态台词、亲吻 sound event 和预录 OGG。
-- `morningKissBehavior` TOML 配置负责运行时 AI/TTS、提示词、语言、扫描频率、缓存目标数和失败回退。
-- `/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。
+- `morningKissBehavior` TOML 配置负责运行时 AI/TTS、提示词、语言、扫描频率、缓存目标数、消费策略和失败回退；`aiDialogueLanguage=tlm/auto/default` 表示跟随 TLM 本体语言设置，其中生成式语音缓存的文本和语音均以 TLM TTS 语言按钮为准，具体 locale 表示 TMA 统一覆盖；`aiDialogueCacheTargetPerPool` 同时是预热目标和最终入池硬上限，默认每名女仆三个时间池合计最多 12 条生成缓存，不因文本/语音语种分组而扩容；`aiDialogueCacheConsumeOnUse=false` 时早安吻触发复用缓存且不消耗，只有清理缓存后才重新预热。
+- `/tma morning_kiss` 命令组提供 AI/TTS 状态、生成缓存明细、运行中请求、AI/TTS 开关和缓存清理入口；`clear_ai_cache` 保留全清入口，同时支持按女仆、按时间池、按条目删除，以及只清除某条生成语音但保留文本。清理生成缓存不改变数据包或 BondData，持久化镜像会随内存缓存同步更新。
 - AI/TTS 失败只影响增强体验，不能阻断静态台词或已有语音。
 
 ## 8. 残血救护
@@ -164,7 +165,7 @@ examples/TMA-Custom-Voice-Pack
 
 - LLM 侧复用 TLM OpenAI 站点编辑器的表单体验，但实际请求由 `MimoLLMClient` 发起。
 - `LLMSiteEditorScreenMixin` 只解决 TLM 编辑器保存后站点类型被普通 OpenAI 类型覆盖的问题，作用域必须保持窄。
-- TTS 侧实现 TLM 1.5.2 的旧接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路。
+- TTS 侧实现 TLM 1.5.2 的旧接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路；从 `TTSConfig.language` 传入的语言必须写入请求体与 voice prompt，避免回落到 TLM 站点默认语种。
 - MiMo TTS 默认请求 MP3；远程响应会被格式校验，不能把不可播放格式塞进客户端队列。
 - API key、站点启用状态、站点保存仍由 TLM 管理；TMA 只提供站点类型、默认 URL、默认模型、格式和羁绊页跳转入口。
 
@@ -177,7 +178,8 @@ TMA 不接管 TLM STT，也不把远程服务失败变成阻断错误。
 | `ModConfig` | 全局规则、AI 默认值、运行时开关和兼容配置。 |
 | `BondData` | 玩家-女仆长期关系档案。 |
 | Forge Capability | 玩家当前能力槽、救援日次数等独立运行态。 |
-| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、语音预览、AI 预生成结果；早安吻 AI 缓存允许通过管理命令清理。 |
+| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、语音预览、AI 预生成内存镜像；早安吻 AI 缓存按女仆与时间池分桶，并允许通过管理命令细粒度清理。 |
+| 世界目录生成库 | 早安吻 AI 生成文本与 TTS 音频的持久化镜像，位于 `generated_morning_kiss/<maidUuid>/<pool>/`；玩家或整合包作者可在停服后编辑 JSON 与音频文件，下一次进入世界时自动加载。 |
 | 数据包 | 可 `/reload` 的静态文本、预录 OGG 和 sound event 声明。 |
 
 数据包不是运行时状态存储。AI 开关、API key、扫描频率、缓存策略和供应商默认值不应写进数据包。
