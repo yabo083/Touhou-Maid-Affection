@@ -23,10 +23,12 @@
 
 ## 最新版本
 
-`1.7.2.2` 是一次早安吻 AI/TTS 语言与缓存修补版：
+`1.7.2.2` 带来 AI 缓存磁盘持久化、扩展的管理命令和更智能的语言默认值：
 
-- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成。
-- 切换语言或提示词后，可使用 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内已生成的早安吻 AI 语音缓存。
+- **缓存持久化**：AI 生成的台词和 TTS 音频现在保存到 `world/generated_morning_kiss/` 目录，服务器重启后不会丢失。
+- **新命令**：`/tma morning_kiss status`（运行时概览）、`/tma morning_kiss cache`（按女仆统计）、`/tma morning_kiss ai on|off` 和 `/tma morning_kiss tts on|off`（运行时开关），以及扩展的 `/tma morning_kiss clear_ai_cache`（支持女仆/池/条目/语音不同粒度）。
+- **配置**：新增 `aiDialogueCacheConsumeOnUse`（默认 `false`）控制缓存消耗或复用模式。`aiDialogueLanguage` 默认值改为 `tlm`，跟随各女仆的 TLM 语言偏好。
+- **语言解析**：文本生成语言和 TTS 语音语言现在会根据聊天与 TTS 来源语言独立解析。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 

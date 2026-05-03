@@ -33,7 +33,7 @@ public final class MorningKissScheduleRules {
         return Math.max(Math.max(1, configuredMin), configuredMax);
     }
 
-    enum DialoguePool {
+    public enum DialoguePool {
         MORNING,
         EVENING,
         GENERAL

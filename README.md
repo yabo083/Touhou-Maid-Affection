@@ -23,10 +23,12 @@
 
 ## Latest Release
 
-`1.7.2.2` is a small Morning Kiss AI/TTS language and cache fix release:
+`1.7.2.2` brings AI cache persistence, expanded management commands, and smarter language defaults:
 
-- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests.
-- After changing language or prompts, admins can run `/tma morning_kiss clear_ai_cache` to clear generated Morning Kiss AI voice cache for the current server session.
+- **Cache persistence**: AI-generated dialogue and TTS audio are now saved to `world/generated_morning_kiss/` and survive server restarts.
+- **New commands**: `/tma morning_kiss status` (runtime overview), `/tma morning_kiss cache` (per-maid stats), `/tma morning_kiss ai on|off` and `/tma morning_kiss tts on|off` (runtime toggle), and expanded `/tma morning_kiss clear_ai_cache` (maid/pool/entry/voice granularity).
+- **Config**: `aiDialogueCacheConsumeOnUse` (default `false`) controls whether cached entries are consumed or peeked. `aiDialogueLanguage` now defaults to `tlm` to follow per-maid TLM language preferences.
+- **Language resolution**: Text generation and TTS voice language now resolve independently based on chat vs. TTS source language.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 

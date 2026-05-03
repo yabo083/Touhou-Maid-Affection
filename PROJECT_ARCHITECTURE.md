@@ -96,14 +96,15 @@ src/main/resources
 `bond/service` 承载 tick 驱动或跨时间窗的服务：
 
 - `MorningKissService`：早安吻调度、寻路、亲吻执行、台词展示与语音触发。
-- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；预生成 prompt 和 TTS 请求语言必须统一服从 `aiDialogueLanguage`。
-- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。
-- `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，不写回数据包，不触发 `/reload`。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；维护 MAID_REVISIONS 实现女仆级缓存失效，支持 IN_FLIGHT 细粒度请求跟踪（LLM 阶段与 TTS 回调节点），在服务器启动时从磁盘恢复缓存、关闭时持久化。预生成 prompt 和 TTS 请求语言通过 resolvePregeneratedTextLanguage() / resolveTtsLanguage() 统一服从 aiDialogueLanguage 配置与 TLM 女仆语言偏好。
+- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。支持 tlm/auto/default 跟随女仆设置，或显式语言代码覆盖。提供 resolveGeneratedTextLanguage() / resolveGeneratedVoiceTextLanguage() 按场景推导生成语言。
+- `MorningKissGeneratedDialogueCache`：保存女仆粒度的运行时生成台词和 TTS 语音缓存。支持消耗/非消耗两种取出模式（CACHE_CONSUME_ON_USE），提供女仆级、池级、条目级的清理与语音剥离操作。缓存容量受 maxLinesPerPool 和 aiDialogueCacheTargetPerPool 双重约束。实现 snapshot() / replaceAll() 接口以支持磁盘持久化。统计报告通过 stats() 按女仆和语言分组输出。
+- `MorningKissGeneratedDialogueStorage`：将运行时 AI 生成缓存持久化到 `world/generated_morning_kiss/{maid_uuid}/{pool}/` 目录下，每条条目写为 `001.json`（元数据）+ `001.ogg`（语音），格式兼容手动编辑。路径遍历防护通过 `normalize()` + `startsWith()` 检查实现。服务器启动时自动加载、服务器关闭时自动保存。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
 - `RandomGiftService`：随机礼物积累与投递。
 
-早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。
+早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
 
 ### 4.5 残血救护
 

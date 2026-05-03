@@ -10,10 +10,22 @@
 
 ## [Unreleased]
 
-## [1.7.2.2] - 2026-05-03
+## [1.7.2.2] - 2026-05-04
 
 ### Added
-- 新增 `/tma morning_kiss clear_ai_cache` 管理命令，可清空当前服务器会话内已预生成的早安吻 AI 台词与 TTS 语音缓存，便于切换语言或提示词后重新生成。
+- 新增早安吻 AI 缓存磁盘持久化：服务启动时从 `world/generated_morning_kiss/` 自动加载缓存，服务关闭时自动保存，重启服务器后已生成的 AI 台词与 TTS 语音不会丢失。
+- 新增 `/tma morning_kiss status` 命令，显示早安吻运行时状态概览（AI/TTS 开关、缓存条目总数、女仆数、带语音条目数）。
+- 新增 `/tma morning_kiss cache` 命令，按女仆和语言池分组显示缓存统计详情（条目数、语音条目数、语言配置、修订号、飞行请求数）。
+- 新增 `/tma morning_kiss ai on|off` 和 `/tma morning_kiss tts on|off` 命令，实时开关 AI 台词预生成与 TTS 语音生成。
+- 新增 `/tma morning_kiss clear_ai_cache` 系列命令，支持女仆级、池级、条目级缓存清理与语音剥离。
+- 新增 `aiDialogueCacheConsumeOnUse` 配置项（默认 `false`），管理员可选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
+- 新增缓存统计报告 API，按女仆和语言分组输出条目数、语音条目数、修订号与飞行请求数。
+
+### Changed
+- `aiDialogueLanguage` 默认值从 `zh_cn` 改为 `tlm`：未显式配置时将跟随各女仆的 TLM 聊天语言和 TTS 语言偏好，而非全局固定中文。
+- 语言解析分化为文本生成语言和 TTS 语音语言两套规则：`resolveGeneratedTextLanguage()` 优先使用聊天语言，`resolveGeneratedVoiceTextLanguage()` 优先使用 TTS 语言。
+- 缓存淘汰策略新增 `aiDialogueCacheTargetPerPool` 容量目标约束，超出目标池容量的候选行会被自动裁剪。
+- 缓存命令显示改用 Unicode 感知宽度计算（ASCII 半角=1，CJK 全角=2），对齐表格列对齐。
 
 ### Fixed
 - 修复早安吻 AI/TTS 预生成未应用 `aiDialogueLanguage` 的问题：预生成 prompt 现在会追加语言覆盖指令，TTS 请求也会使用该配置归一化后的语言代码。
