@@ -26,7 +26,10 @@ public class MimoTTSClient implements TTSClient {
         HttpRequest request = MimoHttp.requestBuilder(site.url(), site.secretKey())
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
-        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        httpClient.sendAsync(
+                        request,
+                        BoundedHttpResponse.limit(HttpResponse.BodyHandlers.ofString(), MimoHttp.MAX_TTS_RESPONSE_BYTES)
+                )
                 .whenComplete((response, error) -> handle(callback, response, error, request));
     }
 
@@ -36,7 +39,8 @@ public class MimoTTSClient implements TTSClient {
             return;
         }
         if (!isSuccessful(response)) {
-            callback.onFailure(request, new Throwable("HTTP Error Code: %d, Response: %s".formatted(response.statusCode(), response.body())), 1);
+            callback.onFailure(request, new Throwable("HTTP Error Code: %d, Response: %s".formatted(
+                    response.statusCode(), MimoHttp.summarizeErrorBody(response.body()))), 1);
             return;
         }
         try {

@@ -16,6 +16,8 @@ public final class MimoProtocol {
     public static final String DEFAULT_TTS_MODEL = "mimo-v2.5-tts-voicedesign";
     public static final String DEFAULT_TTS_VOICE_PROMPT = "温柔、清澈、亲近的年轻女性声音，语速自然，适合 Minecraft 女仆角色。";
     public static final String DEFAULT_TTS_AUDIO_FORMAT = "mp3";
+    static final int MAX_TTS_AUDIO_BYTES = 2 * 1024 * 1024;
+    static final int MAX_TTS_AUDIO_BASE64_CHARS = ((MAX_TTS_AUDIO_BYTES + 2) / 3) * 4;
 
     private static final Gson GSON = new Gson();
 
@@ -89,7 +91,14 @@ public final class MimoProtocol {
         if (encoded.isBlank()) {
             return new byte[0];
         }
-        return Base64.getDecoder().decode(encoded);
+        if (encoded.length() > MAX_TTS_AUDIO_BASE64_CHARS) {
+            throw new IllegalArgumentException("TTS audio exceeds %d bytes".formatted(MAX_TTS_AUDIO_BYTES));
+        }
+        byte[] audio = Base64.getDecoder().decode(encoded);
+        if (audio.length > MAX_TTS_AUDIO_BYTES) {
+            throw new IllegalArgumentException("TTS audio exceeds %d bytes".formatted(MAX_TTS_AUDIO_BYTES));
+        }
+        return audio;
     }
 
     private static JsonObject baseRequest(String model, int maxCompletionTokens) {

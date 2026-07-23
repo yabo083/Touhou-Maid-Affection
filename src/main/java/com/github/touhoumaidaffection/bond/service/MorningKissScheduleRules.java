@@ -33,6 +33,12 @@ public final class MorningKissScheduleRules {
         return Math.max(Math.max(1, configuredMin), configuredMax);
     }
 
+    public static String formatAllowedTimeRanges(List<? extends String> rawRanges) {
+        return resolveAllowedTimeRanges(rawRanges).stream()
+                .map(TimeRange::toDisplayString)
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
     public enum DialoguePool {
         MORNING,
         EVENING,

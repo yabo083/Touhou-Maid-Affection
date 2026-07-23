@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.ai.service.SerializableSite;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.SupportModelSelect;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMSite;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.openai.LLMOpenAISite;
-import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.openai.LLMOpenAIClient;
 import com.github.touhoumaidaffection.ModConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -109,7 +108,10 @@ public class MimoLLMSite extends LLMOpenAISite implements LLMSite, SupportModelS
 
     @Override
     public com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMClient client() {
-        return new LLMOpenAIClient(LLMSite.LLM_HTTP_CLIENT, this);
+        return new MimoLLMClient(
+                new BoundedHttpClient(LLMSite.LLM_HTTP_CLIENT, MimoHttp.MAX_CHAT_RESPONSE_BYTES),
+                this
+        );
     }
 
     @Override

@@ -1,20 +1,15 @@
 package com.github.touhoumaidaffection.client;
 
-import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
-import com.github.tartaricacid.touhoulittlemaid.client.sound.data.OpusAudioStream;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
-import net.minecraft.Util;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.AudioStream;
-import net.minecraft.client.sounds.JOrbisAudioStream;
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
-import java.io.ByteArrayInputStream;
 import java.util.concurrent.CompletableFuture;
 
 public final class VoicePreviewTlmSoundInstance extends AbstractSoundInstance {
@@ -44,22 +39,6 @@ public final class VoicePreviewTlmSoundInstance extends AbstractSoundInstance {
                 data == null ? -1 : data.length,
                 looping
         );
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                OggReader.Type type = OggReader.getOggType(data);
-                if (type == OggReader.Type.OPUS) {
-                    TouhouMaidAffection.LOGGER.info("TLM voice preview decoder selected: OPUS");
-                    return new OpusAudioStream(data);
-                }
-                if (type == OggReader.Type.VORBIS) {
-                    TouhouMaidAffection.LOGGER.info("TLM voice preview decoder selected: VORBIS");
-                    return new JOrbisAudioStream(new ByteArrayInputStream(data));
-                }
-                TouhouMaidAffection.LOGGER.warn("TLM voice preview '{}' is not OGG Vorbis/Opus.", fileName);
-            } catch (Exception ex) {
-                TouhouMaidAffection.LOGGER.warn("Failed to stream TLM voice preview '{}'", fileName, ex);
-            }
-            return null;
-        }, Util.backgroundExecutor());
+        return InMemoryVoiceStream.openOgg(data, "TLM voice preview " + fileName);
     }
 }

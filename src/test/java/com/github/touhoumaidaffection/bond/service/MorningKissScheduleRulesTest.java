@@ -42,4 +42,12 @@ class MorningKissScheduleRulesTest {
         assertEquals(5, MorningKissScheduleRules.safeMaxKissCount(5, 3));
         assertEquals(1, MorningKissScheduleRules.safeMaxKissCount(0, -3));
     }
+
+    @Test
+    void shouldFormatResolvedTimeRanges() {
+        assertEquals(
+                "06:00-08:00, 18:00-20:00",
+                MorningKissScheduleRules.formatAllowedTimeRanges(List.of("invalid"))
+        );
+    }
 }
