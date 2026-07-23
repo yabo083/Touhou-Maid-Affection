@@ -50,7 +50,10 @@ public class MimoLLMClient implements LLMClient {
             return;
         }
         if (!isSuccessful(response)) {
-            callback.onFailure(request, new Throwable("HTTP Error Code: %d, Response: %s".formatted(response.statusCode(), response.body())), 1);
+            callback.onFailure(request, new Throwable(
+                    "HTTP Error Code: %d, Response: %s".formatted(
+                            response.statusCode(),
+                            MimoHttp.summarizeErrorBody(response.body()))), 1);
             return;
         }
         try {

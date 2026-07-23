@@ -106,14 +106,16 @@ examples/TMA-Custom-Voice-Pack
 
 `bond/service` 承载跨 tick、跨时间窗或可重载资源相关的流程：
 
-- `MorningKissService`：早安吻调度、寻路、亲吻执行、台词选择与语音触发。
-- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；默认仅文本生成跟随 TLM 聊天语言；当后台预生成会生成远程 TTS 时，待合成文本跟随 TLM TTS 语言按钮，确保传给 TTS 的文本语种与请求语种一致；只有 `aiDialogueLanguage` 显式配置为具体语言时才统一覆盖。
-- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。
-- `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，缓存键必须至少包含女仆 UUID 与时间池，避免多名女仆共享同一生成池。
-- `MorningKissGeneratedDialogueStorage`：把早安吻 AI 生成文本与 TTS 音频持久化到世界目录下的 `generated_morning_kiss/<maidUuid>/<pool>/`，以 `001.json` + 可选 `001.ogg/mp3` 的形式提供外部可编辑入口；它是生成缓存的磁盘镜像，不属于数据包，也不触发 `/reload`。
+- `MorningKissService`：早安吻时间窗调度、寻路和亲吻任务推进。
+- `MorningKissDialogueService`：生成缓存、即时 AI、数据包台词与内置台词之间的回退链，以及聊天气泡/聊天栏/动作栏显示策略。
+- `MorningKissVoiceService`：每名女仆的语音池解析、顺序/随机选择、数据包/TLM 回退和客户端播放 payload 分发。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；维护 MAID_REVISIONS 实现女仆级缓存失效，支持 IN_FLIGHT 细粒度请求跟踪（LLM 阶段与 TTS 回调节点），在服务器启动时从磁盘恢复缓存、关闭时持久化。预生成 prompt 和 TTS 请求语言通过 resolvePregeneratedTextLanguage() / resolveTtsLanguage() 统一服从 aiDialogueLanguage 配置与 TLM 女仆语言偏好。
+- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。支持 tlm/auto/default 跟随女仆设置，或显式语言代码覆盖。提供 resolveGeneratedTextLanguage() / resolveGeneratedVoiceTextLanguage() 按场景推导生成语言。
+- `MorningKissGeneratedDialogueCache`：保存女仆粒度的运行时生成台词和 TTS 语音缓存。支持消耗/非消耗两种取出模式（CACHE_CONSUME_ON_USE），提供女仆级、池级、条目级的清理与语音剥离操作。缓存容量受 maxLinesPerPool 和 aiDialogueCacheTargetPerPool 双重约束。实现 snapshot() / replaceAll() 接口以支持磁盘持久化。统计报告通过 stats() 按女仆和语言分组输出。
+- `MorningKissGeneratedDialogueStorage`：将运行时 AI 生成缓存持久化到 `world/generated_morning_kiss/{maid_uuid}/{pool}/` 目录下，每条条目写为 `001.json`（元数据）+ `001.ogg`（语音），格式兼容手动编辑。路径遍历防护通过 `normalize()` + `startsWith()` 检查实现。服务器启动时自动加载、服务器关闭时自动保存。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
-- `RandomGiftService`：随机礼物积累与投递。默认礼物来源是显式物品标签池；广泛注册表抽样是可选兼容模式，且仍经过危险物品策略与黑名单过滤。
+- `RandomGiftService`：随机礼物积累与投递。默认礼物来源是显式物品标签池；广泛注册表抽样是可选兼容模式，仅默认过滤破坏沉浸感的技术/管理物品。显式礼物池可覆盖默认过滤，黑名单仍具有最终否决权。
 
 早安吻边界：
 
@@ -168,6 +170,7 @@ examples/TMA-Custom-Voice-Pack
 - LLM 侧复用 TLM OpenAI 站点编辑器的表单体验，但实际请求由 `MimoLLMClient` 发起。
 - `LLMSiteEditorScreenMixin` 只解决 TLM 编辑器保存后站点类型被普通 OpenAI 类型覆盖的问题，作用域必须保持窄。
 - TTS 侧实现 TLM 1.5.2 的旧接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路；从 `TTSConfig.language` 传入的语言必须写入请求体与 voice prompt，避免回落到 TLM 站点默认语种。
+- `BoundedHttpClient` / `BoundedHttpResponse` 在字节进入字符串缓冲前执行响应上限；TTS 还会在 Base64 解码前后复核音频大小，错误正文只传递有界摘要。
 - MiMo TTS 默认请求 MP3；远程响应会被格式校验，不能把不可播放格式塞进客户端队列。
 - API key、站点启用状态、站点保存仍由 TLM 管理；TMA 只提供站点类型、默认 URL、默认模型、格式和羁绊页跳转入口。
 
@@ -241,9 +244,9 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 最需要持续治理的模块：
 
-- `MorningKissService`：调度、任务推进、对话、语音策略和多个回退路径仍集中在一个服务里。
+- `MorningKissService`：对话与语音策略已拆出，剩余复杂度集中在自动时间窗调度和进行中任务推进；后续如继续增长，应优先分离 scheduler 与 task runner。
 - `BondMaidContainerScreen` 与二级页：页面切换、tooltip、弹窗、动态语音池、试听动作都在此附近集中。
 - `BondData`：长期状态字段持续增多，应继续收敛 key 常量与子结构。
 - `ai/mimo`：依赖 TLM AI 旧接口与编辑器行为，后续 TLM 升级时需要优先回归。
 
-后续重构优先级：先把早安吻拆成调度器、任务执行器、对话策略、语音策略四块；再把羁绊页拆成更独立的 page controller 与状态对象。
+后续重构优先级：按增长情况继续把早安吻调度器与任务执行器分离；再把羁绊页拆成更独立的 page controller 与状态对象。

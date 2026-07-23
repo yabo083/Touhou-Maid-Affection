@@ -1,10 +1,5 @@
 package com.github.touhoumaidaffection.client;
 
-import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
-import com.github.tartaricacid.touhoulittlemaid.client.sound.data.OpusAudioStream;
-import com.github.touhoumaidaffection.TouhouMaidAffection;
-import com.mojang.blaze3d.audio.OggAudioStream;
-import net.minecraft.Util;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
@@ -14,7 +9,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
 import javax.annotation.Nullable;
-import java.io.ByteArrayInputStream;
 import java.util.concurrent.CompletableFuture;
 
 public final class EmergencyRescueTlmSoundInstance extends AbstractTickableSoundInstance {
@@ -54,20 +48,6 @@ public final class EmergencyRescueTlmSoundInstance extends AbstractTickableSound
     @Nullable
     @Override
     public CompletableFuture<AudioStream> getStream(SoundBufferLibrary library, Sound sound, boolean looping) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                OggReader.Type type = OggReader.getOggType(data);
-                if (type == OggReader.Type.OPUS) {
-                    return new OpusAudioStream(data);
-                }
-                if (type == OggReader.Type.VORBIS) {
-                    return new OggAudioStream(new ByteArrayInputStream(data));
-                }
-                TouhouMaidAffection.LOGGER.warn("Emergency rescue TLM voice '{}' is not OGG Vorbis/Opus.", fileName);
-            } catch (Exception ex) {
-                TouhouMaidAffection.LOGGER.warn("Failed to stream emergency rescue TLM voice '{}'", fileName, ex);
-            }
-            return null;
-        }, Util.backgroundExecutor());
+        return InMemoryVoiceStream.openOgg(data, "emergency rescue TLM voice " + fileName);
     }
 }

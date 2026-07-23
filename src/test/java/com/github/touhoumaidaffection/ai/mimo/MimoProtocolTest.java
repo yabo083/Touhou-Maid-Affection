@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MimoProtocolTest {
     @Test
@@ -68,6 +69,33 @@ class MimoProtocolTest {
                 """.formatted(Base64.getEncoder().encodeToString(audio));
 
         assertArrayEquals(audio, MimoProtocol.extractFirstAudio(response));
+    }
+
+    @Test
+    void rejectsTtsAudioBeforeOversizedBase64IsDecoded() {
+        String response = """
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "audio": {
+                          "data": "%s"
+                        }
+                      }
+                    }
+                  ]
+                }
+                """.formatted("A".repeat(MimoProtocol.MAX_TTS_AUDIO_BASE64_CHARS + 4));
+
+        assertThrows(IllegalArgumentException.class, () -> MimoProtocol.extractFirstAudio(response));
+    }
+
+    @Test
+    void truncatesRemoteErrorBodiesBeforeTheyReachLogsOrCallbacks() {
+        String summary = MimoHttp.summarizeErrorBody("x".repeat(2_000));
+
+        assertEquals(515, summary.length());
+        assertEquals("...", summary.substring(summary.length() - 3));
     }
 
     @Test

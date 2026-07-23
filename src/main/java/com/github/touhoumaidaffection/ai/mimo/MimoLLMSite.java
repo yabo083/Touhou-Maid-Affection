@@ -51,8 +51,11 @@ public class MimoLLMSite extends LLMOpenAISite implements SupportModelSelect {
     }
 
     @Override
-    public LLMClient client() {
-        return new MimoLLMClient(LLM_HTTP_CLIENT, this);
+public LLMClient client() {
+        return new MimoLLMClient(
+                new BoundedHttpClient(LLM_HTTP_CLIENT, MimoHttp.MAX_CHAT_RESPONSE_BYTES),
+                this
+        );
     }
 
     public static MimoLLMSite fromOpenAISite(LLMOpenAISite site) {
