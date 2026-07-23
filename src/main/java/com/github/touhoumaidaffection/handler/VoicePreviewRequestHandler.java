@@ -11,35 +11,39 @@ import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 import java.util.Optional;
 
+@EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class VoicePreviewRequestHandler {
+    private static final VoicePreviewRateLimiter RATE_LIMITER = new VoicePreviewRateLimiter(100L);
+
     private VoicePreviewRequestHandler() {
     }
 
     public static void handle(VoicePreviewRequestPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player) || !VoicePoolIds.isDataPack(payload.voiceId())) {
-                TouhouMaidAffection.LOGGER.info("Voice preview request ignored: player={}, voiceId={}",
-                        context.player() == null ? "null" : context.player().getName().getString(), payload.voiceId());
+            if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (!RATE_LIMITER.tryAcquire(player.getUUID(), player.getServer().getTickCount())) {
+                return;
+            }
+            if (!VoicePoolIds.isDataPack(payload.voiceId())) {
                 return;
             }
             EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
             if (maid == null) {
-                TouhouMaidAffection.LOGGER.info("Voice preview request denied: player={}, maidUuid={} not owned/reachable",
-                        player.getName().getString(), payload.maidUuid());
                 return;
             }
             Optional<InteractionVoiceProfileData.DataPackVoice> voice = resolveVoice(player, maid, payload);
             if (voice.isEmpty()) {
-                TouhouMaidAffection.LOGGER.info("Voice preview request denied: player={}, maidUuid={}, feature={}, voiceId={} unresolved",
-                        player.getName().getString(), payload.maidUuid(), payload.feature(), payload.voiceId());
                 return;
             }
             InteractionVoiceProfileData.DataPackVoice dataPackVoice = voice.get();
-            TouhouMaidAffection.LOGGER.info("Voice preview request accepted: player={}, maidUuid={}, feature={}, file={}, bytes={}",
-                    player.getName().getString(), payload.maidUuid(), payload.feature(), dataPackVoice.fileName(), dataPackVoice.data().length);
             PacketDistributor.sendToPlayer(player, new VoicePreviewDataPackPlayPayload(
                     maid.getId(),
                     maid.getUUID(),
@@ -48,6 +52,11 @@ public final class VoicePreviewRequestHandler {
                     dataPackVoice.data()
             ));
         });
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        RATE_LIMITER.remove(event.getEntity().getUUID());
     }
 
     private static Optional<InteractionVoiceProfileData.DataPackVoice> resolveVoice(ServerPlayer player, EntityMaid maid,

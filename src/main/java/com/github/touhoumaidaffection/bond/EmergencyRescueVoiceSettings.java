@@ -31,11 +31,7 @@ public record EmergencyRescueVoiceSettings(
         tlmSelectedClip = normalize(tlmSelectedClip);
         customPlayMode = customPlayMode == null ? CustomPlayMode.RANDOM : customPlayMode;
         fixedFile = normalize(fixedFile);
-        selectedVoiceIds = selectedVoiceIds == null ? List.of() : selectedVoiceIds.stream()
-                .map(EmergencyRescueVoiceSettings::normalize)
-                .filter(value -> !value.isBlank())
-                .distinct()
-                .toList();
+        selectedVoiceIds = VoicePoolIds.normalizeSelection(selectedVoiceIds);
     }
 
     public static EmergencyRescueVoiceSettings of(
@@ -73,7 +69,7 @@ public record EmergencyRescueVoiceSettings(
     }
 
     private static String normalize(String value) {
-        return value == null ? "" : value.trim();
+        return BondDataLimits.normalize(value);
     }
 
     public enum SourceMode {

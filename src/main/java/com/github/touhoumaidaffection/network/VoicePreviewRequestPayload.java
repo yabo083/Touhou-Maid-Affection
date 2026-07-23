@@ -17,14 +17,16 @@ public record VoicePreviewRequestPayload(
 ) implements CustomPacketPayload {
     public static final String FEATURE_MORNING_KISS = "morning_kiss";
     public static final String FEATURE_EMERGENCY_RESCUE = "emergency_rescue";
+    private static final StreamCodec<ByteBuf, String> FEATURE_CODEC = ByteBufCodecs.stringUtf8(32);
+    private static final StreamCodec<ByteBuf, String> VOICE_ID_CODEC = ByteBufCodecs.stringUtf8(256);
 
     public static final Type<VoicePreviewRequestPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "voice_preview_request"));
 
     public static final StreamCodec<ByteBuf, VoicePreviewRequestPayload> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, VoicePreviewRequestPayload::maidUuid,
-            ByteBufCodecs.STRING_UTF8, VoicePreviewRequestPayload::feature,
-            ByteBufCodecs.STRING_UTF8, VoicePreviewRequestPayload::voiceId,
+            FEATURE_CODEC, VoicePreviewRequestPayload::feature,
+            VOICE_ID_CODEC, VoicePreviewRequestPayload::voiceId,
             VoicePreviewRequestPayload::new
     );
 

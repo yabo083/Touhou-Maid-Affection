@@ -115,11 +115,11 @@ public final class MorningKissProfileData {
                 continue;
             }
             try (InputStream inputStream = resource.get()) {
-                data = inputStream.readAllBytes();
-                if (data.length > MAX_DATA_PACK_VOICE_BYTES) {
-                    TouhouMaidAffection.LOGGER.warn("Morning kiss data-pack voice {} is too large ({} bytes), max is {} bytes.",
-                            voicePath, data.length, MAX_DATA_PACK_VOICE_BYTES);
-                    data = new byte[0];
+                BoundedVoiceDataReader.ReadResult result = BoundedVoiceDataReader.read(inputStream, MAX_DATA_PACK_VOICE_BYTES);
+                data = result.data();
+                if (result.exceededLimit()) {
+                    TouhouMaidAffection.LOGGER.warn("Morning kiss data-pack voice {} exceeds the {} byte limit.",
+                            voicePath, MAX_DATA_PACK_VOICE_BYTES);
                 }
                 if (data.length > 0) {
                     TouhouMaidAffection.LOGGER.info("Loaded morning kiss data-pack voice {} ({} bytes)",

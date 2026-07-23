@@ -16,11 +16,7 @@ public record MorningKissVoiceSettings(
         selectedGroup = normalize(selectedGroup);
         selectedClip = normalize(selectedClip);
         soundPackId = normalize(soundPackId);
-        selectedVoiceIds = selectedVoiceIds == null ? List.of() : selectedVoiceIds.stream()
-                .map(MorningKissVoiceSettings::normalize)
-                .filter(value -> !value.isBlank())
-                .distinct()
-                .toList();
+        selectedVoiceIds = VoicePoolIds.normalizeSelection(selectedVoiceIds);
     }
 
     public boolean usesGroupSelection() {
@@ -44,7 +40,7 @@ public record MorningKissVoiceSettings(
     }
 
     private static String normalize(String value) {
-        return value == null ? "" : value.trim();
+        return BondDataLimits.normalize(value);
     }
 
     public enum Mode {

@@ -2,7 +2,9 @@ package com.github.touhoumaidaffection.handler;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.BondDataLimits;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
+import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -18,6 +20,15 @@ public final class RescueVoiceConfigHandler {
             }
             EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
             if (maid == null || !BondManager.isAbilityUnlocked(player, payload.maidUuid(), "emergency_heal")) {
+                return;
+            }
+            if (!BondDataLimits.isValidValue(payload.sourceMode())
+                    || !BondDataLimits.isValidValue(payload.tlmPlayMode())
+                    || !BondDataLimits.isValidValue(payload.tlmSelectedGroup())
+                    || !BondDataLimits.isValidValue(payload.tlmSelectedClip())
+                    || !BondDataLimits.isValidValue(payload.customPlayMode())
+                    || !BondDataLimits.isValidValue(payload.fixedFile())
+                    || !VoicePoolIds.isPersistableSelection(payload.selectedVoiceIds())) {
                 return;
             }
             EmergencyRescueVoiceSettings settings = EmergencyRescueVoiceSettings.of(

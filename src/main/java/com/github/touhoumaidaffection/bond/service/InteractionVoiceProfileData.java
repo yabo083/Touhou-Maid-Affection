@@ -159,17 +159,29 @@ public final class InteractionVoiceProfileData {
     }
 
     private static LinkedHashSet<String> collectFeatureVoiceFiles(InteractionVoiceProfileParser.InteractionVoiceProfile profile,
-                                                                  InteractionVoiceProfileParser.Feature feature) {
+                                                                   InteractionVoiceProfileParser.Feature feature) {
         LinkedHashSet<String> output = new LinkedHashSet<>();
-        output.addAll(profile.featureProfile(feature).voiceFiles());
+        addVoiceFiles(output, profile.featureProfile(feature).voiceFiles());
         for (InteractionVoiceProfileParser.MaidVoiceOverride override : profile.maidOverrides()) {
+            if (output.size() >= 64) {
+                break;
+            }
             InteractionVoiceProfileParser.FeatureVoicePatch patch =
                     feature == InteractionVoiceProfileParser.Feature.MORNING_KISS ? override.morningKiss() : override.emergencyRescue();
             if (patch != null && patch.voiceFiles() != null) {
-                output.addAll(patch.voiceFiles());
+                addVoiceFiles(output, patch.voiceFiles());
             }
         }
         return output;
+    }
+
+    private static void addVoiceFiles(LinkedHashSet<String> output, List<String> voiceFiles) {
+        for (String voiceFile : voiceFiles) {
+            if (output.size() >= 64) {
+                return;
+            }
+            output.add(voiceFile);
+        }
     }
 
     private static Map<String, DataPackVoice> loadVoiceFiles(ResourceManager resourceManager, LinkedHashSet<String> voiceFiles, String folder) {
@@ -192,11 +204,11 @@ public final class InteractionVoiceProfileData {
                 continue;
             }
             try (InputStream inputStream = resource.get()) {
-                data = inputStream.readAllBytes();
-                if (data.length > MAX_DATA_PACK_VOICE_BYTES) {
-                    TouhouMaidAffection.LOGGER.warn("Interaction data-pack voice {} is too large ({} bytes), max is {} bytes.",
-                            voicePath, data.length, MAX_DATA_PACK_VOICE_BYTES);
-                    data = new byte[0];
+                BoundedVoiceDataReader.ReadResult result = BoundedVoiceDataReader.read(inputStream, MAX_DATA_PACK_VOICE_BYTES);
+                data = result.data();
+                if (result.exceededLimit()) {
+                    TouhouMaidAffection.LOGGER.warn("Interaction data-pack voice {} exceeds the {} byte limit.",
+                            voicePath, MAX_DATA_PACK_VOICE_BYTES);
                 }
                 if (data.length > 0) {
                     TouhouMaidAffection.LOGGER.info("Loaded interaction data-pack voice {} ({} bytes)", voicePath, data.length);

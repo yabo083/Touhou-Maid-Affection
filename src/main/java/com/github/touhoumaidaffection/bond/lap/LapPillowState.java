@@ -98,7 +98,7 @@ public final class LapPillowState {
     public static void enableAngleLock(ServerPlayer player, float yaw) {
         CompoundTag root = getRoot(player);
         root.putBoolean("angle_lock_enabled", true);
-        root.putFloat("angle_lock_yaw", yaw);
+        root.putFloat("angle_lock_yaw", LapPillowAngles.sanitizeYaw(yaw));
         save(player, root);
     }
 
@@ -113,7 +113,7 @@ public final class LapPillowState {
     }
 
     public static float getAngleLockYaw(ServerPlayer player) {
-        return getRoot(player).getFloat("angle_lock_yaw");
+        return LapPillowAngles.sanitizeYaw(getRoot(player).getFloat("angle_lock_yaw"));
     }
 
     public static String getAppliedMaidAction(ServerPlayer player) {

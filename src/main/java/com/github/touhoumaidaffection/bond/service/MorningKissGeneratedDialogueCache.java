@@ -16,7 +16,7 @@ import net.minecraft.util.RandomSource;
 final class MorningKissGeneratedDialogueCache {
     private static final int DEFAULT_MAX_LINES_PER_POOL = 8;
     private static final int MAX_LINE_DISPLAY_WIDTH = 96;
-    private static final int MAX_VOICE_BYTES = 2 * 1024 * 1024;
+    static final int MAX_VOICE_BYTES = 2 * 1024 * 1024;
 
     private final int maxLinesPerPool;
     private final Map<CacheKey, Deque<Entry>> entries = new HashMap<>();
@@ -27,6 +27,10 @@ final class MorningKissGeneratedDialogueCache {
 
     MorningKissGeneratedDialogueCache(int maxLinesPerPool) {
         this.maxLinesPerPool = Math.max(1, maxLinesPerPool);
+    }
+
+    int maxLinesPerPool() {
+        return maxLinesPerPool;
     }
 
     static List<String> normalizeLines(String raw) {
@@ -53,6 +57,9 @@ final class MorningKissGeneratedDialogueCache {
     }
 
     static Optional<String> detectPlayableVoiceExtension(byte[] data) {
+        if (!isVoiceDataSizeAllowed(data == null ? 0 : data.length)) {
+            return Optional.empty();
+        }
         if (isMaybeOgg(data)) {
             return Optional.of("ogg");
         }
@@ -60,6 +67,10 @@ final class MorningKissGeneratedDialogueCache {
             return Optional.of("mp3");
         }
         return Optional.empty();
+    }
+
+    static boolean isVoiceDataSizeAllowed(long size) {
+        return size > 0 && size <= MAX_VOICE_BYTES;
     }
 
     static List<String> limitToRemainingCapacity(List<String> lines, int currentSize, int targetSize) {
@@ -402,10 +413,21 @@ final class MorningKissGeneratedDialogueCache {
             text = text == null ? "" : text.trim();
             ttsText = ttsText == null || ttsText.isBlank() ? text : ttsText.trim();
             voiceFileName = voiceFileName == null ? "" : voiceFileName.trim();
-            voiceData = voiceData == null ? new byte[0] : voiceData;
+            byte[] safeVoiceData = voiceData == null ? new byte[0] : voiceData;
+            if (voiceFileName.isBlank() || !isVoiceDataSizeAllowed(safeVoiceData.length)) {
+                voiceFileName = "";
+                voiceData = new byte[0];
+            } else {
+                voiceData = safeVoiceData.clone();
+            }
             textLanguage = textLanguage == null ? "" : textLanguage.trim();
             voiceLanguage = voiceLanguage == null ? "" : voiceLanguage.trim();
             maidName = maidName == null ? "" : maidName.trim();
+        }
+
+        @Override
+        public byte[] voiceData() {
+            return voiceData.clone();
         }
 
         boolean hasVoice() {

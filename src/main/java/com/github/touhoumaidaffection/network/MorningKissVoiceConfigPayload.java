@@ -20,6 +20,13 @@ public record MorningKissVoiceConfigPayload(
         String soundPackId,
         List<String> selectedVoiceIds
 ) implements CustomPacketPayload {
+    private static final int MAX_CONFIG_STRING_LENGTH = 256;
+    private static final int MAX_SELECTED_VOICE_IDS = 1_024;
+    private static final StreamCodec<ByteBuf, String> CONFIG_STRING_CODEC =
+            ByteBufCodecs.stringUtf8(MAX_CONFIG_STRING_LENGTH);
+    private static final StreamCodec<ByteBuf, ArrayList<String>> SELECTED_VOICE_IDS_CODEC =
+            ByteBufCodecs.collection(ArrayList::new, CONFIG_STRING_CODEC, MAX_SELECTED_VOICE_IDS);
+
     public static final Type<MorningKissVoiceConfigPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "morning_kiss_voice_config"));
 
@@ -35,22 +42,21 @@ public record MorningKissVoiceConfigPayload(
 
     private static void encode(ByteBuf buf, MorningKissVoiceConfigPayload payload) {
         UUIDUtil.STREAM_CODEC.encode(buf, payload.maidUuid());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.mode());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.selectedGroup());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.selectedClip());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.soundPackId());
-        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
-                .encode(buf, new ArrayList<>(payload.selectedVoiceIds()));
+        CONFIG_STRING_CODEC.encode(buf, payload.mode());
+        CONFIG_STRING_CODEC.encode(buf, payload.selectedGroup());
+        CONFIG_STRING_CODEC.encode(buf, payload.selectedClip());
+        CONFIG_STRING_CODEC.encode(buf, payload.soundPackId());
+        SELECTED_VOICE_IDS_CODEC.encode(buf, new ArrayList<>(payload.selectedVoiceIds()));
     }
 
     private static MorningKissVoiceConfigPayload decode(ByteBuf buf) {
         return new MorningKissVoiceConfigPayload(
                 UUIDUtil.STREAM_CODEC.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf)
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                SELECTED_VOICE_IDS_CODEC.decode(buf)
         );
     }
 }

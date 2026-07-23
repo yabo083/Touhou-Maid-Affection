@@ -118,7 +118,9 @@ class MorningKissProfileDataTest {
                     "../escape.ogg",
                     "nested\\\\bad.ogg",
                     "wrong.wav",
-                    "/absolute.ogg"
+                    "/absolute.ogg",
+                    "Bad.ogg",
+                    "bad name.ogg"
                   ]
                 }
                 """).getAsJsonObject();

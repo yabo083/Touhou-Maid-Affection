@@ -120,7 +120,7 @@ public class BondData {
     }
 
     public void setMaidRescueAction(UUID maidUuid, String actionId) {
-        root.putString("BondMaidRescueAction_" + maidUuid, actionId == null ? "" : actionId);
+        root.putString("BondMaidRescueAction_" + maidUuid, BondDataLimits.normalize(actionId));
         save();
     }
 
@@ -528,6 +528,9 @@ public class BondData {
 
     public void setMorningKissVoiceSettings(UUID maidUuid, MorningKissVoiceSettings settings) {
         MorningKissVoiceSettings safe = settings == null ? MorningKissVoiceSettings.DEFAULT : settings;
+        if (!VoicePoolIds.isPersistableSelection(safe.selectedVoiceIds())) {
+            return;
+        }
         root.putString("MorningKissVoiceMode_" + maidUuid, safe.mode().serializedName());
         root.putString("MorningKissVoiceGroup_" + maidUuid, safe.selectedGroup());
         root.putString("MorningKissVoiceClip_" + maidUuid, safe.selectedClip());
@@ -553,6 +556,9 @@ public class BondData {
 
     public void setEmergencyRescueVoiceSettings(UUID maidUuid, EmergencyRescueVoiceSettings settings) {
         EmergencyRescueVoiceSettings safe = settings == null ? EmergencyRescueVoiceSettings.DEFAULT : settings;
+        if (!VoicePoolIds.isPersistableSelection(safe.selectedVoiceIds())) {
+            return;
+        }
         root.putString("EmergencyRescueVoiceSourceMode_" + maidUuid, safe.sourceMode().serializedName());
         root.putString("EmergencyRescueVoiceTlmMode_" + maidUuid, safe.tlmPlayMode().serializedName());
         root.putString("EmergencyRescueVoiceTlmGroup_" + maidUuid, safe.tlmSelectedGroup());

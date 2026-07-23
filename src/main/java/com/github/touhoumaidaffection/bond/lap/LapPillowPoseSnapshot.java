@@ -1,5 +1,7 @@
 package com.github.touhoumaidaffection.bond.lap;
 
+import com.github.touhoumaidaffection.bond.BondDataLimits;
+
 public record LapPillowPoseSnapshot(
         LapPillowMode mode,
         double maidOffsetX,
@@ -94,10 +96,16 @@ public record LapPillowPoseSnapshot(
     }
 
     private static double clampOffset(double value) {
+        if (!Double.isFinite(value)) {
+            return 0.0D;
+        }
         return Math.max(MIN_OFFSET, Math.min(MAX_OFFSET, value));
     }
 
     private static String normalizeAction(String actionId) {
-        return actionId == null ? "" : actionId.trim();
+        if (actionId == null) {
+            return "";
+        }
+        return BondDataLimits.normalize(actionId.replace('\r', ' ').replace('\n', ' '));
     }
 }
