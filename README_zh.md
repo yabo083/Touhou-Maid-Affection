@@ -80,7 +80,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI 与 MiMo
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。`aiDialogueLanguage` 控制显示文本，`aiDialogueVoiceLanguage` 控制配音文本；两者不同时，TMA 会批量翻译并严格按行配对后再请求 TTS。例如 `zh_cn` + `ja_jp` 会显示中文、播放日文语音。配置位于 `config/touhou_maid_affection-common.toml`。切换语言或提示词后，管理员应执行 `/tma morning_kiss clear_ai_cache`，让后续扫描重新生成。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。`aiDialogueLanguage` 控制显示文本，`aiDialogueVoiceLanguage` 控制配音文本；两者完全独立并接受任意 locale code，不是中日专用。语言不同时，TMA 会批量翻译并严格按行配对后再请求 TTS。例如可使用中文+日文、英文+韩文、法文+德文或其他组合。配置位于 `config/touhou_maid_affection-common.toml`。切换语言或提示词后，管理员应执行 `/tma morning_kiss clear_ai_cache`，让后续扫描重新生成。
 
 TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。适配器只提供供应商默认值；用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 

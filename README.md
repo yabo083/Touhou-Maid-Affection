@@ -80,7 +80,7 @@ Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, an
 
 ### AI And MiMo
 
-Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. `aiDialogueLanguage` controls display text while `aiDialogueVoiceLanguage` controls spoken TTS text. When they differ, TMA translates the generated lines in one ordered batch before requesting TTS; `zh_cn` plus `ja_jp`, for example, displays Chinese and speaks Japanese. These settings live in `config/touhou_maid_affection-common.toml`. After changing either language or the prompt, run `/tma morning_kiss clear_ai_cache` so later scans regenerate the cache.
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. `aiDialogueLanguage` controls display text while `aiDialogueVoiceLanguage` controls spoken TTS text. They are fully independent and accept arbitrary locale codes rather than a hard-coded Chinese/Japanese pair. When they differ, TMA translates the generated lines in one ordered batch before requesting TTS, supporting combinations such as Chinese/Japanese, English/Korean, French/German, or others. These settings live in `config/touhou_maid_affection-common.toml`. After changing either language or the prompt, run `/tma morning_kiss clear_ai_cache` so later scans regenerate the cache.
 
 TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
 
