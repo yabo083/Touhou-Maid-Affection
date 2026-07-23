@@ -1,7 +1,7 @@
 {
   "mod.touhou_maid_affection.name": "Touhou Maid: Affection",
   "mod.touhou_maid_affection.description": "Kiss your maid! Adds affectionate interactions to Touhou Little Maid.",
-  "tips.touhou_maid_affection.kiss": "Sneak + empty hand right-click maid to kiss",
+  "tips.touhou_maid_affection.kiss": "Sneak + empty-hand right-click to kiss; disable it in config and use kiss keys if it conflicts with sit/stand",
   "tips.touhou_maid_affection.kiss_carried": "When carrying a maid with a saddle, press the kiss key to kiss",
   "tips.touhou_maid_affection.kiss_carryon": "CarryOn detected: Sneak + empty main hand + item in offhand right-click maid to kiss",
   "tips.touhou_maid_affection.offhand_tempt": "Holding temptation items (default: cake) in offhand also attracts maids",
@@ -16,6 +16,9 @@
   "bond.tab.desc": "Unlock deeper interactions as your bond with the maid grows.",
   "bond.unlock.requirement": "Requires favorability level %s to unlock",
   "bond.power_point_cost": "Costs %d Power Points",
+  "bond.power_point_inventory": "P Point items in inventory: %d",
+  "bond.power_point_item_hint": "This consumes P Point items from your inventory, not P values stored in a shrine lamp",
+  "bond.unlock_click_blocked": "Cannot perform this action: %s",
   "bond.activate": "Activate",
   "bond.unlock": "Unlock",
   "bond.unlocked": "Unlocked",

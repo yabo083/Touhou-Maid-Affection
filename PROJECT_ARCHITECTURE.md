@@ -64,7 +64,7 @@ src/main/resources
    ├─ morning_kiss/profile.json
    ├─ emergency_rescue/profile.json
    ├─ rescue_sound/profile.json
-   └─ tags/items
+   └─ tags/item
 ```
 
 `examples/TMA-Custom-Voice-Pack` 是发布给用户的示例数据包，不参与模组运行时资源加载，但必须与数据包解析器保持格式一致。
@@ -75,7 +75,7 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却、好感收益、亲吻音效音量、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却与右键入口开关、好感收益、亲吻音效音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
 
 ### 4.2 亲吻主链
 
@@ -102,7 +102,7 @@ src/main/resources
 - `MorningKissGeneratedDialogueStorage`：将运行时 AI 生成缓存持久化到 `world/generated_morning_kiss/{maid_uuid}/{pool}/` 目录下，每条条目写为 `001.json`（元数据）+ `001.ogg`（语音），格式兼容手动编辑。路径遍历防护通过 `normalize()` + `startsWith()` 检查实现。服务器启动时自动加载、服务器关闭时自动保存。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
-- `RandomGiftService`：随机礼物积累与投递。
+- `RandomGiftService`：随机礼物积累与投递。默认礼物来源是显式物品标签池；广泛注册表抽样是可选兼容模式，且仍经过危险物品策略与黑名单过滤。
 
 早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；全局配置负责亲吻 sound event 响度与早安吻语音响度；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
 

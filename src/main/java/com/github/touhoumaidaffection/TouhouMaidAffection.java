@@ -20,6 +20,7 @@ import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.network.KissRightClickConfigPayload;
 import com.github.touhoumaidaffection.network.KissTargetedMaidRequestPayload;
 import com.github.touhoumaidaffection.network.LapPillowAngleLockPayload;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
@@ -80,6 +81,11 @@ public class TouhouMaidAffection {
                 KissMaidPayload.TYPE,
                 KissMaidPayload.STREAM_CODEC,
                 KissClientHandler::handle
+        );
+        registrar.playToClient(
+                KissRightClickConfigPayload.TYPE,
+                KissRightClickConfigPayload.STREAM_CODEC,
+                KissClientHandler::handleRightClickConfig
         );
         registrar.playToServer(
                 KissCarryRequestPayload.TYPE,

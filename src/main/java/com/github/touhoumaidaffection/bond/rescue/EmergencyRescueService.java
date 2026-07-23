@@ -40,7 +40,7 @@ public final class EmergencyRescueService {
             return false;
         }
         float healthAfterHit = player.getHealth() - finalDamage;
-        float threshold = ModConfig.BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD.get();
+        float threshold = resolveHealthThreshold(player);
         return healthAfterHit <= 0.0F || healthAfterHit <= threshold;
     }
 
@@ -90,7 +90,7 @@ public final class EmergencyRescueService {
             return false;
         }
 
-        float threshold = ModConfig.BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD.get();
+        float threshold = resolveHealthThreshold(player);
         player.setHealth(Math.max(player.getMaxHealth() * 0.5F, threshold));
         player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 200, 1));
         player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 200, 1));
@@ -99,6 +99,15 @@ public final class EmergencyRescueService {
 
         sendRescuePayload(player, consumedRescuerId, trigger == null ? "unknown" : trigger);
         return true;
+    }
+
+    private static float resolveHealthThreshold(ServerPlayer player) {
+        return EmergencyRescueThreshold.resolve(
+                player.getMaxHealth(),
+                ModConfig.BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD.get(),
+                ModConfig.BOND_EMERGENCY_RESCUE_USE_PERCENTAGE_THRESHOLD.get(),
+                ModConfig.BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD_PERCENTAGE.get()
+        );
     }
 
     public static void clearRuntimeState(ServerPlayer player) {

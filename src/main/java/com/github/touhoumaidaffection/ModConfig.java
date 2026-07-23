@@ -14,6 +14,7 @@ public class ModConfig {
     public static final ModConfigSpec.IntValue COOLDOWN_LEVEL_2;
     public static final ModConfigSpec.IntValue COOLDOWN_LEVEL_3;
     public static final ModConfigSpec.DoubleValue KISS_SOUND_VOLUME;
+    public static final ModConfigSpec.BooleanValue KISS_RIGHT_CLICK_ENABLED;
 
     // Favorability
     public static final ModConfigSpec.IntValue FAVORABILITY_POINTS;
@@ -36,6 +37,7 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_RANDOM_GIFT_SHOW_ACTION_BAR;
     public static final ModConfigSpec.BooleanValue BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS;
     public static final ModConfigSpec.IntValue BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE;
+    public static final ModConfigSpec.BooleanValue BOND_RANDOM_GIFT_CURATED_POOL_ONLY;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_ENABLED;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_REQUIRED_FAVORABILITY;
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAX_DISTANCE;
@@ -67,6 +69,8 @@ public class ModConfig {
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_ALLOW_ALL_ELIGIBLE_MAIDS;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AUTO_SINGLE_ACTIVE_TASK_PER_PLAYER;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD;
+    public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_USE_PERCENTAGE_THRESHOLD;
+    public static final ModConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD_PERCENTAGE;
     public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_ENABLED;
     public static final ModConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME;
     public static final ModConfigSpec.IntValue BOND_EMERGENCY_RESCUE_CHARGES_PER_MAID;
@@ -172,6 +176,11 @@ public class ModConfig {
                         "0.0 mutes kiss sounds, 1.0 is the previous default, values above 1.0 boost volume")
                 .defineInRange("kissSoundVolume", 1.0, 0.0, 4.0);
 
+        KISS_RIGHT_CLICK_ENABLED = builder
+                .comment("Enable sneak + empty-hand right-click kissing",
+                        "Disable this to preserve Touhou Little Maid's normal sit/stand interaction and use the dedicated kiss keys instead")
+                .define("rightClickKissEnabled", true);
+
         builder.pop();
 
         builder.comment("Favorability gain settings")
@@ -223,6 +232,12 @@ public class ModConfig {
                 .comment("Enable the automatic random gift behavior after unlock")
                 .define("enabled", true);
 
+        BOND_RANDOM_GIFT_CURATED_POOL_ONLY = builder
+                .comment("Use only items explicitly listed in the touhou_maid_affection:bond_random_gift_pool item tag",
+                        "Recommended: prevents arbitrary registry items such as spawn eggs or bedrock from becoming gifts",
+                        "Set false to restore the legacy broad vanilla/mod registry sampling behavior")
+                .define("curatedPoolOnly", true);
+
         BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES = builder
                 .comment("Real-time minutes required to prepare one gift")
                 .defineInRange("intervalRealMinutes", 20, 1, 1440);
@@ -252,11 +267,12 @@ public class ModConfig {
                 .define("showActionBar", true);
 
         BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS = builder
-                .comment("Automatically sample a batch of non-vanilla mod items into the gift pool")
+                .comment("Automatically sample a batch of non-vanilla mod items in legacy broad-pool mode",
+                        "Ignored while curatedPoolOnly is enabled; add mod items to the gift-pool tag instead")
                 .define("includeModItems", true);
 
         BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE = builder
-                .comment("How many non-vanilla mod items are auto-sampled into the gift pool")
+                .comment("How many non-vanilla mod items are auto-sampled in legacy broad-pool mode")
                 .defineInRange("autoModSampleSize", 96, 0, 2048);
 
         builder.pop();
@@ -413,6 +429,16 @@ public class ModConfig {
         BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD = builder
                 .comment("Emergency rescue trigger threshold in health points")
                 .defineInRange("healthThreshold", 4, 1, 20);
+
+        BOND_EMERGENCY_RESCUE_USE_PERCENTAGE_THRESHOLD = builder
+                .comment("Scale the rescue trigger threshold from the player's maximum health",
+                        "Recommended for modpacks that increase maximum health; disable to use healthThreshold directly")
+                .define("usePercentageThreshold", false);
+
+        BOND_EMERGENCY_RESCUE_HEALTH_THRESHOLD_PERCENTAGE = builder
+                .comment("Maximum-health percentage that triggers rescue when usePercentageThreshold is enabled",
+                        "0.2 equals 20% and matches the legacy 4 health-point threshold at vanilla 20 max health")
+                .defineInRange("healthThresholdPercentage", 0.2D, 0.01D, 1.0D);
 
         BOND_EMERGENCY_RESCUE_REFRESH_BY_DAYTIME = builder
                 .comment("Refresh rescue charges by Minecraft date/daytime progression instead of total game uptime",
