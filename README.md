@@ -26,7 +26,8 @@
 `1.7.3.0` incorporates high-value player feedback and hardens interaction defaults:
 
 - **Controllable gifts**: Random Gift now uses the curated item-tag pool by default. Legacy broad-pool mode excludes only immersion-breaking technical/admin items, and explicit tag entries can override that default policy.
-- **Interaction control**: `rightClickKissEnabled` can disable sneak-right-click kissing without disabling targeted or carried-maid kiss keys.
+- **Dedicated kiss keys**: The conflicting sneak-right-click entry is removed; targeted and carried-maid kiss keys remain available.
+- **Bilingual AI Morning Kiss**: Display dialogue and generated TTS speech can use different languages, such as Chinese text with Japanese audio.
 - **Modded health support**: Emergency Rescue can optionally trigger from a percentage of maximum health.
 - **Clearer unlocking**: The bond UI explains that P Point items must be present in the player inventory and shows blocked-click feedback.
 
@@ -36,13 +37,11 @@ Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
 ### Kiss Interaction
 
-Sneak with an empty hand and right-click your maid to kiss her. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect.
-
-If this conflicts with the maid sit/stand interaction, set `cooldown.rightClickKissEnabled=false` and use the configurable targeted/carried-maid kiss keys instead.
+Bind the targeted kiss action in Controls and aim at an owned maid to kiss her. Princess-carried maids also have a dedicated kiss action. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect. Sneak-right-click kissing has been removed so TLM's sit/stand interaction remains untouched.
 
 Sound volumes can be tuned in `config/touhou_maid_affection-common.toml`: `cooldown.kissSoundVolume` controls kiss sound events, `morningKissBehavior.voiceVolume` controls Morning Kiss voices, `emergencyRescueBehavior.volume` controls Emergency Rescue voices and fallback sounds, and `voicePreview.volume` controls bond-page voice previews.
 
-When CarryOn is installed, the right-click condition changes to avoid interaction conflicts. A dedicated keybind also supports kissing a princess-carried maid.
+When CarryOn is installed, a dedicated keybind supports kissing a princess-carried maid.
 
 ### Targeted Kiss Key
 
@@ -80,7 +79,7 @@ Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, an
 
 ### AI Hub
 
-Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. Runtime behavior, prompts, and the `aiDialogueLanguage` language setting are configured in `config/touhou_maid_affection-common.toml`, while datapacks stay responsible for static text and pre-recorded OGG files. After changing language or prompt settings, admins can run `/tma morning_kiss clear_ai_cache` to clear generated cache for the current server session so later scans regenerate it.
+Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. `aiDialogueLanguage` controls display text while `aiDialogueVoiceLanguage` controls spoken TTS text. When they differ, TMA translates the generated lines in one ordered batch before requesting TTS; `zh_cn` plus `ja_jp`, for example, displays Chinese and speaks Japanese. These settings live in `config/touhou_maid_affection-common.toml`. After changing either language or the prompt, run `/tma morning_kiss clear_ai_cache` so later scans regenerate the cache.
 
 TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. The current provider implementation is MiMo-compatible, but the in-game entry is named around TMA AI behavior so future chat, TTS, and STT-facing features can share the same doorway. User API keys and enabled site state remain managed by Touhou Little Maid.
 
@@ -88,7 +87,7 @@ TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. Th
 
 - Touhou Little Maid: required dependency.
 - Yes Steve Model: optional action playback and action discovery.
-- CarryOn: optional right-click conflict avoidance.
+- CarryOn: optional princess-carry kiss integration.
 - TLM GUI and sound packs: soft integration where available, silent fallback where absent.
 
 ## Installation

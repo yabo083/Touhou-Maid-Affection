@@ -26,7 +26,8 @@
 `1.7.3.0` 汇总了评论区高价值玩家反馈，并强化了默认交互安全性：
 
 - **可控礼物池**：随机礼物默认使用策划物品标签池；旧版广泛抽样模式只排除破坏沉浸感的技术/管理物品，显式标签配置可覆盖该默认规则。
-- **交互开关**：`rightClickKissEnabled` 可关闭潜行右击亲吻，但不影响准星亲吻与公主抱亲吻按键。
+- **独立亲吻按键**：移除容易与坐下/站起冲突的潜行右击入口，保留准星亲吻与公主抱亲吻按键。
+- **双语 AI 早安吻**：显示台词和 TTS 配音可以使用不同语言，例如中文台词配日文语音。
 - **整合包生命适配**：残血救护可选按最大生命百分比触发。
 - **解锁说明**：羁绊页会明确要求背包中的 P 点物品，并在点击不可用按钮时反馈原因。
 
@@ -36,13 +37,11 @@
 
 ### 亲吻互动
 
-潜行、空手右击自己的女仆即可亲吻。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。
-
-如果该操作与女仆坐下/站起冲突，可设置 `cooldown.rightClickKissEnabled=false`，改用可配置的准星亲吻或公主抱亲吻按键。
+在控制设置中绑定准星亲吻按键，对准自己的女仆即可亲吻；公主抱状态也有专用亲吻入口。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。潜行空手右击入口已移除，以完整保留 TLM 的坐下/站起交互。
 
 声音音量可在 `config/touhou_maid_affection-common.toml` 中调整：`cooldown.kissSoundVolume` 控制亲吻音效，`morningKissBehavior.voiceVolume` 控制早安吻语音，`emergencyRescueBehavior.volume` 控制残血救护语音与兜底音效，`voicePreview.volume` 控制羁绊页语音试听。
 
-安装 CarryOn 时，右键触发条件会自动调整以避免冲突。公主抱女仆时，也可以使用专门的公主抱亲吻按键。
+安装 CarryOn 并公主抱女仆时，可以使用专门的公主抱亲吻按键。
 
 ### 准星亲吻按键
 
@@ -80,7 +79,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI Hub
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。运行时开关、提示词与 `aiDialogueLanguage` 语言配置位于 `config/touhou_maid_affection-common.toml`，数据包仍只负责静态文本和预录 OGG 文件。切换语言或提示词后，管理员可执行 `/tma morning_kiss clear_ai_cache` 清空当前服务器会话内的已生成缓存，让后续扫描重新生成。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。`aiDialogueLanguage` 控制显示文本，`aiDialogueVoiceLanguage` 控制配音文本；两者不同时，TMA 会批量翻译并严格按行配对后再请求 TTS。例如 `zh_cn` + `ja_jp` 会显示中文、播放日文语音。配置位于 `config/touhou_maid_affection-common.toml`。切换语言或提示词后，管理员应执行 `/tma morning_kiss clear_ai_cache`，让后续扫描重新生成。
 
 TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前供应商实现仍兼容 MiMo，但游戏内入口改为围绕 TMA 自身 AI 行为命名，方便后续聊天、TTS 与 STT 相关能力共用同一个入口。用户 API key 和启用状态仍由 Touhou Little Maid 自己保存。
 
@@ -88,7 +87,7 @@ TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前�
 
 - Touhou Little Maid：必需依赖。
 - Yes Steve Model：可选动作播放与动作列表扫描。
-- CarryOn：可选右键冲突规避。
+- CarryOn：可选公主抱亲吻集成。
 - TLM GUI 与音包：存在时增强，不存在时静默回退。
 
 ## 安装

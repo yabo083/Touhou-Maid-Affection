@@ -52,7 +52,8 @@ final class MorningKissDialogueService {
         if (generated != GeneratedDialogueResult.MISSING) {
             return true;
         }
-        if (tryShowAiDialogue(player, maid, dialoguePool)) {
+        boolean bilingualVoicePending = requiresBilingualGeneratedVoice(maid);
+        if (!bilingualVoicePending && tryShowAiDialogue(player, maid, dialoguePool)) {
             return true;
         }
         MorningKissProfileParser.MorningKissProfile profile = MorningKissProfileData.getActiveProfile();
@@ -66,14 +67,14 @@ final class MorningKissDialogueService {
                 int index = player.getRandom().nextInt(configuredPool.size() + vanillaCount);
                 if (index >= configuredPool.size()) {
                     showBuiltinDialogue(player, maid, dialoguePool, index - configuredPool.size());
-                    return false;
+                    return bilingualVoicePending;
                 }
             }
             showConfiguredDialogue(player, maid, dialoguePool, configuredPool);
-            return false;
+            return bilingualVoicePending;
         }
         showBuiltinDialogue(player, maid, dialoguePool, -1);
-        return false;
+        return bilingualVoicePending;
     }
 
     static void showMessage(ServerPlayer player, Component message) {
@@ -167,6 +168,17 @@ final class MorningKissDialogueService {
             );
             return false;
         }
+    }
+
+    private static boolean requiresBilingualGeneratedVoice(EntityMaid maid) {
+        if (!ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_ENABLED.get()
+                || !ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED.get()) {
+            return false;
+        }
+        return MorningKissGeneratedDialogueLanguage.requiresTranslation(
+                MorningKissGeneratedDialogueService.resolveChatLanguage(maid),
+                MorningKissGeneratedDialogueService.resolveVoiceTextLanguage(maid)
+        );
     }
 
     private static String renderTemplate(String raw, ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {

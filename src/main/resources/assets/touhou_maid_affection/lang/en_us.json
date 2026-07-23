@@ -145,7 +145,7 @@
   "command.touhou_maid_affection.morning_kiss.status.tts.off": "Generated TTS cache: OFF",
   "command.touhou_maid_affection.morning_kiss.status.fallback.on": "Live AI fallback: ON",
   "command.touhou_maid_affection.morning_kiss.status.fallback.off": "Live AI fallback: OFF",
-  "command.touhou_maid_affection.morning_kiss.status.language": "Configured AI/TTS language: %s",
+  "command.touhou_maid_affection.morning_kiss.status.language": "Configured languages: display text=%s, spoken text=%s",
   "command.touhou_maid_affection.morning_kiss.status.cache_policy": "Cache target: %s per maid/time pool; scan interval: %s ticks; use policy: %s",
   "command.touhou_maid_affection.morning_kiss.ai.set_on": "Morning Kiss AI text generation is now ON. Pregeneration is also enabled.",
   "command.touhou_maid_affection.morning_kiss.ai.set_off": "Morning Kiss AI text generation is now OFF. Generated cache was cleared.",

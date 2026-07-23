@@ -75,11 +75,11 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却与右键入口开关、好感收益、亲吻音效音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却、好感收益、亲吻音效音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、显示/配音语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
 
 ### 4.2 亲吻主链
 
-`KissMaidHandler` 是亲吻服务端主入口，负责冷却、好感、亲吻音效播放、粒子 payload、少女祈祷触发与早安吻复用逻辑。普通右键、公主抱亲吻按键、准星目标亲吻按键最终都应收敛到这里，避免规则分叉。亲吻音效响度由全局配置控制，早安吻数据包仍只负责选择 sound event。
+`KissMaidHandler` 是亲吻服务端主入口，负责冷却、好感、亲吻音效播放、粒子 payload、少女祈祷触发与早安吻复用逻辑。公主抱亲吻按键和准星目标亲吻按键最终都收敛到这里，避免规则分叉；潜行空手右击入口不再拦截 TLM 女仆交互。亲吻音效响度由全局配置控制，早安吻数据包仍只负责选择 sound event。
 
 客户端的 `KissKeyAction` 在公主抱亲吻和准星亲吻共用按键时做入口选择；服务端的 `KissTargetedMaidRequestHandler` 必须重新校验实体、距离、视线与归属，不能信任客户端命中结果。
 
@@ -98,15 +98,15 @@ src/main/resources
 - `MorningKissService`：早安吻时间窗调度、寻路和亲吻任务推进。
 - `MorningKissDialogueService`：生成缓存、即时 AI、数据包台词与内置台词之间的回退链，以及聊天气泡/聊天栏/动作栏显示策略。
 - `MorningKissVoiceService`：每名女仆的语音池解析、顺序/随机选择、数据包/TLM 回退和客户端播放 payload 分发。
-- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；维护 MAID_REVISIONS 实现女仆级缓存失效，支持 IN_FLIGHT 细粒度请求跟踪（LLM 阶段与 TTS 回调节点），在服务器启动时从磁盘恢复缓存、关闭时持久化。预生成 prompt 和 TTS 请求语言通过 resolvePregeneratedTextLanguage() / resolveTtsLanguage() 统一服从 aiDialogueLanguage 配置与 TLM 女仆语言偏好。
-- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 语言配置的纯逻辑归一化与 prompt 语言覆盖规则。支持 tlm/auto/default 跟随女仆设置，或显式语言代码覆盖。提供 resolveGeneratedTextLanguage() / resolveGeneratedVoiceTextLanguage() 按场景推导生成语言。
-- `MorningKissGeneratedDialogueCache`：保存女仆粒度的运行时生成台词和 TTS 语音缓存。支持消耗/非消耗两种取出模式（CACHE_CONSUME_ON_USE），提供女仆级、池级、条目级的清理与语音剥离操作。缓存容量受 maxLinesPerPool 和 aiDialogueCacheTargetPerPool 双重约束。实现 snapshot() / replaceAll() 接口以支持磁盘持久化。统计报告通过 stats() 按女仆和语言分组输出。
-- `MorningKissGeneratedDialogueStorage`：将运行时 AI 生成缓存持久化到 `world/generated_morning_kiss/{maid_uuid}/{pool}/` 目录下，每条条目写为 `001.json`（元数据）+ `001.ogg`（语音），格式兼容手动编辑。路径遍历防护通过 `normalize()` + `startsWith()` 检查实现。服务器启动时自动加载、服务器关闭时自动保存。
+- `MorningKissGeneratedDialogueService`：基于 TLM LLM/TTS 站点异步预生成台词和 TTS 音频；维护 MAID_REVISIONS 实现女仆级缓存失效，支持 LLM、跨语言翻译与 TTS 三阶段 IN_FLIGHT 跟踪，在服务器启动时从磁盘恢复缓存、关闭时持久化。显示语言与配音语言不同时，先生成显示文本，再用单次批量翻译保持逐行映射，最后以 `tts_text` 请求 TTS；翻译失败则安全降级为纯显示文本。
+- `MorningKissGeneratedDialogueLanguage`：早安吻 AI 显示/配音语言的纯逻辑归一化、继承规则、翻译 prompt 与严格 JSON 数组解析。支持 `inherit`、`tlm/auto/default` 和显式语言代码。
+- `MorningKissGeneratedDialogueCache`：保存女仆粒度的运行时生成台词、独立 `tts_text` 和 TTS 语音缓存。支持消耗/非消耗两种取出模式（CACHE_CONSUME_ON_USE），提供女仆级、池级、条目级的清理与语音剥离操作。缓存容量受 maxLinesPerPool 和 aiDialogueCacheTargetPerPool 双重约束。实现 snapshot() / replaceAll() 接口以支持磁盘持久化。统计报告通过 stats() 按女仆和语言分组输出。
+- `MorningKissGeneratedDialogueStorage`：将运行时 AI 生成缓存持久化到 `world/generated_morning_kiss/{maid_uuid}/{pool}/` 目录下，每条条目写为 `001.json`（元数据）+ 同编号 `.ogg`/`.mp3`（语音），格式兼容手动编辑。路径遍历防护通过 `normalize()` + `startsWith()` 检查实现。服务器启动时自动加载、服务器关闭时自动保存。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
 - `RandomGiftService`：随机礼物积累与投递。默认礼物来源是显式物品标签池；广泛注册表抽样是可选兼容模式，仅默认过滤破坏沉浸感的技术/管理物品。显式礼物池可覆盖默认过滤，黑名单仍具有最终否决权。
 
-早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；全局配置负责亲吻 sound event 响度与早安吻语音响度；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
+早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；全局配置负责亲吻 sound event 响度与早安吻语音响度；AI/TTS 运行时行为负责配置、生成、持久化缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 会同时清理内存与世界目录中的生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
 
 ### 4.5 残血救护
 
@@ -155,7 +155,7 @@ src/main/resources
 | `ModConfig` | 全局规则、AI 默认值、运行时开关。 |
 | `BondData` | 玩家-女仆长期关系档案。 |
 | NeoForge Attachment | 玩家当前能力槽、每日次数等独立运行态。 |
-| 内存任务表/缓存 | 当前服务器会话内的冷却、任务、AI 预生成结果；早安吻 AI 缓存允许通过管理命令清理。 |
+| 内存任务表/生成缓存 | 当前服务器会话内的冷却与任务；早安吻 AI 结果另有世界目录持久化副本，并允许通过管理命令同步清理。 |
 
 数据包不是运行时状态存储。`data/touhou_maid_affection/morning_kiss/profile.json` 和 `data/touhou_maid_affection/emergency_rescue/profile.json` 只描述可重载的静态资源入口。
 

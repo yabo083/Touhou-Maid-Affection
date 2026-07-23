@@ -267,7 +267,8 @@ public final class RescueCommand {
         ), false);
         source.sendSuccess(() -> Component.translatable(
                 "command.touhou_maid_affection.morning_kiss.status.language",
-                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get()
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE.get()
         ), false);
         source.sendSuccess(() -> Component.translatable(
                 "command.touhou_maid_affection.morning_kiss.status.cache_policy",

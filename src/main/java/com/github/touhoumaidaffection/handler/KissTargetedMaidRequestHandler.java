@@ -15,7 +15,7 @@ public class KissTargetedMaidRequestHandler {
                 return;
             }
             Entity entity = player.level().getEntity(payload.maidEntityId());
-            if (!(entity instanceof EntityMaid maid) || !maid.isAlive()) {
+            if (!(entity instanceof EntityMaid maid) || !maid.isAlive() || !maid.isOwnedBy(player)) {
                 return;
             }
             if (player.distanceToSqr(maid) > MAX_KEY_KISS_DISTANCE_SQR || !player.hasLineOfSight(maid)) {

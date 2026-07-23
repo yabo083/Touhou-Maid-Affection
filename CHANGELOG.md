@@ -13,7 +13,7 @@
 ### Added
 - 新增 `cooldown.kissSoundVolume` 配置项，可在 `0.0` 到 `4.0` 之间调整普通亲吻与早安吻复用亲吻音效的音量；`0.0` 可静音，`1.0` 保持旧版默认响度。
 - 新增 `morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume` 与 `voicePreview.volume` 配置项，分别控制早安吻语音、残血救护语音/兜底音效和羁绊页语音试听音量。
-- 新增 `cooldown.rightClickKissEnabled`，可关闭潜行空手右击亲吻，仅保留公主抱/准星亲吻按键，避免与女仆坐下、站起交互冲突。
+- 新增 `morningKissBehavior.aiDialogueVoiceLanguage`，可将 AI 早安吻的显示文本与配音文本设为不同语言；例如 `aiDialogueLanguage=zh_cn`、`aiDialogueVoiceLanguage=ja_jp` 会显示中文台词，并先翻译为日文后请求 TTS。
 - 新增 `randomGiftBehavior.curatedPoolOnly`，默认只从 `touhou_maid_affection:bond_random_gift_pool` 物品标签抽取礼物；可通过 `bond_random_gift_blacklist` 继续追加黑名单。
 - 新增可选的残血救护最大生命百分比阈值配置；启用后按最大生命的 20% 触发，在原版 20 点生命下仍等于旧版 4 点阈值。为兼容旧服自定义配置，该模式默认关闭。
 
@@ -32,6 +32,9 @@
 - 限制客户端可控语音配置和动作标识的持久化长度，并为数据包语音试听增加每玩家 100 tick 冷却和请求字段上限，避免玩家 NBT 超限和小请求放大为连续大响应。
 - 旧版广泛随机礼物模式仅默认排除屏障、命令方块、结构方块、调试棒等破坏沉浸感的技术/管理物品；基岩与刷怪蛋仍可正常出现。显式礼物池标签可覆盖默认排除规则。
 - MiMo Chat 与 TTS 响应改为有界流式接收：聊天响应上限 1 MiB、TTS JSON 响应上限 4 MiB、解码后音频上限 2 MiB；远端错误正文只保留 512 字符摘要，避免异常响应造成内存和日志放大。
+
+### Removed
+- 移除潜行空手右击女仆的亲吻入口及其 `cooldown.rightClickKissEnabled` 配置，避免永久占用 TLM 坐下/站起交互；亲吻改用准星目标或公主抱专用按键。
 
 ## [1.7.2.2] - 2026-05-04
 

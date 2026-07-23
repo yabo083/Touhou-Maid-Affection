@@ -1,15 +1,11 @@
 package com.github.touhoumaidaffection.handler;
 
-import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.service.MorningKissProfileData;
-import com.github.touhoumaidaffection.client.KissClientSettings;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
-import com.github.touhoumaidaffection.network.KissRightClickConfigPayload;
 import com.github.touhoumaidaffection.util.SoundVolumeSettings;
-import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.server.MinecraftServer;
@@ -20,7 +16,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -31,15 +26,6 @@ public class KissMaidHandler {
 
     private static final Map<MinecraftServer, SessionState> SESSION_STATES = new IdentityHashMap<>();
 
-    private static Boolean carryOnLoaded = null;
-
-    private static boolean isCarryOnLoaded() {
-        if (carryOnLoaded == null) {
-            carryOnLoaded = ModList.get().isLoaded("carryon");
-        }
-        return carryOnLoaded;
-    }
-
     private static long getCooldownForLevel(int level) {
         return switch (level) {
             case 1 -> ModConfig.COOLDOWN_LEVEL_1.get();
@@ -47,43 +33,6 @@ public class KissMaidHandler {
             case 3 -> ModConfig.COOLDOWN_LEVEL_3.get();
             default -> ModConfig.COOLDOWN_LEVEL_0.get();
         };
-    }
-
-    @SubscribeEvent
-    public static void onInteractMaid(InteractMaidEvent event) {
-        Player player = event.getPlayer();
-        EntityMaid maid = event.getMaid();
-
-        boolean rightClickEnabled = player.level().isClientSide
-                ? KissClientSettings.isRightClickEnabled()
-                : ModConfig.KISS_RIGHT_CLICK_ENABLED.get();
-        if (!KissInteractionPolicy.shouldHandle(
-                rightClickEnabled,
-                player.isShiftKeyDown(),
-                event.getStack().isEmpty(),
-                isCarryOnLoaded(),
-                player.getOffhandItem().isEmpty())) {
-            return;
-        }
-
-        // Only on server side
-        if (player.level().isClientSide) {
-            event.setCanceled(true);
-            return;
-        }
-
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-
-        int favorabilityLevel = maid.getFavorabilityManager().getLevel();
-        BondManager.setBondLevel(serverPlayer, maid.getUUID(), favorabilityLevel);
-        BondManager.syncMaidProfile(serverPlayer, maid);
-
-        if (executeKiss(player, maid)) {
-            // Cancel to prevent opening the maid GUI when kiss succeeds
-            event.setCanceled(true);
-        }
     }
 
     public static void tryKissCarriedMaid(Player player) {
@@ -121,15 +70,6 @@ public class KissMaidHandler {
                 ModEffects.MAIDS_PRAYER.getDelegate(), safeDuration, amplifier, false, true, true));
         maid.addEffect(new MobEffectInstance(
                 ModEffects.MAIDS_PRAYER.getDelegate(), safeDuration, amplifier, false, true, true));
-    }
-
-    @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            if (player.connection.hasChannel(KissRightClickConfigPayload.TYPE)) {
-                PacketDistributor.sendToPlayer(player, new KissRightClickConfigPayload(ModConfig.KISS_RIGHT_CLICK_ENABLED.get()));
-            }
-        }
     }
 
     @SubscribeEvent
