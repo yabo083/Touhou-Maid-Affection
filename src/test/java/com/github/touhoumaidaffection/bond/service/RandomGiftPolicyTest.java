@@ -13,9 +13,10 @@ class RandomGiftPolicyTest {
     }
 
     @Test
-    void legacyAutomaticPoolStillRejectsDangerousItems() {
-        assertTrue(RandomGiftPolicy.isExcludedDefaultGift("minecraft:bedrock", false));
-        assertTrue(RandomGiftPolicy.isExcludedDefaultGift("minecraft:creeper_spawn_egg", true));
-        assertFalse(RandomGiftPolicy.isExcludedDefaultGift("minecraft:apple", false));
+    void legacyAutomaticPoolRejectsOnlyImmersionBreakingTechnicalItems() {
+        assertTrue(RandomGiftPolicy.isExcludedDefaultGift("minecraft:command_block"));
+        assertFalse(RandomGiftPolicy.isExcludedDefaultGift("minecraft:bedrock"));
+        assertFalse(RandomGiftPolicy.isExcludedDefaultGift("minecraft:creeper_spawn_egg"));
+        assertFalse(RandomGiftPolicy.isExcludedDefaultGift("minecraft:apple"));
     }
 }

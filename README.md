@@ -25,7 +25,7 @@
 
 `1.7.3.0` incorporates high-value player feedback and hardens interaction defaults:
 
-- **Safer gifts**: Random Gift now uses the curated item-tag pool by default and excludes bedrock and spawn eggs in legacy broad-pool mode.
+- **Controllable gifts**: Random Gift now uses the curated item-tag pool by default. Legacy broad-pool mode excludes only immersion-breaking technical/admin items, and explicit tag entries can override that default policy.
 - **Interaction control**: `rightClickKissEnabled` can disable sneak-right-click kissing without disabling targeted or carried-maid kiss keys.
 - **Modded health support**: Emergency Rescue can optionally trigger from a percentage of maximum health.
 - **Clearer unlocking**: The bond UI explains that P Point items must be present in the player inventory and shows blocked-click feedback.

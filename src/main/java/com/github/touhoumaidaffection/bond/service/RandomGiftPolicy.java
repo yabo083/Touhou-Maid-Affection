@@ -6,7 +6,6 @@ final class RandomGiftPolicy {
     private static final Set<String> EXCLUDED_DEFAULT_GIFTS = Set.of(
             "minecraft:air",
             "minecraft:barrier",
-            "minecraft:bedrock",
             "minecraft:command_block",
             "minecraft:chain_command_block",
             "minecraft:repeating_command_block",
@@ -26,7 +25,7 @@ final class RandomGiftPolicy {
         return !curatedPoolOnly;
     }
 
-    static boolean isExcludedDefaultGift(String itemId, boolean spawnEgg) {
-        return spawnEgg || itemId == null || EXCLUDED_DEFAULT_GIFTS.contains(itemId);
+    static boolean isExcludedDefaultGift(String itemId) {
+        return itemId == null || EXCLUDED_DEFAULT_GIFTS.contains(itemId);
     }
 }

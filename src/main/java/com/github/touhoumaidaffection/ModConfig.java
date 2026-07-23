@@ -234,7 +234,7 @@ public class ModConfig {
 
         BOND_RANDOM_GIFT_CURATED_POOL_ONLY = builder
                 .comment("Use only items explicitly listed in the touhou_maid_affection:bond_random_gift_pool item tag",
-                        "Recommended: prevents arbitrary registry items such as spawn eggs or bedrock from becoming gifts",
+                        "Recommended: prevents arbitrary registry items from becoming gifts",
                         "Set false to restore the legacy broad vanilla/mod registry sampling behavior")
                 .define("curatedPoolOnly", true);
 
