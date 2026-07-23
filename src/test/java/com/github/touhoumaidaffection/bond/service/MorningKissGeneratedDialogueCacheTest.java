@@ -254,11 +254,47 @@ class MorningKissGeneratedDialogueCacheTest {
     }
 
     @Test
-    void followsTlmTtsLanguageForPregeneratedVoiceTextWhenTmaLanguageIsDefault() {
-        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage("tlm", "en_us", "zh_cn"));
-        assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage("auto", "ja_jp", "zh_cn"));
-        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage("default", "", "zh_cn"));
-        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage("en_us", "zh_cn", "zh_cn"));
+    void resolvesVoiceLanguageIndependentlyFromDisplayTextLanguage() {
+        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "tlm", "en_us", "zh_cn"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "zh_cn", "ja_jp", "zh_cn"));
+        assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "tlm", "zh_cn", "ja_jp", "zh_cn"));
+        assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "ja_jp", "zh_cn", "zh_cn", "zh_cn"));
+    }
+
+    @Test
+    void parsesBatchedVoiceTranslationsWithoutLosingLinePairing() {
+        assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("zh_cn", "ja_jp"));
+        assertFalse(MorningKissGeneratedDialogueLanguage.requiresTranslation("ja_jp", "ja"));
+
+        String prompt = MorningKissGeneratedDialogueLanguage.buildVoiceTranslationPrompt(
+                List.of("早安，主人。", "今天也请多关照。"),
+                "ja_jp"
+        );
+        assertTrue(prompt.contains("Japanese"));
+        assertTrue(prompt.contains("早安，主人。"));
+
+        assertEquals(
+                List.of("おはようございます、ご主人様。", "今日もよろしくお願いします。"),
+                MorningKissGeneratedDialogueLanguage.parseVoiceTranslations(
+                        "[\"おはようございます、ご主人様。\",\"今日もよろしくお願いします。\"]",
+                        2
+                )
+        );
+        assertEquals(
+                List.of("おはようございます、ご主人様。"),
+                MorningKissGeneratedDialogueLanguage.parseVoiceTranslations(
+                        "```json\n[\"おはようございます、ご主人様。\"]\n```",
+                        1
+                )
+        );
+        assertTrue(MorningKissGeneratedDialogueLanguage.parseVoiceTranslations("[\"一行だけ\"]", 2).isEmpty());
+        assertTrue(MorningKissGeneratedDialogueLanguage.parseVoiceTranslations(
+                "```json\n[\"おはようございます\"]\n```\nextra prose", 1
+        ).isEmpty());
     }
 
     @Test
@@ -267,8 +303,8 @@ class MorningKissGeneratedDialogueCacheTest {
         UUID maidUuid = UUID.randomUUID();
         byte[] voice = "OggSdata".getBytes(StandardCharsets.US_ASCII);
         cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
-                new MorningKissGeneratedDialogueCache.Entry("早呀", "早呀", "generated/test.ogg", voice,
-                        "zh_cn", "zh", "灵梦"));
+                new MorningKissGeneratedDialogueCache.Entry("早呀", "おはよう", "generated/test.ogg", voice,
+                        "zh_cn", "ja", "灵梦"));
 
         Path root = Files.createTempDirectory("tma-generated-cache");
         MorningKissGeneratedDialogueStorage.save(root, cache.snapshot());
@@ -290,7 +326,9 @@ class MorningKissGeneratedDialogueCacheTest {
         MorningKissGeneratedDialogueCache.Entry entry =
                 reloaded.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING).orElseThrow();
         assertEquals("早呀", entry.text());
+        assertEquals("おはよう", entry.ttsText());
         assertEquals("zh_cn", entry.textLanguage());
+        assertEquals("ja", entry.voiceLanguage());
         assertTrue(entry.hasVoice());
         assertEquals(voice.length, entry.voiceData().length);
     }

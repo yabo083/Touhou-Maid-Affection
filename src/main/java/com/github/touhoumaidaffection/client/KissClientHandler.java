@@ -2,17 +2,12 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
-import com.github.touhoumaidaffection.network.KissRightClickConfigPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class KissClientHandler {
-    public static void handleRightClickConfig(KissRightClickConfigPayload payload, IPayloadContext context) {
-        context.enqueueWork(() -> KissClientSettings.updateRightClickEnabled(payload.enabled()));
-    }
-
     public static void handle(KissMaidPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             ClientLevel level = Minecraft.getInstance().level;

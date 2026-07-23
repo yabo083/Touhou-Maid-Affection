@@ -1,8 +1,17 @@
 package com.github.touhoumaidaffection.bond.service;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 final class MorningKissGeneratedDialogueLanguage {
+    private static final Gson GSON = new Gson();
+
     private MorningKissGeneratedDialogueLanguage() {
     }
 
@@ -40,16 +49,80 @@ final class MorningKissGeneratedDialogueLanguage {
         return normalizeLanguageCodeForChat(tlmTtsLanguage);
     }
 
-    static String resolveGeneratedVoiceTextLanguage(String configuredLanguage, String tlmTtsLanguage, String tlmChatLanguage) {
-        String configured = normalizeLanguageCodeForChat(configuredLanguage);
-        if (!configured.isBlank()) {
-            return configured;
+    static String resolveGeneratedVoiceTextLanguage(
+            String configuredVoiceLanguage,
+            String configuredTextLanguage,
+            String tlmTtsLanguage,
+            String tlmChatLanguage
+    ) {
+        String rawVoice = configuredVoiceLanguage == null
+                ? ""
+                : configuredVoiceLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        boolean inheritTextLanguage = rawVoice.isBlank() || "inherit".equals(rawVoice);
+        if (inheritTextLanguage) {
+            String configuredText = normalizeLanguageCodeForChat(configuredTextLanguage);
+            if (!configuredText.isBlank()) {
+                return configuredText;
+            }
+        } else {
+            String configuredVoice = normalizeLanguageCodeForChat(rawVoice);
+            if (!configuredVoice.isBlank()) {
+                return configuredVoice;
+            }
         }
         String tts = normalizeLanguageCodeForChat(tlmTtsLanguage);
         if (!tts.isBlank()) {
             return tts;
         }
         return normalizeLanguageCodeForChat(tlmChatLanguage);
+    }
+
+    static boolean requiresTranslation(String textLanguage, String voiceLanguage) {
+        String text = normalizeLanguageCodeForTts(textLanguage);
+        String voice = normalizeLanguageCodeForTts(voiceLanguage);
+        return !text.isBlank() && !voice.isBlank() && !text.equals(voice);
+    }
+
+    static String buildVoiceTranslationPrompt(List<String> displayLines, String targetLanguage) {
+        List<String> safeLines = displayLines == null
+                ? List.of()
+                : displayLines.stream().filter(line -> line != null && !line.isBlank()).map(String::trim).toList();
+        String language = normalizeLanguageCodeForChat(targetLanguage);
+        return "Translate each Minecraft maid dialogue line into natural " + languageName(language) + ". "
+                + "Preserve meaning, tone, names, and line order. Return only a JSON array containing exactly "
+                + safeLines.size() + " translated strings. Do not add explanations, numbering, markdown, or extra lines.\n"
+                + GSON.toJson(safeLines);
+    }
+
+    static List<String> parseVoiceTranslations(String raw, int expectedCount) {
+        if (raw == null || raw.isBlank() || expectedCount < 1) {
+            return List.of();
+        }
+        String value = stripCodeFence(raw.trim());
+        try {
+            JsonElement root = JsonParser.parseString(value);
+            if (!root.isJsonArray()) {
+                return List.of();
+            }
+            JsonArray array = root.getAsJsonArray();
+            if (array.size() != expectedCount) {
+                return List.of();
+            }
+            List<String> translations = new ArrayList<>(expectedCount);
+            for (JsonElement element : array) {
+                if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                    return List.of();
+                }
+                String line = MorningKissGeneratedDialogueCache.normalizeLine(element.getAsString());
+                if (line.isBlank()) {
+                    return List.of();
+                }
+                translations.add(line);
+            }
+            return List.copyOf(translations);
+        } catch (RuntimeException ignored) {
+            return List.of();
+        }
     }
 
     static String systemInstruction(String rawLanguage) {
@@ -73,7 +146,12 @@ final class MorningKissGeneratedDialogueLanguage {
     }
 
     private static String generationInstruction(String language) {
-        String languageName = switch (normalizeLanguageCodeForTts(language)) {
+        return "Language override: output exactly 3 candidate lines in " + languageName(language)
+                + ". This language override has higher priority than the template, including any request for Chinese or another language. Keep each line under 18 words. Put one line per candidate; do not number, explain, repeat, translate the instruction text, or wrap lines in quotes.";
+    }
+
+    private static String languageName(String language) {
+        return switch (normalizeLanguageCodeForTts(language)) {
             case "en" -> "English";
             case "ja" -> "Japanese";
             case "ko" -> "Korean";
@@ -84,7 +162,20 @@ final class MorningKissGeneratedDialogueLanguage {
             case "ru" -> "Russian";
             default -> "the language represented by locale code '" + language + "'";
         };
-        return "Language override: output exactly 3 candidate lines in " + languageName
-                + ". This language override has higher priority than the template, including any request for Chinese or another language. Keep each line under 18 words. Put one line per candidate; do not number, explain, repeat, translate the instruction text, or wrap lines in quotes.";
+    }
+
+    private static String stripCodeFence(String raw) {
+        if (!raw.startsWith("```")) {
+            return raw;
+        }
+        int firstLineEnd = raw.indexOf('\n');
+        int closingFence = raw.lastIndexOf("```");
+        if (firstLineEnd < 0 || closingFence <= firstLineEnd) {
+            return raw;
+        }
+        if (!raw.substring(closingFence + 3).isBlank()) {
+            return raw;
+        }
+        return raw.substring(firstLineEnd + 1, closingFence).trim();
     }
 }

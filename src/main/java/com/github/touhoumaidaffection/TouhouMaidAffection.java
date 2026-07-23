@@ -21,7 +21,6 @@ import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.ForgePayloadContext;
 import com.github.touhoumaidaffection.network.KissCarryRequestPayload;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
-import com.github.touhoumaidaffection.network.KissRightClickConfigPayload;
 import com.github.touhoumaidaffection.network.KissTargetedMaidRequestPayload;
 import com.github.touhoumaidaffection.network.LapPillowAngleLockPayload;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
@@ -88,7 +87,6 @@ public class TouhouMaidAffection {
     private void registerPayloads() {
         int id = 0;
         id = registerMessage(id, KissMaidPayload.class, KissMaidPayload.STREAM_CODEC, KissClientHandler::handle);
-        id = registerMessage(id, KissRightClickConfigPayload.class, KissRightClickConfigPayload.STREAM_CODEC, KissClientHandler::handleRightClickConfig);
         id = registerMessage(id, KissCarryRequestPayload.class, KissCarryRequestPayload.STREAM_CODEC, KissCarryRequestHandler::handle);
         id = registerMessage(id, KissTargetedMaidRequestPayload.class, KissTargetedMaidRequestPayload.STREAM_CODEC, KissTargetedMaidRequestHandler::handle);
         id = registerMessage(id, BondActivateAbilityPayload.class, BondActivateAbilityPayload.STREAM_CODEC, BondAbilityActivateHandler::handle);

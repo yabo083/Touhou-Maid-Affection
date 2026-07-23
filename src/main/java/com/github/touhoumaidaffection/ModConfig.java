@@ -14,7 +14,6 @@ public class ModConfig {
     public static final ForgeConfigSpec.IntValue COOLDOWN_LEVEL_2;
     public static final ForgeConfigSpec.IntValue COOLDOWN_LEVEL_3;
     public static final ForgeConfigSpec.DoubleValue KISS_SOUND_VOLUME;
-    public static final ForgeConfigSpec.BooleanValue KISS_RIGHT_CLICK_ENABLED;
 
     // Favorability
     public static final ForgeConfigSpec.IntValue FAVORABILITY_POINTS;
@@ -53,6 +52,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_DIALOGUE_CHAT_BUBBLE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE;
+    public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE;
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_PROMPT;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED;
@@ -175,11 +175,6 @@ public class ModConfig {
                 .comment("Volume multiplier for the built-in kiss sound and configured kiss sound events",
                         "0.0 mutes kiss sounds, 1.0 is the previous default, values above 1.0 boost volume")
                 .defineInRange("kissSoundVolume", 1.0, 0.0, 4.0);
-
-        KISS_RIGHT_CLICK_ENABLED = builder
-                .comment("Enable sneak + empty-hand right-click kissing",
-                        "Disable this to preserve Touhou Little Maid's normal sit/stand interaction and use the dedicated kiss keys instead")
-                .define("rightClickKissEnabled", true);
 
         builder.pop();
 
@@ -348,9 +343,16 @@ public class ModConfig {
                 .define("aiDialogueEnabled", false);
 
         BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE = builder
-                .comment("Language used for Morning Kiss AI dialogue pregeneration, live fallback, and generated TTS requests",
-                        "Use tlm/auto/default to follow Touhou Little Maid's per-maid chat/TTS language; set zh_cn, en_us, ja_jp, etc. to override")
+                .comment("Display-text language used for Morning Kiss AI dialogue pregeneration and live fallback",
+                        "Use tlm/auto/default to follow Touhou Little Maid's per-maid chat language; set zh_cn, en_us, ja_jp, etc. to override")
                 .define("aiDialogueLanguage", "tlm");
+
+        BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE = builder
+                .comment("Spoken-text language used for generated Morning Kiss TTS voices",
+                        "inherit keeps an explicit aiDialogueLanguage override, otherwise follows the maid's TLM TTS language",
+                        "Use tlm to always follow the maid's TLM TTS language, or set ja_jp, zh_cn, en_us, etc. independently",
+                        "When display and voice languages differ, TMA translates each generated line before requesting TTS")
+                .define("aiDialogueVoiceLanguage", "inherit");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
                 .comment("Prompt template for Morning Kiss AI-generated dialogue",
@@ -367,8 +369,8 @@ public class ModConfig {
                 .define("aiDialogueImmediateFallbackEnabled", false);
 
         BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED = builder
-                .comment("Generate remote TTS OGG voice for pregenerated Morning Kiss dialogue when the maid has TTS configured",
-                        "System/local TTS and non-OGG responses are ignored and fall back to text-only cached dialogue")
+                .comment("Generate remote TTS voice for pregenerated Morning Kiss dialogue when the maid has TTS configured",
+                        "System/local TTS and responses that are not playable OGG/MP3 are ignored and fall back to text-only cached dialogue")
                 .define("aiDialogueTtsEnabled", true);
 
         BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS = builder
