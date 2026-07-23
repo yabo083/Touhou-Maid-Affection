@@ -75,11 +75,11 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却、好感收益、亲吻音效音量、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
 
 ### 4.2 亲吻主链
 
-`KissMaidHandler` 是亲吻服务端主入口，负责冷却、好感、粒子/音效 payload、少女祈祷触发与早安吻复用逻辑。普通右键、公主抱亲吻按键、准星目标亲吻按键最终都应收敛到这里，避免规则分叉。
+`KissMaidHandler` 是亲吻服务端主入口，负责冷却、好感、亲吻音效播放、粒子 payload、少女祈祷触发与早安吻复用逻辑。普通右键、公主抱亲吻按键、准星目标亲吻按键最终都应收敛到这里，避免规则分叉。亲吻音效响度由全局配置控制，早安吻数据包仍只负责选择 sound event。
 
 客户端的 `KissKeyAction` 在公主抱亲吻和准星亲吻共用按键时做入口选择；服务端的 `KissTargetedMaidRequestHandler` 必须重新校验实体、距离、视线与归属，不能信任客户端命中结果。
 
@@ -104,13 +104,13 @@ src/main/resources
 - `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
 - `RandomGiftService`：随机礼物积累与投递。
 
-早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
+早安吻的架构边界非常明确：数据包负责静态台词、亲吻 sound event、预录 OGG 语音；全局配置负责亲吻 sound event 响度与早安吻语音响度；AI/TTS 运行时行为负责配置、生成、缓存、清理和失败回退。`/tma morning_kiss clear_ai_cache` 只清理当前服务器会话内的运行时生成缓存，供语言或提示词变更后重新预热，不改变数据包或 BondData。新增的 `aiDialogueCacheConsumeOnUse` 配置允许管理员选择消耗或复用缓存条目以平衡 LLM/TTS Token 成本与体验。
 
 ### 4.5 残血救护
 
 `bond/rescue` 管理紧急救援触发、每日救援次数、救援者身份 canonical id 与 provider/legacy 兼容。救援语音不再走旧的服务器文件同步服务，而是在触发 payload 中携带命中的数据包 OGG 字节，或回退到 TLM 音包与兜底 sound event。
 
-`EmergencyRescueSoundPlayer` 只处理客户端播放策略，不决定救援是否成立。
+`EmergencyRescueSoundPlayer` 只处理客户端播放策略，不决定救援是否成立。数据包语音、TLM 音包语音和兜底 sound event 的响度统一服从残血救护全局音量配置。
 
 ### 4.6 膝枕
 
@@ -126,7 +126,7 @@ src/main/resources
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。早安吻与残血救护语音列表都支持试听：本地内置语音由客户端直接播放，数据包语音通过服务端校验后把目标字节发送回客户端播放。TLM 音包试听同样读取原始音频字节，但使用专用 preview stream：以 `minecraft:music.menu` 作为稳定声音事件锚点，走 `PLAYERS` 音量分类，并关闭位置衰减，避免右键试听依赖 TLM 音包自身的 sound event 注册状态或玩家的环境音量设置。TLM 音包实际播放仍由功能流程创建跟随女仆或触发点的流式 SoundInstance，避免把 Opus/Vorbis 兼容性压到 `SoundBuffer` 旧链路上。
+语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。早安吻与残血救护语音列表都支持试听：本地内置亲吻音效试听跟随亲吻音效音量，数据包/TLM 语音试听跟随语音试听音量。数据包语音通过服务端校验后把目标字节发送回客户端播放。TLM 音包试听同样读取原始音频字节，但使用专用 preview stream：以 `minecraft:music.menu` 作为稳定声音事件锚点，走 `PLAYERS` 音量分类，并关闭位置衰减，避免右键试听依赖 TLM 音包自身的 sound event 注册状态或玩家的环境音量设置。TLM 音包实际播放仍由功能流程创建跟随女仆或触发点的流式 SoundInstance，避免把 Opus/Vorbis 兼容性压到 `SoundBuffer` 旧链路上。
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 

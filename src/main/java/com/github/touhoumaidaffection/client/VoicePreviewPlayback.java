@@ -2,11 +2,13 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModSounds;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -22,7 +24,7 @@ public final class VoicePreviewPlayback {
         }
         if (VoicePoolIds.BUILTIN_MORNING_KISS.equals(voiceId)) {
             TouhouMaidAffection.LOGGER.info("Morning kiss preview playing built-in kiss sound");
-            minecraft.player.playSound(ModSounds.KISS.get(), 1.0F, 1.0F);
+            minecraft.player.playSound(ModSounds.KISS.get(), SoundVolumeSettings.resolveVolume(ModConfig.KISS_SOUND_VOLUME.get()), 1.0F);
             return true;
         }
         if (VoicePoolIds.isDataPack(voiceId)) {
@@ -52,7 +54,7 @@ public final class VoicePreviewPlayback {
         minecraft.getSoundManager().play(new VoicePreviewTlmSoundInstance(
                 voiceData.data(),
                 voiceData.fileName(),
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
         return true;
@@ -90,7 +92,7 @@ public final class VoicePreviewPlayback {
         minecraft.getSoundManager().play(new VoicePreviewTlmSoundInstance(
                 voiceData.data(),
                 voiceData.fileName(),
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
         return true;
@@ -122,9 +124,13 @@ public final class VoicePreviewPlayback {
                 x,
                 y,
                 z,
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
+    }
+
+    private static float previewVolume() {
+        return SoundVolumeSettings.resolveVolume(ModConfig.VOICE_PREVIEW_VOLUME.get());
     }
 
     private static OggReader.Type getOggType(byte[] data, String fileName) {

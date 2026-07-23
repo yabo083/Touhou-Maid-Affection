@@ -27,7 +27,7 @@ public class AbilityLapPillow implements IBondAbility {
 
     @Override
     public Component getUnlockedButtonLabel() {
-        return Component.translatable("bond.action.press_b");
+        return Component.translatable("bond.action.press_key", Component.translatable("key.keyboard.unknown"));
     }
 
     @Override

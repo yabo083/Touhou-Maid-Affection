@@ -10,6 +10,14 @@
 
 ## [Unreleased]
 
+### Added
+- 新增 `cooldown.kissSoundVolume` 配置项，可在 `0.0` 到 `4.0` 之间调整普通亲吻与早安吻复用亲吻音效的音量；`0.0` 可静音，`1.0` 保持旧版默认响度。
+- 新增 `morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume` 与 `voicePreview.volume` 配置项，分别控制早安吻语音、残血救护语音/兜底音效和羁绊页语音试听音量。
+
+### Changed
+- 休闲膝枕按键默认改为未绑定，仍可在 Minecraft 控制设置中自行绑定，避免默认占用常见的 `B` 键。
+- 羁绊页中的休闲膝枕触发提示与能力描述改为显示当前实际绑定按键，不再固定显示 `B`。
+
 ## [1.7.2.2] - 2026-05-04
 
 ### Added

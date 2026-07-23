@@ -167,7 +167,7 @@ public final class BondAbilityPrimaryPage {
                 result.add(Component.translatable("bond.random_gift.status.next", host.formatRemainingDuration(nextGiftReadySeconds)).withStyle(ChatFormatting.YELLOW));
             }
         } else {
-            result.add(ability.getDescription().copy().withStyle(ChatFormatting.GRAY));
+            result.add(getAbilityDescription(ability).copy().withStyle(ChatFormatting.GRAY));
         }
         if (host.isMorningKissAbility(ability)) {
             result.add(Component.translatable("bond.morning_kiss.tooltip.favorability", com.github.touhoumaidaffection.ModConfig.BOND_MORNING_KISS_REQUIRED_FAVORABILITY.get()).withStyle(ChatFormatting.GRAY));
@@ -246,7 +246,7 @@ public final class BondAbilityPrimaryPage {
                 );
             }
         } else {
-            secondaryText = ability.getDescription();
+            secondaryText = getAbilityDescription(ability);
         }
         Component detailLine = Component.literal(font.plainSubstrByWidth(secondaryText.getString(), Math.max(8, row.textRight() - row.textLeft())));
         graphics.drawString(
@@ -346,5 +346,12 @@ public final class BondAbilityPrimaryPage {
             return Component.translatable("bond.emergency_rescue.action.none");
         }
         return Component.literal(host.resolveSelectedRescueActionLabel(selectedActionId));
+    }
+
+    private Component getAbilityDescription(IBondAbility ability) {
+        if ("lap_pillow".equals(ability.getId())) {
+            return Component.translatable("bond.ability.lap.desc", com.github.touhoumaidaffection.client.BondKeyMappings.LAP_PILLOW.getTranslatedKeyMessage());
+        }
+        return ability.getDescription();
     }
 }

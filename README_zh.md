@@ -38,6 +38,8 @@
 
 潜行、空手右击自己的女仆即可亲吻。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。
 
+声音音量可在 `config/touhou_maid_affection-common.toml` 中调整：`cooldown.kissSoundVolume` 控制亲吻音效，`morningKissBehavior.voiceVolume` 控制早安吻语音，`emergencyRescueBehavior.volume` 控制残血救护语音与兜底音效，`voicePreview.volume` 控制羁绊页语音试听。
+
 安装 CarryOn 时，右键触发条件会自动调整以避免冲突。公主抱女仆时，也可以使用专门的公主抱亲吻按键。
 
 ### 准星亲吻按键

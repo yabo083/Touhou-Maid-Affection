@@ -383,6 +383,9 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             }
             return Component.translatable("bond.requirements_unmet");
         }
+        if ("lap_pillow".equals(ability.getId())) {
+            return Component.translatable("bond.action.press_key", BondKeyMappings.LAP_PILLOW.getTranslatedKeyMessage());
+        }
         return ability.getUnlockedButtonLabel();
     }
 
