@@ -78,9 +78,17 @@ final class MorningKissGeneratedDialogueLanguage {
     }
 
     static boolean requiresTranslation(String textLanguage, String voiceLanguage) {
-        String text = normalizeLanguageCodeForTts(textLanguage);
-        String voice = normalizeLanguageCodeForTts(voiceLanguage);
-        return !text.isBlank() && !voice.isBlank() && !text.equals(voice);
+        String text = normalizeLanguageCodeForChat(textLanguage);
+        String voice = normalizeLanguageCodeForChat(voiceLanguage);
+        if (text.isBlank() || voice.isBlank() || text.equals(voice)) {
+            return false;
+        }
+        String textBase = normalizeLanguageCodeForTts(text);
+        String voiceBase = normalizeLanguageCodeForTts(voice);
+        if (!textBase.equals(voiceBase)) {
+            return true;
+        }
+        return text.indexOf('_') > 0 && voice.indexOf('_') > 0;
     }
 
     static String buildVoiceTranslationPrompt(List<String> displayLines, String targetLanguage) {
@@ -151,7 +159,13 @@ final class MorningKissGeneratedDialogueLanguage {
     }
 
     private static String languageName(String language) {
-        return switch (normalizeLanguageCodeForTts(language)) {
+        String normalized = normalizeLanguageCodeForChat(language);
+        return switch (normalized) {
+            case "zh_cn", "zh_sg" -> "Simplified Chinese";
+            case "zh_tw", "zh_hk", "zh_mo" -> "Traditional Chinese";
+            case "en_us" -> "American English";
+            case "en_gb" -> "British English";
+            default -> switch (normalizeLanguageCodeForTts(normalized)) {
             case "en" -> "English";
             case "ja" -> "Japanese";
             case "ko" -> "Korean";
@@ -161,6 +175,7 @@ final class MorningKissGeneratedDialogueLanguage {
             case "es" -> "Spanish";
             case "ru" -> "Russian";
             default -> "the language represented by locale code '" + language + "'";
+            };
         };
     }
 

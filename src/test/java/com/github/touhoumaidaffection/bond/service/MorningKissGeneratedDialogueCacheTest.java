@@ -246,11 +246,17 @@ class MorningKissGeneratedDialogueCacheTest {
                 "tlm", "zh_cn", "ja_jp", "zh_cn"));
         assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
                 "ja_jp", "zh_cn", "zh_cn", "zh_cn"));
+        assertEquals("ko_kr", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "ko_kr", "en_us", "ja_jp", "zh_cn"));
     }
 
     @Test
     void parsesBatchedVoiceTranslationsWithoutLosingLinePairing() {
         assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("zh_cn", "ja_jp"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("en_us", "ko_kr"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("fr_fr", "de_de"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("zh_cn", "zh_tw"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.requiresTranslation("en_us", "en_gb"));
         assertFalse(MorningKissGeneratedDialogueLanguage.requiresTranslation("ja_jp", "ja"));
 
         String prompt = MorningKissGeneratedDialogueLanguage.buildVoiceTranslationPrompt(
@@ -259,6 +265,12 @@ class MorningKissGeneratedDialogueCacheTest {
         );
         assertTrue(prompt.contains("Japanese"));
         assertTrue(prompt.contains("早安，主人。"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.buildVoiceTranslationPrompt(
+                List.of("Good morning."), "ko_kr"
+        ).contains("Korean"));
+        assertTrue(MorningKissGeneratedDialogueLanguage.buildVoiceTranslationPrompt(
+                List.of("早安。"), "zh_tw"
+        ).contains("Traditional Chinese"));
 
         assertEquals(
                 List.of("おはようございます、ご主人様。", "今日もよろしくお願いします。"),
