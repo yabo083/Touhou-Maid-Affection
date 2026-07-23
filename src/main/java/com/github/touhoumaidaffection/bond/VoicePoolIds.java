@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.bond;
 import java.util.List;
 
 public final class VoicePoolIds {
+    private static final int MAX_ENCODED_SELECTION_BYTES = 60_000;
     public static final String BUILTIN_MORNING_KISS = "builtin:morning_kiss";
     public static final String TLM_PREFIX = "tlm:";
     public static final String DATA_PACK_PREFIX = "datapack:";
@@ -40,28 +41,62 @@ public final class VoicePoolIds {
     }
 
     public static String encode(List<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return "";
-        }
-        return String.join("\n", ids.stream()
-                .map(VoicePoolIds::safe)
-                .filter(value -> !value.isBlank())
-                .distinct()
-                .toList());
+        return String.join("\n", normalizeSelection(ids));
     }
 
     public static List<String> decode(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();
         }
-        return raw.lines()
-                .map(String::trim)
+        return normalizeSelection(raw.lines().toList());
+    }
+
+    static List<String> normalizeSelection(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return ids.stream()
+                .map(VoicePoolIds::safe)
                 .filter(value -> !value.isBlank())
                 .distinct()
                 .toList();
     }
 
+    public static boolean isPersistableSelection(List<String> ids) {
+        List<String> normalized = normalizeSelection(ids);
+        int encodedBytes = 0;
+        for (int index = 0; index < normalized.size(); index++) {
+            String id = normalized.get(index);
+            if (!BondDataLimits.isValidValue(id)) {
+                return false;
+            }
+            if (index > 0) {
+                encodedBytes++;
+            }
+            encodedBytes += modifiedUtf8Length(id);
+            if (encodedBytes > MAX_ENCODED_SELECTION_BYTES) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static String safe(String value) {
-        return value == null ? "" : value.trim().replace('\n', ' ');
+        return value == null ? "" : value.trim().replace('\r', ' ').replace('\n', ' ');
+    }
+
+    private static int modifiedUtf8Length(String value) {
+        int length = 0;
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character >= 0x0001 && character <= 0x007F) {
+                length++;
+            } else if (character <= 0x07FF) {
+                length += 2;
+            } else {
+                length += 3;
+            }
+        }
+        return length;
     }
 }

@@ -23,6 +23,13 @@ public record RescueVoiceConfigPayload(
         boolean useCommonFallback,
         List<String> selectedVoiceIds
 ) implements CustomPacketPayload {
+    private static final int MAX_CONFIG_STRING_LENGTH = 256;
+    private static final int MAX_SELECTED_VOICE_IDS = 1_024;
+    private static final StreamCodec<ByteBuf, String> CONFIG_STRING_CODEC =
+            ByteBufCodecs.stringUtf8(MAX_CONFIG_STRING_LENGTH);
+    private static final StreamCodec<ByteBuf, ArrayList<String>> SELECTED_VOICE_IDS_CODEC =
+            ByteBufCodecs.collection(ArrayList::new, CONFIG_STRING_CODEC, MAX_SELECTED_VOICE_IDS);
+
     public static final Type<RescueVoiceConfigPayload> TYPE =
             new Type<>(new ResourceLocation(TouhouMaidAffection.MOD_ID, "rescue_voice_config"));
 
@@ -37,29 +44,28 @@ public record RescueVoiceConfigPayload(
     }
 
     private static void encode(ByteBuf buf, RescueVoiceConfigPayload payload) {
-        ByteBufCodecs.UUID.encode(buf, payload.maidUuid());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.sourceMode());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.tlmPlayMode());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.tlmSelectedGroup());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.tlmSelectedClip());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.customPlayMode());
-        ByteBufCodecs.STRING_UTF8.encode(buf, payload.fixedFile());
+ByteBufCodecs.UUID.encode(buf, payload.maidUuid());
+        CONFIG_STRING_CODEC.encode(buf, payload.sourceMode());
+        CONFIG_STRING_CODEC.encode(buf, payload.tlmPlayMode());
+        CONFIG_STRING_CODEC.encode(buf, payload.tlmSelectedGroup());
+        CONFIG_STRING_CODEC.encode(buf, payload.tlmSelectedClip());
+        CONFIG_STRING_CODEC.encode(buf, payload.customPlayMode());
+        CONFIG_STRING_CODEC.encode(buf, payload.fixedFile());
         ByteBufCodecs.BOOL.encode(buf, payload.useCommonFallback());
-        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8)
-                .encode(buf, new ArrayList<>(payload.selectedVoiceIds()));
+        SELECTED_VOICE_IDS_CODEC.encode(buf, new ArrayList<>(payload.selectedVoiceIds()));
     }
 
     private static RescueVoiceConfigPayload decode(ByteBuf buf) {
         return new RescueVoiceConfigPayload(
-                ByteBufCodecs.UUID.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
-                ByteBufCodecs.STRING_UTF8.decode(buf),
+ByteBufCodecs.UUID.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
+                CONFIG_STRING_CODEC.decode(buf),
                 ByteBufCodecs.BOOL.decode(buf),
-                ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8).decode(buf)
+                SELECTED_VOICE_IDS_CODEC.decode(buf)
         );
     }
 }

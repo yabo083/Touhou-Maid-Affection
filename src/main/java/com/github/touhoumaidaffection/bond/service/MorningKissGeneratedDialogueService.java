@@ -498,7 +498,7 @@ public final class MorningKissGeneratedDialogueService {
         Path root = server.getWorldPath(LevelResource.ROOT);
         worldRoot = root;
         try {
-            CACHE.replaceAll(MorningKissGeneratedDialogueStorage.load(root));
+            CACHE.replaceAll(MorningKissGeneratedDialogueStorage.load(root, CACHE.maxLinesPerPool()));
             CACHE_REVISION.incrementAndGet();
             TouhouMaidAffection.LOGGER.info("Loaded persisted morning kiss AI dialogue cache from {}.",
                     MorningKissGeneratedDialogueStorage.storageRoot(root));

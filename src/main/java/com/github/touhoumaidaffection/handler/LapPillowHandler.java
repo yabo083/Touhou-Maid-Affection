@@ -56,6 +56,10 @@ public final class LapPillowHandler {
                 logReject(player, payload.maidUuid(), "maid_missing_or_dead");
                 return;
             }
+            if (!maid.isOwnedBy(player)) {
+                logReject(player, maid.getUUID(), "maid_not_owned");
+                return;
+            }
             double maxDistance = ModConfig.BOND_LAP_PILLOW_MAX_DISTANCE.get();
             if (player.distanceToSqr(maid) > maxDistance * maxDistance) {
                 logReject(player, maid.getUUID(), "too_far");
@@ -152,6 +156,10 @@ public final class LapPillowHandler {
         Entity anchorEntity = player.serverLevel().getEntity(anchorUuid);
         if (!(maidEntity instanceof EntityMaid maid) || !maid.isAlive()) {
             clearLapPillow(player, "maid_missing_during_tick");
+            return;
+        }
+        if (!maid.isOwnedBy(player)) {
+            clearLapPillow(player, "maid_ownership_changed");
             return;
         }
         if (!(anchorEntity instanceof LapPillowAnchorEntity anchor) || !anchor.isAlive()) {

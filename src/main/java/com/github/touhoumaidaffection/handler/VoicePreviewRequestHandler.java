@@ -11,16 +11,28 @@ import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 
 import java.util.Optional;
 
+@EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class VoicePreviewRequestHandler {
+    private static final VoicePreviewRateLimiter RATE_LIMITER = new VoicePreviewRateLimiter(100L);
+
     private VoicePreviewRequestHandler() {
     }
 
     public static void handle(VoicePreviewRequestPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player) || !VoicePoolIds.isDataPack(payload.voiceId())) {
+if (!(context.player() instanceof ServerPlayer player)) {
+                return;
+            }
+            if (!RATE_LIMITER.tryAcquire(player.getUUID(), player.getServer().getTickCount())) {
+                return;
+            }
+            if (!VoicePoolIds.isDataPack(payload.voiceId())) {
                 return;
             }
             EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
@@ -28,7 +40,11 @@ public final class VoicePreviewRequestHandler {
                 return;
             }
             Optional<InteractionVoiceProfileData.DataPackVoice> voice = resolveVoice(player, maid, payload);
-            voice.ifPresent(dataPackVoice -> TouhouMaidAffection.CHANNEL.send(
+            if (voice.isEmpty()) {
+                return;
+            }
+            InteractionVoiceProfileData.DataPackVoice dataPackVoice = voice.get();
+            TouhouMaidAffection.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> player),
                     new VoicePreviewDataPackPlayPayload(
                             maid.getId(),
@@ -37,8 +53,13 @@ public final class VoicePreviewRequestHandler {
                             dataPackVoice.fileName(),
                             dataPackVoice.data()
                     )
-            ));
+            );
         });
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        RATE_LIMITER.remove(event.getEntity().getUUID());
     }
 
     private static Optional<InteractionVoiceProfileData.DataPackVoice> resolveVoice(ServerPlayer player, EntityMaid maid, VoicePreviewRequestPayload payload) {

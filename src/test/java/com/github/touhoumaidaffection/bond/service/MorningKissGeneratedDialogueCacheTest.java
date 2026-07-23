@@ -201,6 +201,37 @@ class MorningKissGeneratedDialogueCacheTest {
     }
 
     @Test
+    void protectsCachedVoiceBytesFromExternalMutation() {
+        byte[] source = "OggSdata".getBytes(StandardCharsets.US_ASCII);
+        MorningKissGeneratedDialogueCache.Entry entry = new MorningKissGeneratedDialogueCache.Entry(
+                "早呀", "早呀", "voice.ogg", source
+        );
+
+        source[0] = 'X';
+        byte[] returned = entry.voiceData();
+        returned[1] = 'X';
+
+        assertEquals('O', entry.voiceData()[0]);
+        assertEquals('g', entry.voiceData()[1]);
+    }
+
+    @Test
+    void rejectsGeneratedVoicesLargerThanTwoMebibytes() {
+        byte[] oversized = new byte[2 * 1024 * 1024 + 1];
+        oversized[0] = 'O';
+        oversized[1] = 'g';
+        oversized[2] = 'g';
+        oversized[3] = 'S';
+
+        MorningKissGeneratedDialogueCache.Entry entry = new MorningKissGeneratedDialogueCache.Entry(
+                "早呀", "早呀", "oversized.ogg", oversized
+        );
+
+        assertFalse(entry.hasVoice());
+        assertEquals(0, entry.voiceData().length);
+    }
+
+    @Test
     void appliesConfiguredLanguageToPregeneratedDialogueAndTts() {
         String prompt = MorningKissGeneratedDialogueLanguage.appendLanguageInstruction("Base prompt", "en_us");
 
@@ -254,7 +285,7 @@ class MorningKissGeneratedDialogueCacheTest {
         assertTrue(Files.exists(voicePath));
 
         MorningKissGeneratedDialogueCache reloaded = new MorningKissGeneratedDialogueCache(4);
-        reloaded.replaceAll(MorningKissGeneratedDialogueStorage.load(root));
+        reloaded.replaceAll(MorningKissGeneratedDialogueStorage.load(root, reloaded.maxLinesPerPool()));
 
         MorningKissGeneratedDialogueCache.Entry entry =
                 reloaded.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING).orElseThrow();
@@ -262,5 +293,87 @@ class MorningKissGeneratedDialogueCacheTest {
         assertEquals("zh_cn", entry.textLanguage());
         assertTrue(entry.hasVoice());
         assertEquals(voice.length, entry.voiceData().length);
+    }
+
+    @Test
+    void persistsGeneratedMp3EntriesWithoutChangingTheirFormat() throws Exception {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(4);
+        UUID maidUuid = UUID.randomUUID();
+        byte[] voice = new byte[] {(byte) 0xFF, (byte) 0xFB, 0x10, 0x44};
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("早呀", "早呀", "generated/test.mp3", voice));
+
+        Path root = Files.createTempDirectory("tma-generated-cache");
+        MorningKissGeneratedDialogueStorage.save(root, cache.snapshot());
+
+        Path voicePath = root.resolve("generated_morning_kiss")
+                .resolve(maidUuid.toString())
+                .resolve("morning")
+                .resolve("001.mp3");
+        assertTrue(Files.exists(voicePath));
+
+        MorningKissGeneratedDialogueCache reloaded = new MorningKissGeneratedDialogueCache(4);
+        reloaded.replaceAll(MorningKissGeneratedDialogueStorage.load(root, reloaded.maxLinesPerPool()));
+        assertEquals("001.mp3", reloaded.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING)
+                .orElseThrow().voiceFileName());
+    }
+
+    @Test
+    void ignoresOversizedVoiceFilesWhenLoadingPersistedCache() throws Exception {
+        UUID maidUuid = UUID.randomUUID();
+        Path pool = Files.createTempDirectory("tma-generated-cache")
+                .resolve("generated_morning_kiss")
+                .resolve(maidUuid.toString())
+                .resolve("morning");
+        Files.createDirectories(pool);
+        Files.writeString(pool.resolve("001.json"), """
+                {
+                  "text": "早呀",
+                  "tts_text": "早呀",
+                  "voice_file": "001.ogg"
+                }
+                """);
+        byte[] oversized = new byte[2 * 1024 * 1024 + 1];
+        oversized[0] = 'O';
+        oversized[1] = 'g';
+        oversized[2] = 'g';
+        oversized[3] = 'S';
+        Files.write(pool.resolve("001.ogg"), oversized);
+
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(4);
+        cache.replaceAll(MorningKissGeneratedDialogueStorage.load(
+                pool.getParent().getParent().getParent(), cache.maxLinesPerPool()));
+
+        MorningKissGeneratedDialogueCache.Entry entry = cache.pollFirst(
+                maidUuid, MorningKissScheduleRules.DialoguePool.MORNING
+        ).orElseThrow();
+        assertFalse(entry.hasVoice());
+    }
+
+    @Test
+    void loadsOnlyTheNewestEntriesWithinCacheCapacity() throws Exception {
+        UUID maidUuid = UUID.randomUUID();
+        Path root = Files.createTempDirectory("tma-generated-cache");
+        Path pool = root.resolve("generated_morning_kiss")
+                .resolve(maidUuid.toString())
+                .resolve("morning");
+        Files.createDirectories(pool);
+        for (int index = 1; index <= 4; index++) {
+            Files.writeString(pool.resolve(String.format("%03d.json", index)), """
+                    {
+                      "text": "line-%d",
+                      "tts_text": "line-%d",
+                      "voice_file": ""
+                    }
+                    """.formatted(index, index));
+        }
+
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(2);
+        cache.replaceAll(MorningKissGeneratedDialogueStorage.load(root, cache.maxLinesPerPool()));
+
+        assertEquals("line-3", cache.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING)
+                .orElseThrow().text());
+        assertEquals("line-4", cache.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING)
+                .orElseThrow().text());
     }
 }

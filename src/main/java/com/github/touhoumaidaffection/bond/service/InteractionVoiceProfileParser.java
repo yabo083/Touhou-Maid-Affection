@@ -129,13 +129,13 @@ public final class InteractionVoiceProfileParser {
             return List.of();
         }
         JsonArray array = element.getAsJsonArray();
-        ArrayList<String> output = new ArrayList<>();
+        java.util.LinkedHashSet<String> output = new java.util.LinkedHashSet<>();
         for (JsonElement value : array) {
             if (!value.isJsonPrimitive()) {
                 continue;
             }
             String path = normalizeVoicePath(value.getAsString());
-            if (!path.isBlank()) {
+            if (!path.isBlank() && output.size() < 64) {
                 output.add(path);
             }
         }
@@ -143,20 +143,7 @@ public final class InteractionVoiceProfileParser {
     }
 
     private static String normalizeVoicePath(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        if (raw.contains("\\")) {
-            return "";
-        }
-        String path = raw.trim();
-        if (path.isBlank()
-                || path.startsWith("/")
-                || path.contains("..")
-                || !path.toLowerCase(Locale.ROOT).endsWith(".ogg")) {
-            return "";
-        }
-        return path;
+        return VoiceFilePath.normalizeOgg(raw);
     }
 
     private static String parseSoundEventId(String raw) {

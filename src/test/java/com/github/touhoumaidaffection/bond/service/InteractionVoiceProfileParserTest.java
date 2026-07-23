@@ -120,7 +120,7 @@ class InteractionVoiceProfileParserTest {
                     {
                       "match": { "name": "Hakurei Reimu" },
                       "emergency_rescue": {
-                        "voice_files": ["ok/rescue.ogg", "/absolute.ogg", "nested/../bad.ogg"]
+                        "voice_files": ["ok/rescue.ogg", "/absolute.ogg", "nested/../bad.ogg", "Bad.ogg", "bad name.ogg"]
                       }
                     }
                   ]

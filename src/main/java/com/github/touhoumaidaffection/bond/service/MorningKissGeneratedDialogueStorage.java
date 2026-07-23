@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -58,8 +60,10 @@ final class MorningKissGeneratedDialogueStorage {
         }
     }
 
-    static Map<UUID, Map<MorningKissScheduleRules.DialoguePool, List<MorningKissGeneratedDialogueCache.Entry>>> load(Path worldRoot) throws IOException {
+    static Map<UUID, Map<MorningKissScheduleRules.DialoguePool, List<MorningKissGeneratedDialogueCache.Entry>>> load(
+            Path worldRoot, int maxEntriesPerPool) throws IOException {
         Path root = storageRoot(worldRoot);
+        int boundedMaxEntries = Math.max(1, maxEntriesPerPool);
         Map<UUID, Map<MorningKissScheduleRules.DialoguePool, List<MorningKissGeneratedDialogueCache.Entry>>> snapshot = new HashMap<>();
         if (!Files.isDirectory(root)) {
             return snapshot;
@@ -80,9 +84,17 @@ final class MorningKissGeneratedDialogueStorage {
                         }
                         List<MorningKissGeneratedDialogueCache.Entry> entries;
                         try (Stream<Path> jsonFiles = Files.list(poolDir)) {
-                            entries = jsonFiles
-                                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json"))
-                                    .sorted()
+                            Comparator<Path> pathComparator = Comparator.comparing(path -> path.getFileName().toString());
+                            PriorityQueue<Path> latestFiles = new PriorityQueue<>(pathComparator);
+                            jsonFiles.filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json"))
+                                    .forEach(path -> {
+                                        latestFiles.add(path);
+                                        if (latestFiles.size() > boundedMaxEntries) {
+                                            latestFiles.poll();
+                                        }
+                                    });
+                            entries = latestFiles.stream()
+                                    .sorted(pathComparator)
                                     .map(MorningKissGeneratedDialogueStorage::readEntry)
                                     .flatMap(Optional::stream)
                                     .toList();
@@ -104,9 +116,10 @@ final class MorningKissGeneratedDialogueStorage {
         String baseName = String.format(Locale.ROOT, "%03d", displayIndex);
         String voiceFile = "";
         if (entry.hasVoice()) {
-            String extension = MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(entry.voiceData()).orElse("ogg");
+            byte[] voiceData = entry.voiceData();
+            String extension = MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(voiceData).orElse("ogg");
             voiceFile = baseName + "." + extension;
-            Files.write(poolDir.resolve(voiceFile), entry.voiceData());
+            Files.write(poolDir.resolve(voiceFile), voiceData);
         }
         JsonObject root = new JsonObject();
         root.addProperty("text", entry.text());
@@ -151,7 +164,10 @@ final class MorningKissGeneratedDialogueStorage {
         if (!voicePath.startsWith(poolDir.normalize()) || !Files.isRegularFile(voicePath)) {
             return new byte[0];
         }
-        byte[] data = Files.readAllBytes(voicePath);
+        byte[] data;
+        try (InputStream input = Files.newInputStream(voicePath)) {
+            data = BoundedVoiceDataReader.read(input, MorningKissGeneratedDialogueCache.MAX_VOICE_BYTES).data();
+        }
         return MorningKissGeneratedDialogueCache.detectPlayableVoiceExtension(data).isPresent() ? data : new byte[0];
     }
 

@@ -3,6 +3,7 @@ package com.github.touhoumaidaffection.handler;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.touhoumaidaffection.bond.BondDataLimits;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
@@ -21,6 +22,10 @@ public final class LapPillowPoseConfigHandler {
             }
             EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());
             if (maid == null || !BondManager.isAbilityUnlocked(player, payload.maidUuid(), "lap_pillow")) {
+                return;
+            }
+            if (!BondDataLimits.isValidValue(payload.maidActionId())
+                    || !BondDataLimits.isValidValue(payload.playerActionId())) {
                 return;
             }
 
