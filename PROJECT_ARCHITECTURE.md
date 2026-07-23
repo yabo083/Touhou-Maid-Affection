@@ -84,13 +84,13 @@ examples/TMA-Custom-Voice-Pack
 
 `TouhouMaidAffection.java` 是启动门面，负责配置注册、注册表、payload、事件监听、TLM AI 扩展和 tick 入口装配。它不应承载业务规则。
 
-`ModConfig.java` 保存全局规则、默认阈值、早安吻 AI/TTS 运行时开关、提示词、语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
+`ModConfig.java` 保存全局规则、默认阈值、亲吻音效/早安吻语音/残血救护/语音试听音量、早安吻 AI/TTS 运行时开关、提示词、语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
 
 注册层的原则是“装配而非决策”：具体触发条件、资源解析、能力逻辑和错误回退应下放到 handler、service 或领域对象。
 
 ## 5. 亲吻主链
 
-`KissMaidHandler` 是服务端亲吻主入口，负责冷却、好感增长、亲吻音效/粒子 payload、少女祈祷触发和早安吻复用逻辑。普通右键、公主抱亲吻按键、准星目标亲吻按键都应收敛到这里，避免规则分叉。
+`KissMaidHandler` 是亲吻服务端主入口，负责冷却、好感、亲吻音效播放、粒子 payload、少女祈祷触发与早安吻复用逻辑。普通右键、公主抱亲吻按键、准星目标亲吻按键最终都应收敛到这里，避免规则分叉。亲吻音效响度由全局配置控制，早安吻数据包仍只负责选择 sound event。
 
 客户端的 `KissKeyAction` 在共享默认键位时选择公主抱亲吻或准星亲吻入口。服务端的 `KissTargetedMaidRequestHandler` 必须重新校验实体存在、归属、距离、视线和正常亲吻规则，不能信任客户端命中结果。
 
@@ -118,6 +118,7 @@ examples/TMA-Custom-Voice-Pack
 早安吻边界：
 
 - 数据包负责静态台词、亲吻 sound event 和预录 OGG。
+- 全局配置负责亲吻 sound event 与早安吻语音的响度：亲吻音效跟随 `cooldown.kissSoundVolume`，早安吻 TLM/数据包/AI-TTS 语音跟随 `morningKissBehavior.voiceVolume`。
 - `morningKissBehavior` TOML 配置负责运行时 AI/TTS、提示词、语言、扫描频率、缓存目标数、消费策略和失败回退；`aiDialogueLanguage=tlm/auto/default` 表示跟随 TLM 本体语言设置，其中生成式语音缓存的文本和语音均以 TLM TTS 语言按钮为准，具体 locale 表示 TMA 统一覆盖；`aiDialogueCacheTargetPerPool` 同时是预热目标和最终入池硬上限，默认每名女仆三个时间池合计最多 12 条生成缓存，不因文本/语音语种分组而扩容；`aiDialogueCacheConsumeOnUse=false` 时早安吻触发复用缓存且不消耗，只有清理缓存后才重新预热。
 - `/tma morning_kiss` 命令组提供 AI/TTS 状态、生成缓存明细、运行中请求、AI/TTS 开关和缓存清理入口；`clear_ai_cache` 保留全清入口，同时支持按女仆、按时间池、按条目删除，以及只清除某条生成语音但保留文本。清理生成缓存不改变数据包或 BondData，持久化镜像会随内存缓存同步更新。
 - AI/TTS 失败只影响增强体验，不能阻断静态台词或已有语音。
@@ -128,7 +129,7 @@ examples/TMA-Custom-Voice-Pack
 
 救援语音当前使用功能级数据包语音池：触发 payload 可携带命中的数据包 OGG 字节；若没有命中，则回退到 TLM 音包或兜底 sound event。旧的服务器文件同步服务已移除，新开发不要恢复该路径。
 
-`EmergencyRescueSoundPlayer` 只处理客户端播放策略，不决定救援是否成立。
+`EmergencyRescueSoundPlayer` 只处理客户端播放策略，不决定救援是否成立。数据包语音、TLM 音包语音和兜底 sound event 的响度统一服从残血救护全局音量配置。
 
 ## 9. 膝枕
 
@@ -150,6 +151,7 @@ examples/TMA-Custom-Voice-Pack
 - 客户端补充 TLM 音包候选项。
 - 玩家保存的是每名女仆的池选择和播放模式，而不是全局固定文件名。
 - 试听动作由可改键 `key.touhou_maid_affection.voice_preview` 和右键列表项触发。
+- 内置亲吻音效试听跟随 `cooldown.kissSoundVolume`；数据包与 TLM 语音试听跟随 `voicePreview.volume`。
 
 音频播放分三类：
 

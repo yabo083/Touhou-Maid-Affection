@@ -2,11 +2,13 @@ package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModSounds;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -25,7 +27,8 @@ public final class VoicePreviewPlayback {
             return false;
         }
         if (VoicePoolIds.BUILTIN_MORNING_KISS.equals(voiceId)) {
-            minecraft.player.playSound(ModSounds.KISS.get(), 1.0F, 1.0F);
+TouhouMaidAffection.LOGGER.info("Morning kiss preview playing built-in kiss sound");
+            minecraft.player.playSound(ModSounds.KISS.get(), SoundVolumeSettings.resolveVolume(ModConfig.KISS_SOUND_VOLUME.get()), 1.0F);
             return true;
         }
         if (VoicePoolIds.isDataPack(voiceId)) {
@@ -53,11 +56,11 @@ public final class VoicePreviewPlayback {
                 STREAM_ANCHOR_SOUND_EVENT,
                 voiceData.data(),
                 voiceData.fileName(),
-                maid,
+maid,
                 maid.getX(),
                 maid.getY(),
                 maid.getZ(),
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
         return true;
@@ -93,10 +96,10 @@ public final class VoicePreviewPlayback {
                 STREAM_ANCHOR_SOUND_EVENT,
                 voiceData.data(),
                 voiceData.fileName(),
-                minecraft.player.getX(),
+minecraft.player.getX(),
                 minecraft.player.getY(),
                 minecraft.player.getZ(),
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
         return true;
@@ -127,9 +130,13 @@ public final class VoicePreviewPlayback {
                 x,
                 y,
                 z,
-                1.0F,
+                previewVolume(),
                 1.0F
         ));
+    }
+
+    private static float previewVolume() {
+        return SoundVolumeSettings.resolveVolume(ModConfig.VOICE_PREVIEW_VOLUME.get());
     }
 
     private static OggReader.Type getOggType(byte[] data, String fileName) {

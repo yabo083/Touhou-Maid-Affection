@@ -40,3 +40,5 @@ GUI_STYLE_REQUIREMENTS_FOR_GEMINI.md
 .tmp_tlm_src_2
 .tmp_ysm
 .agents
+.codegraph
+.codegraph/.gitignore

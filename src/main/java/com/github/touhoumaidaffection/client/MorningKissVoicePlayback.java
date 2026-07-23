@@ -1,11 +1,13 @@
 package com.github.touhoumaidaffection.client;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import com.github.tartaricacid.touhoulittlemaid.client.sound.OggReader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -40,16 +42,17 @@ public final class MorningKissVoicePlayback {
             return;
         }
 
+float volume = SoundVolumeSettings.resolveVolume(ModConfig.BOND_MORNING_KISS_VOICE_VOLUME.get());
         Entity entity = minecraft.level.getEntity(payload.maidEntityId());
         if (entity instanceof EntityMaid maid) {
-            minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), maid, maid.getX(), maid.getY(), maid.getZ(), 1.0F, 1.0F));
+            minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), maid, maid.getX(), maid.getY(), maid.getZ(), volume, 1.0F));
             return;
         }
 
         double x = minecraft.player.getX();
         double y = minecraft.player.getY();
         double z = minecraft.player.getZ();
-        minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), null, x, y, z, 1.0F, 1.0F));
+minecraft.getSoundManager().play(new MorningKissVoiceSoundInstance(STREAM_ANCHOR_SOUND_EVENT, voiceData.data(), voiceData.fileName(), null, x, y, z, volume, 1.0F));
     }
 
     public static void playDataPackVoice(MorningKissDataVoicePlayPayload payload) {
@@ -79,7 +82,7 @@ public final class MorningKissVoicePlayback {
                 x,
                 y,
                 z,
-                1.0F,
+                SoundVolumeSettings.resolveVolume(ModConfig.BOND_MORNING_KISS_VOICE_VOLUME.get()),
                 1.0F
         ));
     }

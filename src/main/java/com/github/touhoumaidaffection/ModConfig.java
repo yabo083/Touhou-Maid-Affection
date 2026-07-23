@@ -13,6 +13,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.IntValue COOLDOWN_LEVEL_1;
     public static final ForgeConfigSpec.IntValue COOLDOWN_LEVEL_2;
     public static final ForgeConfigSpec.IntValue COOLDOWN_LEVEL_3;
+    public static final ForgeConfigSpec.DoubleValue KISS_SOUND_VOLUME;
 
     // Favorability
     public static final ForgeConfigSpec.IntValue FAVORABILITY_POINTS;
@@ -43,6 +44,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MIN_KISS_COUNT;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MAX_KISS_COUNT;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_KISS_INTERVAL_TICKS;
+    public static final ForgeConfigSpec.DoubleValue BOND_MORNING_KISS_VOICE_VOLUME;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_APPLY_MAIDS_PRAYER;
     public static final ForgeConfigSpec.IntValue BOND_MORNING_KISS_MAIDS_PRAYER_DURATION;
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE;
@@ -71,6 +73,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT;
     public static final ForgeConfigSpec.IntValue BOND_EMERGENCY_RESCUE_SYNC_SCAN_INTERVAL_SECONDS;
     public static final ForgeConfigSpec.BooleanValue BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG;
+    public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VOLUME;
     public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET;
     public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Y_ROT_OFFSET;
     public static final ForgeConfigSpec.DoubleValue BOND_EMERGENCY_RESCUE_VIEW_Z_ROT_OFFSET;
@@ -130,6 +133,7 @@ public class ModConfig {
     public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_SIDE_OFFSET;
     public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_FORWARD_OFFSET;
     public static final ForgeConfigSpec.DoubleValue FOV_CARRIED_VERTICAL_OFFSET;
+    public static final ForgeConfigSpec.DoubleValue VOICE_PREVIEW_VOLUME;
 
     // TMA MiMo adapter for Touhou Little Maid AI services
     public static final ForgeConfigSpec.BooleanValue TMA_MIMO_ADAPTER_ENABLED;
@@ -162,6 +166,11 @@ public class ModConfig {
         COOLDOWN_LEVEL_3 = builder
                 .comment("Cooldown at favorability level 3 / max (default: 0 = no cooldown)")
                 .defineInRange("level3", 0, 0, 6000);
+
+        KISS_SOUND_VOLUME = builder
+                .comment("Volume multiplier for the built-in kiss sound and configured kiss sound events",
+                        "0.0 mutes kiss sounds, 1.0 is the previous default, values above 1.0 boost volume")
+                .defineInRange("kissSoundVolume", 1.0, 0.0, 4.0);
 
         builder.pop();
 
@@ -294,6 +303,11 @@ public class ModConfig {
                 .comment("Ticks between consecutive kisses in one Morning Kiss sequence")
                 .defineInRange("kissIntervalTicks", 16, 1, 200);
 
+        BOND_MORNING_KISS_VOICE_VOLUME = builder
+                .comment("Volume multiplier for Morning Kiss TLM, data-pack, and AI/TTS voices",
+                        "0.0 mutes Morning Kiss voices, 1.0 is the previous default, values above 1.0 boost volume")
+                .defineInRange("voiceVolume", 1.0, 0.0, 4.0);
+
         BOND_MORNING_KISS_APPLY_MAIDS_PRAYER = builder
                 .comment("Apply Maid's Prayer during Morning Kiss")
                 .define("applyMaidsPrayer", true);
@@ -420,6 +434,11 @@ public class ModConfig {
         BOND_EMERGENCY_RESCUE_SYNC_VERBOSE_LOG = builder
                 .comment("Verbose logs for rescue sound sync and playback fallback")
                 .define("syncVerboseLog", true);
+
+        BOND_EMERGENCY_RESCUE_VOLUME = builder
+                .comment("Volume multiplier for Emergency Rescue data-pack voices, TLM voices, and fallback sound events",
+                        "0.0 mutes Emergency Rescue sounds, 1.0 is the previous default, values above 1.0 boost volume")
+                .defineInRange("volume", 1.0, 0.0, 4.0);
 
         BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET = builder
                 .comment("Additional X-axis rotation offset for the rescue overlay maid shown in front of the player",
@@ -636,6 +655,16 @@ public class ModConfig {
         FOV_CARRIED_VERTICAL_OFFSET = builder
                 .comment("Princess-carry camera target vertical offset from player eye (default: -0.10)")
                 .defineInRange("carriedVerticalOffset", -0.10, -1.0, 1.0);
+
+        builder.pop();
+
+        builder.comment("Voice preview playback settings")
+                .push("voicePreview");
+
+        VOICE_PREVIEW_VOLUME = builder
+                .comment("Volume multiplier for voice previews in the bond configuration pages",
+                        "Built-in kiss sound previews use cooldown.kissSoundVolume instead")
+                .defineInRange("volume", 1.0, 0.0, 4.0);
 
         builder.pop();
 

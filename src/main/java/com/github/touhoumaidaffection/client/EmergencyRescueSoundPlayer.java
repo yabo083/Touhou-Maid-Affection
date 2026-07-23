@@ -6,6 +6,7 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -37,7 +38,7 @@ public final class EmergencyRescueSoundPlayer {
 
         ResourceLocation soundId = resolveSoundEventId(payload.rescueSoundEventId());
         SoundEvent soundEvent = SoundEvent.createVariableRangeEvent(soundId);
-        minecraft.player.playSound(soundEvent, 1.0F, 1.0F);
+        minecraft.player.playSound(soundEvent, rescueVolume(), 1.0F);
     }
 
     public static void invalidateCaches() {
@@ -73,7 +74,7 @@ public final class EmergencyRescueSoundPlayer {
                     STREAM_ANCHOR_SOUND_EVENT,
                     data,
                     oggType,
-                    1.0F,
+                    rescueVolume(),
                     1.0F
             ));
             TouhouMaidAffection.LOGGER.info(
@@ -146,7 +147,7 @@ public final class EmergencyRescueSoundPlayer {
                     minecraft.player.getX(),
                     minecraft.player.getY(),
                     minecraft.player.getZ(),
-                    1.0F,
+                    rescueVolume(),
                     1.0F
             ));
             debugLog("Emergency rescue TLM voice played: pack={}, clip={}", soundPackId, entry.clipKey());
@@ -165,6 +166,10 @@ public final class EmergencyRescueSoundPlayer {
             }
         }
         return new ResourceLocation("minecraft", "entity.player.levelup");
+    }
+
+    private static float rescueVolume() {
+        return SoundVolumeSettings.resolveVolume(ModConfig.BOND_EMERGENCY_RESCUE_VOLUME.get());
     }
 
     private static void debugLog(String message, Object... args) {

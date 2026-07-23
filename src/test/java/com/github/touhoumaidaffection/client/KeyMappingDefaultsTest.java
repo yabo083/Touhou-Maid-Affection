@@ -18,6 +18,11 @@ class KeyMappingDefaultsTest {
     }
 
     @Test
+    void lapPillowStartsUnboundSoItDoesNotConsumeCommonModKeys() {
+        assertEquals(-1, TmaKeyDefaults.LAP_PILLOW);
+    }
+
+    @Test
     void voicePreviewDefaultsToRightMouseButton() {
         assertEquals(1, TmaKeyDefaults.VOICE_PREVIEW);
     }

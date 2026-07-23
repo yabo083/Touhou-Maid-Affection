@@ -6,6 +6,7 @@ import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.service.MorningKissProfileData;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -201,7 +202,7 @@ public class KissMaidHandler {
                     : soundId);
             player.level().playSound(null, midX, midY, midZ,
                     kissSound, SoundSource.PLAYERS,
-                    1.0F, 1.0F);
+                    SoundVolumeSettings.resolveVolume(ModConfig.KISS_SOUND_VOLUME.get()), 1.0F);
         }
 
         // Broadcast particle packet to all tracking clients
