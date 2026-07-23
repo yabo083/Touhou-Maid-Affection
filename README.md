@@ -24,17 +24,12 @@
 
 ## Latest Release
 
-`1.7.2.2-forge1.20.1` is a short-lived Forge branch release based on the 1.7.2 feature line. It focuses on custom voice packs, AI-assisted Morning Kiss, safer voice preview UX, and a Morning Kiss AI/TTS language cache fix:
+`1.7.3.0` incorporates high-value player feedback and hardens interaction defaults:
 
-- Per-feature datapack voice pools for Morning Kiss and Emergency Rescue.
-- Static Morning Kiss dialogue packs with `{maid}` and `{player}` placeholders.
-- Optional AI-generated Morning Kiss dialogue and TTS pre-generation through TLM AI sites.
-- TMA MiMo adapter sites for TLM AI chat and TTS.
-- Targeted-maid kiss key action for crosshair-based kissing.
-- Voice preview in the Morning Kiss and Emergency Rescue voice-pool pages.
-- `aiDialogueLanguage` now affects Morning Kiss AI dialogue pregeneration and generated TTS requests; the default `tlm` value follows Touhou Little Maid's own language settings, and generated voice cache text follows TLM's TTS language button.
-- `/tma morning_kiss` shows AI/TTS status and cache statistics; admins can run `/tma morning_kiss ai on/off`, `/tma morning_kiss tts on/off`, or `/tma morning_kiss clear_ai_cache` while testing language and prompt changes.
-- Ready-to-zip sample datapack in `examples/TMA-Custom-Voice-Pack`.
+- **Safer gifts**: Random Gift now uses the curated item-tag pool by default and excludes bedrock and spawn eggs in legacy broad-pool mode.
+- **Interaction control**: `rightClickKissEnabled` can disable sneak-right-click kissing without disabling targeted or carried-maid kiss keys.
+- **Modded health support**: Emergency Rescue can optionally trigger from a percentage of maximum health.
+- **Clearer unlocking**: The bond UI explains that P Point items must be present in the player inventory and shows blocked-click feedback.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
@@ -43,6 +38,8 @@ Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 ### Kiss Interaction
 
 Sneak with an empty hand and right-click your maid to kiss her. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect.
+
+If this conflicts with the maid sit/stand interaction, set `cooldown.rightClickKissEnabled=false` and use the configurable targeted/carried-maid kiss keys instead.
 
 Sound volumes can be tuned in `config/touhou_maid_affection-common.toml`: `cooldown.kissSoundVolume` controls kiss sound events, `morningKissBehavior.voiceVolume` controls Morning Kiss voices, `emergencyRescueBehavior.volume` controls Emergency Rescue voices and fallback sounds, and `voicePreview.volume` controls bond-page voice previews.
 
@@ -63,6 +60,10 @@ High-affection maids can become bonded companions. Bond abilities currently incl
 | Emergency Rescue | Let bonded maids contribute daily rescue chances and rescue voice lines. |
 | Random Gift | Let bonded maids accumulate and deliver small gifts over time. |
 
+For modpacks with increased maximum health, enable `emergencyRescueBehavior.usePercentageThreshold=true`; the default 20% value equals the legacy 4-point threshold at vanilla health. Percentage mode remains off by default to preserve existing server configuration behavior.
+
+Random Gift uses the curated `touhou_maid_affection:bond_random_gift_pool` item tag by default. Datapacks can extend that tag or add exclusions through `touhou_maid_affection:bond_random_gift_blacklist`; set `bondCosts.randomGiftBehavior.curatedPoolOnly=false` only if you want the legacy broad registry sampling mode.
+
 The server remains authoritative for unlocks, costs, distance checks, cooldowns, and ability execution. The client UI is a display and configuration surface.
 
 ### Custom Dialogue And Voices
@@ -76,9 +77,7 @@ data/touhou_maid_affection/emergency_rescue/profile.json
 data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. The voice-pool pages can preview selected voices before saving.
-
-See [早安吻文本修改教程.md](早安吻文本修改教程.md) and the sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
+Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. The voice-pool pages can preview selected voices before saving. See [早安吻相关配置说明.md](早安吻相关配置说明.md) and the ready-to-zip sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
 
 ### AI And MiMo
 
@@ -97,7 +96,7 @@ TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings
 
 1. Install Minecraft `1.20.1` with Forge `47.4.x`.
 2. Install Touhou Little Maid for Forge 1.20.1.
-3. Put `touhou-maid-affection-1.7.2.2.jar` into your `mods` folder.
+3. Put `touhou-maid-affection-1.7.3.0.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source
@@ -118,7 +117,7 @@ build/libs/touhou-maid-affection-<version>.jar
 
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md): architecture boundaries and module responsibilities.
 - [CHANGELOG.md](CHANGELOG.md): user-facing release history.
-- [早安吻文本修改教程.md](早安吻文本修改教程.md): datapack text, voice, and AI setup guide.
+- [早安吻相关配置说明.md](早安吻相关配置说明.md): datapack text, voice, and AI setup guide.
 - [TESTING.md](TESTING.md): test scope and regression commands.
 - [DEPLOYMENT.md](DEPLOYMENT.md): release constraints and pre-release checklist.
 

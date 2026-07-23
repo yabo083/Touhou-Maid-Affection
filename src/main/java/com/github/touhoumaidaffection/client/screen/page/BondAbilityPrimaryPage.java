@@ -110,12 +110,19 @@ public final class BondAbilityPrimaryPage {
             host.openSecondaryPageForAbility(ability);
             return true;
         }
-        if (layout.containsMainButton(mouseX, mouseY, buttonWidth, buttonHeight)
-                && host.isMainButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)) {
-            if (host.isEmergencyHealAbility(ability) && abilityUnlocked && host.isRescueActionConfigAvailable()) {
-                host.openEmergencyRescueActionPage();
-            } else {
-                host.activateAbility(ability);
+        if (layout.containsMainButton(mouseX, mouseY, buttonWidth, buttonHeight)) {
+            boolean clickable = host.isMainButtonClickable(
+                    ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
+            if (clickable) {
+                if (host.isEmergencyHealAbility(ability) && abilityUnlocked && host.isRescueActionConfigAvailable()) {
+                    host.openEmergencyRescueActionPage();
+                } else {
+                    host.activateAbility(ability);
+                }
+            } else if (player != null) {
+                Component reason = host.getStatusText(
+                        ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
+                player.displayClientMessage(Component.translatable("bond.unlock_click_blocked", reason), true);
             }
         }
         return true;
@@ -195,6 +202,8 @@ public final class BondAbilityPrimaryPage {
         }
         if (!abilityUnlocked) {
             result.add(Component.translatable("bond.power_point_cost", ability.getPowerPointCost()).withStyle(ChatFormatting.AQUA));
+            result.add(Component.translatable("bond.power_point_inventory", powerPoints).withStyle(ChatFormatting.AQUA));
+            result.add(Component.translatable("bond.power_point_item_hint").withStyle(ChatFormatting.DARK_GRAY));
         }
         result.add(host.getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
                 .copy()

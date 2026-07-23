@@ -1,7 +1,7 @@
 {
   "mod.touhou_maid_affection.name": "女仆亲亲",
   "mod.touhou_maid_affection.description": "亲亲你的女仆！为车万女仆添加亲密互动功能。",
-  "tips.touhou_maid_affection.kiss": "潜行 + 空手右击女仆触发亲吻",
+  "tips.touhou_maid_affection.kiss": "潜行 + 空手右击女仆触发亲吻；若与坐下/站起冲突，可在配置关闭并使用亲吻按键",
   "tips.touhou_maid_affection.kiss_carried": "主手持鞍公主抱女仆后，按亲吻按键可触发亲吻",
   "tips.touhou_maid_affection.kiss_carryon": "检测到 CarryOn：潜行 + 主手空 + 副手持物 右击女仆触发亲吻",
   "tips.touhou_maid_affection.offhand_tempt": "副手持有诱惑物品（默认蛋糕）也能吸引女仆",
@@ -15,6 +15,9 @@
   "bond.tab.desc": "与女仆建立更深羁绊后可解锁更多互动能力。",
   "bond.unlock.requirement": "需要好感等级 %s 才能解锁",
   "bond.power_point_cost": "消耗 %d P点",
+  "bond.power_point_inventory": "背包中的 P 点物品：%d",
+  "bond.power_point_item_hint": "此处消耗背包里的 P 点物品，不是神社庭灯中存储的 P 点数值",
+  "bond.unlock_click_blocked": "当前无法执行：%s",
   "bond.activate": "激活",
   "bond.unlock": "解锁",
   "bond.unlocked": "已解锁",

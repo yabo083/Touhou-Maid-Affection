@@ -5,7 +5,9 @@ import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.ModEffects;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.service.MorningKissProfileData;
+import com.github.touhoumaidaffection.client.KissClientSettings;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
+import com.github.touhoumaidaffection.network.KissRightClickConfigPayload;
 import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.favorability.Type;
@@ -52,14 +54,15 @@ public class KissMaidHandler {
         Player player = event.getPlayer();
         EntityMaid maid = event.getMaid();
 
-        // Only trigger when sneaking with empty main hand
-        if (!player.isShiftKeyDown() || !event.getStack().isEmpty()) {
-            return;
-        }
-
-        // CarryOn compatibility: when CarryOn is loaded, it uses sneak + both hands empty
-        // to pick up entities. Only trigger kiss when offhand is NOT empty to avoid conflict.
-        if (isCarryOnLoaded() && player.getOffhandItem().isEmpty()) {
+        boolean rightClickEnabled = player.level().isClientSide
+                ? KissClientSettings.isRightClickEnabled()
+                : ModConfig.KISS_RIGHT_CLICK_ENABLED.get();
+        if (!KissInteractionPolicy.shouldHandle(
+                rightClickEnabled,
+                player.isShiftKeyDown(),
+                event.getStack().isEmpty(),
+                isCarryOnLoaded(),
+                player.getOffhandItem().isEmpty())) {
             return;
         }
 
@@ -118,6 +121,17 @@ public class KissMaidHandler {
                 ModEffects.MAIDS_PRAYER.get(), safeDuration, amplifier, false, true, true));
         maid.addEffect(new MobEffectInstance(
                 ModEffects.MAIDS_PRAYER.get(), safeDuration, amplifier, false, true, true));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            if (TouhouMaidAffection.CHANNEL.isRemotePresent(player.connection.connection)) {
+                TouhouMaidAffection.CHANNEL.send(
+                        PacketDistributor.PLAYER.with(() -> player),
+                        new KissRightClickConfigPayload(ModConfig.KISS_RIGHT_CLICK_ENABLED.get()));
+            }
+        }
     }
 
     @SubscribeEvent

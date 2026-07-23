@@ -24,17 +24,12 @@
 
 ## 最新版本
 
-`1.7.2.2-forge1.20.1` 是 Forge 1.20.1 分支基于 1.7.2 功能线的短期增强版，重点完善自定义语音包、早安吻 AI 化、语音试听体验，并修复早安吻 AI/TTS 语言缓存问题：
+`1.7.3.0` 汇总了评论区高价值玩家反馈，并强化了默认交互安全性：
 
-- 早安吻与残血救护拆分为各自独立的数据包语音池。
-- 早安吻支持静态台词包，台词可使用 `{maid}` 与 `{player}` 占位符。
-- 早安吻可选 AI 台词与 TTS 预生成，复用 TLM AI 站点。
-- 新增 TMA MiMo 适配器，向 TLM AI 设置页注册 MiMo 聊天与 TTS 站点类型。
-- 新增准星目标女仆亲吻按键，不需要公主抱也能用按键亲吻当前指向的女仆。
-- 早安吻与残血救护语音池页面支持试听。
-- `aiDialogueLanguage` 现在会同时影响早安吻 AI 台词预生成和 TTS 语音生成；默认值 `tlm` 会跟随 Touhou Little Maid 本体语言设置，且生成式语音缓存的待合成文本会跟随 TLM 原生语音合成语言按钮。
-- `/tma morning_kiss` 可查看 AI/TTS 状态与缓存统计；测试语言或提示词时，可使用 `/tma morning_kiss ai on/off`、`/tma morning_kiss tts on/off` 或 `/tma morning_kiss clear_ai_cache`。
-- `examples/TMA-Custom-Voice-Pack` 提供可直接压缩发布的示例数据包。
+- **安全礼物池**：随机礼物默认使用策划物品标签池；旧版广泛抽样模式也会排除基岩与刷怪蛋。
+- **交互开关**：`rightClickKissEnabled` 可关闭潜行右击亲吻，但不影响准星亲吻与公主抱亲吻按键。
+- **整合包生命适配**：残血救护可选按最大生命百分比触发。
+- **解锁说明**：羁绊页会明确要求背包中的 P 点物品，并在点击不可用按钮时反馈原因。
 
 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -43,6 +38,8 @@
 ### 亲吻互动
 
 潜行、空手右击自己的女仆即可亲吻。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。
+
+如果该操作与女仆坐下/站起冲突，可设置 `cooldown.rightClickKissEnabled=false`，改用可配置的准星亲吻或公主抱亲吻按键。
 
 声音音量可在 `config/touhou_maid_affection-common.toml` 中调整：`cooldown.kissSoundVolume` 控制亲吻音效，`morningKissBehavior.voiceVolume` 控制早安吻语音，`emergencyRescueBehavior.volume` 控制残血救护语音与兜底音效，`voicePreview.volume` 控制羁绊页语音试听。
 
@@ -63,6 +60,10 @@
 | 残血救护 | 让已羁绊女仆贡献每日救援次数，并播放救援语音。 |
 | 随机礼物 | 女仆随时间积累并送出小礼物。 |
 
+提高最大生命值的整合包可启用 `emergencyRescueBehavior.usePercentageThreshold=true`；默认 20% 在原版生命上限下等于旧版 4 点阈值。为兼容已有服务器配置，百分比模式默认关闭。
+
+随机礼物默认只使用 `touhou_maid_affection:bond_random_gift_pool` 物品标签中的策划池。数据包可扩展该标签，或通过 `touhou_maid_affection:bond_random_gift_blacklist` 添加排除项；只有需要旧版广泛注册表抽样时才建议设置 `bondCosts.randomGiftBehavior.curatedPoolOnly=false`。
+
 解锁、消耗、距离、冷却和能力执行均由服务端判定；客户端羁绊页只负责展示与配置。
 
 ### 自定义文本与语音
@@ -76,9 +77,7 @@ data/touhou_maid_affection/emergency_rescue/profile.json
 data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 ```
 
-早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。语音池页面可以在保存前试听当前候选语音。
-
-完整教程见 [早安吻文本修改教程.md](早安吻文本修改教程.md)，示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
+早安吻数据包可配置静态台词池、亲吻音效行为和 OGG 语音；残血救护数据包可配置救援 OGG 语音与兜底音效。语音池页面可以在保存前试听当前候选语音。完整教程见 [早安吻相关配置说明.md](早安吻相关配置说明.md)，可直接压缩发布的示例包位于 [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)。
 
 ### AI 与 MiMo
 
@@ -97,7 +96,7 @@ TMA 还会向 TLM AI 设置页注册 MiMo 兼容的聊天与 TTS 站点类型。
 
 1. 安装 Minecraft `1.20.1` 与 Forge `47.4.x`。
 2. 安装 Forge 1.20.1 对应的 Touhou Little Maid。
-3. 将 `touhou-maid-affection-1.7.2.2.jar` 放入 `mods` 文件夹。
+3. 将 `touhou-maid-affection-1.7.3.0.jar` 放入 `mods` 文件夹。
 4. 启动游戏。
 
 ## 从源码构建
@@ -118,7 +117,7 @@ build/libs/touhou-maid-affection-<version>.jar
 
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)：核心架构边界与模块职责。
 - [CHANGELOG.md](CHANGELOG.md)：面向用户的版本更新历史。
-- [早安吻文本修改教程.md](早安吻文本修改教程.md)：数据包文本、语音与 AI 配置教程。
+- [早安吻相关配置说明.md](早安吻相关配置说明.md)：数据包文本、语音与 AI 配置教程。
 - [TESTING.md](TESTING.md)：测试范围、约定与回归命令。
 - [DEPLOYMENT.md](DEPLOYMENT.md)：构建发布约束与发版前检查清单。
 

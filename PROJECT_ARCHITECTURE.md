@@ -84,7 +84,7 @@ examples/TMA-Custom-Voice-Pack
 
 `TouhouMaidAffection.java` 是启动门面，负责配置注册、注册表、payload、事件监听、TLM AI 扩展和 tick 入口装配。它不应承载业务规则。
 
-`ModConfig.java` 保存全局规则、默认阈值、亲吻音效/早安吻语音/残血救护/语音试听音量、早安吻 AI/TTS 运行时开关、提示词、语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
+`ModConfig.java` 保存全局规则、默认阈值、亲吻冷却与右键入口开关、好感收益、亲吻音效/早安吻语音/残血救护/语音试听音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻 AI/TTS 运行时开关、提示词、语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
 
 注册层的原则是“装配而非决策”：具体触发条件、资源解析、能力逻辑和错误回退应下放到 handler、service 或领域对象。
 
@@ -112,8 +112,8 @@ examples/TMA-Custom-Voice-Pack
 - `MorningKissGeneratedDialogueCache`：保存服务端运行时生成结果，缓存键必须至少包含女仆 UUID 与时间池，避免多名女仆共享同一生成池。
 - `MorningKissGeneratedDialogueStorage`：把早安吻 AI 生成文本与 TTS 音频持久化到世界目录下的 `generated_morning_kiss/<maidUuid>/<pool>/`，以 `001.json` + 可选 `001.ogg/mp3` 的形式提供外部可编辑入口；它是生成缓存的磁盘镜像，不属于数据包，也不触发 `/reload`。
 - `MorningKissProfileParser` / `MorningKissProfileData`：读取早安吻静态数据包 profile。
-- `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：解析早安吻和残血救护共享的数据包 OGG 语音池。
-- `RandomGiftService`：随机礼物积累、选择和投递。
+- `InteractionVoiceProfileParser` / `InteractionVoiceProfileData`：早安吻与残血救护共享的数据包 OGG 语音解析。
+- `RandomGiftService`：随机礼物积累与投递。默认礼物来源是显式物品标签池；广泛注册表抽样是可选兼容模式，且仍经过危险物品策略与黑名单过滤。
 
 早安吻边界：
 

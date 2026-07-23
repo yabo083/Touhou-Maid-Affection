@@ -25,6 +25,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -51,20 +52,7 @@ public final class RandomGiftService {
             net.minecraft.core.registries.Registries.ITEM,
             new ResourceLocation(TouhouMaidAffection.MOD_ID, "bond_random_gift_blacklist")
     );
-    private static final Set<ResourceLocation> VANILLA_EXCLUDED_ITEMS = Set.of(
-            new ResourceLocation("minecraft", "air"),
-            new ResourceLocation("minecraft", "barrier"),
-            new ResourceLocation("minecraft", "command_block"),
-            new ResourceLocation("minecraft", "chain_command_block"),
-            new ResourceLocation("minecraft", "repeating_command_block"),
-            new ResourceLocation("minecraft", "command_block_minecart"),
-            new ResourceLocation("minecraft", "structure_block"),
-            new ResourceLocation("minecraft", "structure_void"),
-            new ResourceLocation("minecraft", "jigsaw"),
-            new ResourceLocation("minecraft", "light"),
-            new ResourceLocation("minecraft", "debug_stick"),
-            new ResourceLocation("minecraft", "knowledge_book")
-    );
+
     private static final Map<UUID, PendingDeliveryTask> DELIVERY_TASKS = new HashMap<>();
     private static final int SCAN_INTERVAL_TICKS = 20;
 
@@ -233,8 +221,8 @@ public final class RandomGiftService {
     private static ItemStack rollGiftStack(ServerLevel level, EntityMaid maid) {
         List<Item> candidates = collectGiftCandidates(level);
         if (candidates.isEmpty()) {
-            TouhouMaidAffection.LOGGER.warn("Random gift pool tag is empty at runtime, falling back to apple gift.");
-            return new ItemStack(Items.APPLE);
+            TouhouMaidAffection.LOGGER.warn("Random gift pool is empty at runtime; skipping this gift instead of bypassing the configured blacklist.");
+            return ItemStack.EMPTY;
         }
         RandomSource random = maid.getRandom();
         Item item = candidates.get(random.nextInt(candidates.size()));
@@ -244,14 +232,17 @@ public final class RandomGiftService {
     private static List<Item> collectGiftCandidates(ServerLevel level) {
         Set<Item> candidates = new LinkedHashSet<>();
 
-        for (Item item : BuiltInRegistries.ITEM) {
-            if (isDefaultVanillaGiftCandidate(item)) {
-                candidates.add(item);
+        boolean curatedPoolOnly = ModConfig.BOND_RANDOM_GIFT_CURATED_POOL_ONLY.get();
+        if (RandomGiftPolicy.includeAutomaticRegistryCandidates(curatedPoolOnly)) {
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (isDefaultVanillaGiftCandidate(item)) {
+                    candidates.add(item);
+                }
             }
-        }
 
-        if (ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get()) {
-            addSampledModItems(level, candidates);
+            if (ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get()) {
+                addSampledModItems(level, candidates);
+            }
         }
 
         for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(GIFT_POOL_TAG)) {
@@ -273,7 +264,7 @@ public final class RandomGiftService {
         if (!ResourceLocation.DEFAULT_NAMESPACE.equals(id.getNamespace())) {
             return false;
         }
-        if (VANILLA_EXCLUDED_ITEMS.contains(id)) {
+        if (RandomGiftPolicy.isExcludedDefaultGift(id.toString(), item instanceof SpawnEggItem)) {
             return false;
         }
         return isValidGiftCandidate(item);
@@ -302,7 +293,9 @@ public final class RandomGiftService {
             if (ResourceLocation.DEFAULT_NAMESPACE.equals(id.getNamespace())) {
                 continue;
             }
-            if (item.builtInRegistryHolder().is(GIFT_BLACKLIST_TAG) || !isValidGiftCandidate(item)) {
+            if (item.builtInRegistryHolder().is(GIFT_BLACKLIST_TAG)
+                    || RandomGiftPolicy.isExcludedDefaultGift(id.toString(), item instanceof SpawnEggItem)
+                    || !isValidGiftCandidate(item)) {
                 continue;
             }
             byNamespace.computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>()).add(item);
