@@ -15,25 +15,26 @@ import net.minecraft.world.phys.EntityHitResult;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID, value = Dist.CLIENT)
 public class KissKeyInputHandler {
+
+    private static boolean kissKeyWasDown = false;
+
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        boolean keyDown = KissKeyMappings.KISS_MAID.isDown();
         if (minecraft.player == null || minecraft.level == null) {
+            kissKeyWasDown = keyDown;
             return;
         }
 
-        int carriedKeyClicks = consumeClicks(KissKeyMappings.KISS_CARRIED_MAID);
-        int targetedKeyClicks = consumeClicks(KissKeyMappings.KISS_TARGETED_MAID);
-        int requestCount = Math.max(carriedKeyClicks, targetedKeyClicks);
-        if (requestCount <= 0) {
-            return;
-        }
-
-        boolean isCarryingMaid = minecraft.player.getPassengers().stream().anyMatch(passenger -> passenger instanceof EntityMaid);
-        EntityMaid targetedMaid = getTargetedMaid(minecraft);
-        boolean targetedKeyPressed = targetedKeyClicks > 0;
-        for (int i = 0; i < requestCount; i++) {
-            KissKeyAction action = KissKeyAction.choose(isCarryingMaid, targetedKeyPressed && targetedMaid != null);
+        // Edge trigger on the key state: one physical press = one kiss. consumeClick()
+        // also fires on OS key auto-repeat, which would spam kisses while holding the
+        // key (and restart the kiss camera every repeat) — the edge check avoids that,
+        // so holding K gives exactly one kiss ("按一下亲一次，长按也是亲一次").
+        if (keyDown && !kissKeyWasDown) {
+            boolean isCarryingMaid = minecraft.player.getPassengers().stream().anyMatch(passenger -> passenger instanceof EntityMaid);
+            EntityMaid targetedMaid = getTargetedMaid(minecraft);
+            KissKeyAction action = KissKeyAction.choose(isCarryingMaid, targetedMaid != null);
             switch (action) {
                 case CARRIED_MAID -> PacketDistributor.sendToServer(new KissCarryRequestPayload(0));
                 case TARGETED_MAID -> PacketDistributor.sendToServer(new KissTargetedMaidRequestPayload(targetedMaid.getId()));
@@ -41,14 +42,7 @@ public class KissKeyInputHandler {
                 }
             }
         }
-    }
-
-    private static int consumeClicks(net.minecraft.client.KeyMapping keyMapping) {
-        int count = 0;
-        while (keyMapping.consumeClick()) {
-            count++;
-        }
-        return count;
+        kissKeyWasDown = keyDown;
     }
 
     private static EntityMaid getTargetedMaid(Minecraft minecraft) {

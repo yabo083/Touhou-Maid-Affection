@@ -121,15 +121,16 @@ public class ModConfig {
     public static final ModConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_B;
     public static final ModConfigSpec.IntValue PARTICLE_ACCENT_GRADIENT_END_A;
 
-    // FOV zoom
-    public static final ModConfigSpec.BooleanValue FOV_ZOOM_ENABLED;
+    // Kiss camera move timeline (was "FOV zoom" before the dolly replaced it)
     public static final ModConfigSpec.IntValue FOV_ZOOM_IN_TICKS;
-    public static final ModConfigSpec.IntValue FOV_HOLD_TICKS;
     public static final ModConfigSpec.IntValue FOV_ZOOM_OUT_TICKS;
-    public static final ModConfigSpec.DoubleValue FOV_ZOOM_STRENGTH;
-    public static final ModConfigSpec.DoubleValue FOV_CARRIED_SIDE_OFFSET;
-    public static final ModConfigSpec.DoubleValue FOV_CARRIED_FORWARD_OFFSET;
-    public static final ModConfigSpec.DoubleValue FOV_CARRIED_VERTICAL_OFFSET;
+
+    // Kiss camera move (GMOD-style dolly toward the maid's face, first person only)
+    public static final ModConfigSpec.BooleanValue KISS_CAMERA_MOVE_ENABLED;
+    public static final ModConfigSpec.DoubleValue KISS_CAMERA_GAP;
+    public static final ModConfigSpec.DoubleValue KISS_CAMERA_FACE_OFFSET_Y;
+    public static final ModConfigSpec.DoubleValue KISS_CAMERA_SITTING_FACE_OFFSET_Y;
+    public static final ModConfigSpec.DoubleValue KISS_TARGET_MAX_DISTANCE;
 
     // TMA AI Hub defaults for Touhou Little Maid AI services
     public static final ModConfigSpec.BooleanValue TMA_MIMO_ADAPTER_ENABLED;
@@ -160,8 +161,8 @@ public class ModConfig {
                 .defineInRange("level2", 20, 0, 6000);
 
         COOLDOWN_LEVEL_3 = builder
-                .comment("Cooldown at favorability level 3 / max (default: 0 = no cooldown)")
-                .defineInRange("level3", 0, 0, 6000);
+                .comment("Cooldown at favorability level 3 / max (default: 10 = 0.5 seconds)")
+                .defineInRange("level3", 10, 0, 6000);
 
         builder.pop();
 
@@ -600,42 +601,47 @@ public class ModConfig {
 
         builder.pop();
 
-        builder.comment("FOV zoom effect on kiss",
-                        "Creates a smooth 'lean-in' feeling by narrowing the FOV")
+        builder.comment("Kiss camera animation timeline",
+                        "Times the first-person camera dolly toward the maid's face")
                .push("fov");
 
-        FOV_ZOOM_ENABLED = builder
-                .comment("Enable FOV zoom on kiss (default: true)")
-                .define("enabled", true);
-
         FOV_ZOOM_IN_TICKS = builder
-                .comment("Zoom-in duration in ticks (default: 4 = 0.2s)")
+                .comment("Camera move-in duration in ticks (default: 4 = 0.2s)")
                 .defineInRange("zoomInTicks", 4, 1, 40);
 
-        FOV_HOLD_TICKS = builder
-                .comment("Hold at max zoom duration in ticks (default: 3 = 0.15s)")
-                .defineInRange("holdTicks", 3, 0, 40);
-
         FOV_ZOOM_OUT_TICKS = builder
-                .comment("Zoom-out duration in ticks (default: 6 = 0.3s)")
+                .comment("Camera move-out duration in ticks (default: 6 = 0.3s)")
                 .defineInRange("zoomOutTicks", 6, 1, 60);
 
-        FOV_ZOOM_STRENGTH = builder
-                .comment("Zoom strength (0.0 = no zoom, 1.0 = full zoom to 0 FOV) (default: 0.85)")
-                .defineInRange("strength", 0.85, 0.0, 0.95);
+        KISS_CAMERA_MOVE_ENABLED = builder
+                .comment("Enable first-person camera move toward the maid's face on kiss (default: true)",
+                        "GMOD-style dolly: the camera position glides from the player's eye to a point",
+                        "in front of the maid's face, in addition to the existing FOV zoom + angle snap.")
+                .define("cameraMoveEnabled", true);
 
-        FOV_CARRIED_SIDE_OFFSET = builder
-                .comment("Princess-carry camera target side offset relative to player look direction",
-                        "Negative = left, positive = right (default: 0.48)")
-                .defineInRange("carriedSideOffset", 0.48, -1.5, 1.5);
+        KISS_CAMERA_GAP = builder
+                .comment("Kiss camera gap: distance between the camera and the maid's face at full close-up",
+                        "Smaller = closer. In blocks. (default: 0.35)")
+                .defineInRange("cameraGap", 0.35, 0.05, 1.5);
 
-        FOV_CARRIED_FORWARD_OFFSET = builder
-                .comment("Princess-carry camera target forward offset (default: 0.16)")
-                .defineInRange("carriedForwardOffset", 0.16, -1.0, 1.0);
+        KISS_CAMERA_FACE_OFFSET_Y = builder
+                .comment("Vertical offset applied to the maid's eye position when aiming the kiss camera",
+                        "TLM's eye position sits at 85% of the maid's height, which lands on the neck/mouth",
+                        "for models with tall heads (e.g. wine fox). Raise to kiss the face instead. In blocks.",
+                        "Positive = higher. (default: 0.15)")
+                .defineInRange("cameraFaceOffsetY", 0.15, -0.5, 1.0);
 
-        FOV_CARRIED_VERTICAL_OFFSET = builder
-                .comment("Princess-carry camera target vertical offset from player eye (default: -0.10)")
-                .defineInRange("carriedVerticalOffset", -0.10, -1.0, 1.0);
+        KISS_CAMERA_SITTING_FACE_OFFSET_Y = builder
+                .comment("Extra vertical fine-tune for the kiss camera aim when following the crosshair",
+                        "When the maid renders low (sitting pose/animation), the kiss aims at the point your crosshair",
+                        "points at on her. 0.0 = kiss exactly there; raise/lower to nudge. In blocks.",
+                        "(default: 0.0)")
+                .defineInRange("cameraSittingFaceOffsetY", 0.0, -0.5, 1.0);
+
+        KISS_TARGET_MAX_DISTANCE = builder
+                .comment("Maximum distance in blocks at which pressing K can kiss a targeted maid (default: 3.0)",
+                        "Lower = must stand closer to the maid to trigger the kiss.")
+                .defineInRange("targetMaxDistance", 3.0, 1.0, 8.0);
 
         builder.pop();
 

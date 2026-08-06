@@ -201,6 +201,10 @@ public final class BondAbilityPrimaryPage {
                 .withStyle(host.isMainButtonClickable(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary)
                         ? ChatFormatting.GREEN
                         : ChatFormatting.RED));
+        // P 点不足时追加说明：P 点需要以物品形式携带，而非经验栏里那种储存值
+        if (!abilityUnlocked && !enoughPowerPoint) {
+            result.add(Component.translatable("bond.insufficient_power_point_hint").withStyle(ChatFormatting.YELLOW));
+        }
         return result;
     }
 

@@ -17,7 +17,9 @@
     "client.EntityRenderDispatcherLapPillowMixin",
     "client.LivingEntityLapPillowSleepMixin",
     "client.EntityLapPillowPoseClientGuardMixin",
-    "client.PlayerModelLapPillowSleepPoseMixin"
+    "client.PlayerModelLapPillowSleepPoseMixin",
+    "client.CameraKissMixin",
+    "client.GameRendererKissHandMixin"
   ],
   "injectors": {
     "defaultRequire": 1

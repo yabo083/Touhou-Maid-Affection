@@ -1,6 +1,5 @@
 package com.github.touhoumaidaffection.client;
 
-import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -17,8 +16,8 @@ public class KissClientHandler {
             Entity player = level.getEntity(payload.playerEntityId());
             if (maid == null || player == null) return;
 
-            // Trigger FOV zoom if this is the local player
-            if (payload.allowFovZoom() && player == Minecraft.getInstance().player && ModConfig.FOV_ZOOM_ENABLED.get()) {
+            // Trigger kiss camera animation if this is the local player
+            if (payload.allowFovZoom() && player == Minecraft.getInstance().player) {
                 boolean carriedKiss = maid.getVehicle() == player;
                 KissFovHandler.trigger(maid.getId(), carriedKiss);
             }

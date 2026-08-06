@@ -23,12 +23,14 @@
 
 ## Latest Release
 
-`1.7.2.2` brings AI cache persistence, expanded management commands, and smarter language defaults:
+`1.7.3` reworks the kiss interaction:
 
-- **Cache persistence**: AI-generated dialogue and TTS audio are now saved to `world/generated_morning_kiss/` and survive server restarts.
-- **New commands**: `/tma morning_kiss status` (runtime overview), `/tma morning_kiss cache` (per-maid stats), `/tma morning_kiss ai on|off` and `/tma morning_kiss tts on|off` (runtime toggle), and expanded `/tma morning_kiss clear_ai_cache` (maid/pool/entry/voice granularity).
-- **Config**: `aiDialogueCacheConsumeOnUse` (default `false`) controls whether cached entries are consumed or peeked. `aiDialogueLanguage` now defaults to `tlm` to follow per-maid TLM language preferences.
-- **Language resolution**: Text generation and TTS voice language now resolve independently based on chat vs. TTS source language.
+- **K-key kisses**: Kissing is now triggered with the **K key** — one press kisses once, and holding the key does not repeat it. The old sneak + right-click trigger has been removed.
+- **Hold-to-kiss camera**: Press K to glide the camera to your maid's face; keep holding to stay there; release K to move the camera back.
+- **Crosshair-accurate aim**: When the maid renders low (sitting pose or model animation), the kiss camera aims where your crosshair points, so sitting kisses land on her face.
+- **Configurable kiss range**: `fov.targetMaxDistance` (default 3 blocks, previously a fixed 6).
+- **Max-favorability cooldown**: the default kiss cooldown at favorability level 3 is now 0.5 seconds.
+- **Bond UI hint**: the P-point-insufficient tooltip now explains that item-form P-points are required to unlock.
 
 Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
@@ -36,9 +38,7 @@ Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
 ### Kiss Interaction
 
-Sneak with an empty hand and right-click your maid to kiss her. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect.
-
-When CarryOn is installed, the right-click condition changes to avoid interaction conflicts. A dedicated keybind also supports kissing a princess-carried maid.
+Point your crosshair at a maid and press the **K key** to kiss her — one press kisses once, and holding the key does not repeat it. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a close-up camera effect that stays at her face while you hold K and returns when you release it. Repeated kisses can trigger the custom Maid's Prayer effect. Pressing K while a maid is princess-carried (saddle) also kisses her.
 
 ### Targeted Kiss Key
 
@@ -80,14 +80,13 @@ TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. Th
 
 - Touhou Little Maid: required dependency.
 - Yes Steve Model: optional action playback and action discovery.
-- CarryOn: optional right-click conflict avoidance.
 - TLM GUI and sound packs: soft integration where available, silent fallback where absent.
 
 ## Installation
 
 1. Install Minecraft `1.21.1` with NeoForge `21.1.x`.
 2. Install Touhou Little Maid `1.5.1+`.
-3. Put `touhou-maid-affection-1.7.2.2.jar` into your `mods` folder.
+3. Put `touhou-maid-affection-1.7.3.jar` into your `mods` folder.
 4. Launch the game.
 
 ## Build From Source

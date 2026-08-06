@@ -6,22 +6,13 @@ import net.neoforged.neoforge.client.settings.KeyConflictContext;
 
 public final class KissKeyMappings {
     public static final String KEY_CATEGORY = "key.categories.touhou_maid_affection";
-    public static final String KEY_KISS_CARRIED_MAID = "key.touhou_maid_affection.kiss_carried_maid";
-    public static final String KEY_KISS_TARGETED_MAID = "key.touhou_maid_affection.kiss_targeted_maid";
+    public static final String KEY_KISS_MAID = "key.touhou_maid_affection.kiss";
 
-    public static final KeyMapping KISS_CARRIED_MAID = new KeyMapping(
-            KEY_KISS_CARRIED_MAID,
+    public static final KeyMapping KISS_MAID = new KeyMapping(
+            KEY_KISS_MAID,
             KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM,
-            TmaKeyDefaults.KISS_CARRIED_MAID,
-            KEY_CATEGORY
-    );
-
-    public static final KeyMapping KISS_TARGETED_MAID = new KeyMapping(
-            KEY_KISS_TARGETED_MAID,
-            KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM,
-            TmaKeyDefaults.KISS_TARGETED_MAID,
+            TmaKeyDefaults.KISS_MAID,
             KEY_CATEGORY
     );
 

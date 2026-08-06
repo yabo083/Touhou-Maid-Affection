@@ -28,6 +28,19 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    mavenCentral()
+}
+
+// Network workaround: maven.neoforged.net is unreachable from this machine right now.
+// mixinextras-neoforge 0.3.5 comes from Maven Central (added above); the fancymodloader
+// 4.0.24 artifacts pinned by neoforge 21.1.18 are substituted with the locally cached
+// 4.0.41 versions (the same ones neoforge 21.1.197 uses). Remove this block once
+// maven.neoforged.net is reachable again.
+configurations.all {
+    resolutionStrategy {
+        force 'net.neoforged.fancymodloader:loader:4.0.41'
+        force 'net.neoforged.fancymodloader:earlydisplay:4.0.41'
+    }
 }
 
 neoForge {

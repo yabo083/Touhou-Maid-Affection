@@ -10,8 +10,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 public class KissKeyRegisterHandler {
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(KissKeyMappings.KISS_CARRIED_MAID);
-        event.register(KissKeyMappings.KISS_TARGETED_MAID);
+        event.register(KissKeyMappings.KISS_MAID);
         event.register(BondKeyMappings.LAP_PILLOW);
         event.register(BondKeyMappings.LAP_PILLOW_ANGLE_LOCK);
         event.register(BondKeyMappings.VOICE_PREVIEW);
