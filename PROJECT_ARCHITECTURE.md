@@ -21,7 +21,7 @@
 - Forge `47.4.16`
 - Gradle 单模块工程
 - Official mappings `1.20.1`
-- Touhou Little Maid 编译目标：`1.5.2-forge+mc1.20.1`
+- Touhou Little Maid 编译目标：`1.5.3-forge+mc1.20.1`
 - Mixin 用于 TLM GUI、TLM AI 编辑器、诱饵行为与膝枕渲染桥接
 - Modrinth Minotaur 与 GitHub Actions 负责发布
 
@@ -190,7 +190,7 @@ examples/TMA-Custom-Voice-Pack
 
 - LLM 侧复用 TLM OpenAI 站点编辑器的表单体验，但实际请求由 `MimoLLMClient` 发起。
 - `LLMSiteEditorScreenMixin` 只解决 TLM 编辑器保存后站点类型被普通 OpenAI 类型覆盖的问题，作用域必须保持窄。
-- TTS 侧实现 TLM 1.5.2 的旧接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路；从 `TTSConfig.language` 传入的语言必须写入请求体与 voice prompt，避免回落到 TLM 站点默认语种。
+- TTS 侧实现 TLM 的 TTS 接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路；从 `TTSConfig.language` 传入的语言必须写入请求体与 voice prompt，避免回落到 TLM 站点默认语种。
 - `BoundedHttpClient` / `BoundedHttpResponse` 在字节进入字符串缓冲前执行响应上限；TTS 还会在 Base64 解码前后复核音频大小，错误正文只传递有界摘要。
 - MiMo TTS 默认请求 MP3；远程响应会被格式校验，不能把不可播放格式塞进客户端队列。
 - API key、站点启用状态、站点保存仍由 TLM 管理；TMA 只提供站点类型、默认 URL、默认模型、格式和羁绊页跳转入口。

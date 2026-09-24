@@ -8,7 +8,7 @@
 - Loader: Forge `47.4.x`
 - Java: `17`
 - Required dependency: Touhou Little Maid for Forge 1.20.1
-- Current compile target: `1.5.2-forge+mc1.20.1`
+- Current compile target: `1.5.3-forge+mc1.20.1`
 
 ## Build Artifact
 
