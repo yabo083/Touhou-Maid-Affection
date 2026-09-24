@@ -17,7 +17,7 @@
 - Gradle 单模块工程
 - Minecraft `1.21.1`
 - NeoForge `21.1.x`
-- Touhou Little Maid `1.5.1+`，当前编译目标为 `1.5.2-neoforge+mc1.21.1`
+- Touhou Little Maid `1.5.1+`，当前编译目标为 `1.5.3-neoforge+mc1.21.1`（1.5.3 相对 1.5.2 在被引用的 49 个类中 44 个成员集合完全一致、4 个仅新增成员、5 个 mixin 目标类签名逐字节一致）
 - Parchment mappings `2024.11.17`
 - Mixin 用于少量 TLM GUI、诱饵与膝枕渲染桥接
 - Modrinth Minotaur 用于发布任务
