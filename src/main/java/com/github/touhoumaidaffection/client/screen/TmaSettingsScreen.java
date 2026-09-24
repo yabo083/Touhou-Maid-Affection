@@ -1,4 +1,4 @@
-package com.github.touhoumaidaffection.client.screen.page;
+package com.github.touhoumaidaffection.client.screen;
 
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
@@ -12,6 +12,7 @@ import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -22,20 +23,25 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Global (maid independent) settings panel.
+ * Global (maid independent) settings panel, opened as a standalone {@link Screen} on top of the
+ * maid GUI.
  *
- * <p>Layout follows the reviewed mockup: a 300x188 modal with a 46px navigation rail (features /
- * voice / volume) and one section per tab. Feature switches and languages are server-authoritative
- * and go through the settings channel, while the volume sliders are pure client preferences
- * written straight into the local config. Every control applies instantly; the rail bottom hosts a
- * decorative rose vine centred inside the rail and it never accepts mouse input.
+ * <p>It is deliberately not a {@code BondSecondaryPage}: it is entered from the maid GUI's
+ * "settings" button via {@link net.minecraft.client.Minecraft#setScreen(Screen)} and closing it
+ * (footer "done", ESC or a click on the dimmed area) restores the parent screen it was opened from.
+ * Layout follows the reviewed mockup: a 300x188 modal with a 46px navigation rail (features / voice
+ * / volume) and one section per tab. Feature switches and languages are server-authoritative and go
+ * through the settings channel, while the volume sliders are pure client preferences written
+ * straight into the local config. Every control applies instantly; the rail bottom hosts a
+ * decorative rose vine whose top is anchored to the footer "done" button and which may spill below
+ * the panel's bottom edge. It never accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
  * means "saved" (no dot), a differing value means "rejected" (red dot for a few seconds), and a
  * request that never comes back within {@link #PENDING_TIMEOUT_MILLIS} is treated as rejected.
  */
-public final class SettingsSecondaryPage implements BondSecondaryPage {
+public final class TmaSettingsScreen extends Screen {
     // ---- Modal geometry ----
     private static final int MODAL_WIDTH = BondGuiTokens.SETTINGS_MODAL_WIDTH;
     private static final int MODAL_HEIGHT = BondGuiTokens.SETTINGS_MODAL_HEIGHT;
@@ -54,8 +60,6 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     /** High resolution source texture (132x165), blitted down to {@link #NAV_VINE_WIDTH} x {@link #NAV_VINE_HEIGHT}. */
     private static final int NAV_VINE_TEXTURE_WIDTH = 132;
     private static final int NAV_VINE_TEXTURE_HEIGHT = 165;
-    /** Gap between the vine's stem base and the bottom of the navigation rail. */
-    private static final int NAV_VINE_BOTTOM_MARGIN = 4;
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;
@@ -119,7 +123,7 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
             new VolumeSetting("voice_preview", ModConfig.VOICE_PREVIEW_VOLUME)
     );
 
-    private final BondSecondaryPageHost host;
+    private final Screen parent;
     private final Runnable refreshListener = this::refreshFromState;
 
     private final List<ToggleRow> toggles = new ArrayList<>();
@@ -137,9 +141,11 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     private int scrollOffset;
     private boolean layoutDirty = true;
     private boolean volumesDirty;
+    private boolean released;
 
-    public SettingsSecondaryPage(BondSecondaryPageHost host) {
-        this.host = host;
+    public TmaSettingsScreen(Screen parent) {
+        super(Component.translatable("bond.settings.title"));
+        this.parent = parent;
         buildRows();
         TmaSettingsClientState.addListener(refreshListener);
         // Always re-read: the cache may still hold the state of a previous world or server.
@@ -147,10 +153,28 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY) {
-        Font font = host.getFont();
-        modal = createModal();
-        BondModalPage modal = this.modal;
+    protected void init() {
+        super.init();
+        modal = null;
+        layoutDirty = true;
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // The modal chrome paints the full-screen dim overlay (page == whole screen), so the vanilla
+        // menu/blur background is intentionally skipped to keep a single dim layer.
+    }
+
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        Font font = this.font;
+        BondModalPage modal = modal();
         modal.renderChrome(graphics, font);
         renderTitleScope(graphics, font);
         ensureLayout();
@@ -167,10 +191,17 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
 
         renderScrollbar(graphics, viewportTop, viewportBottom);
         renderNav(graphics, font, mouseX, mouseY);
-        renderDropdownOverlays(graphics, font, mouseX, mouseY, modal);
+        // Dropdown overlays are drawn after every other element and are clamped to the screen, never
+        // to the panel content viewport, so an expanded list is always fully visible.
+        renderDropdownOverlays(graphics, font, mouseX, mouseY);
         renderFooter(graphics, font, mouseX, mouseY);
         // Drawn last so the vine lands on top of the rail chrome it decorates.
         renderVine(graphics);
+
+        List<Component> tooltip = getTooltip(mouseX, mouseY);
+        if (!tooltip.isEmpty()) {
+            graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+        }
     }
 
     @Override
@@ -180,7 +211,7 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
         }
         BondModalPage modal = modal();
         if (!modal.contains(mouseX, mouseY)) {
-            host.closeSecondaryPage();
+            closeToParent();
             return true;
         }
         ensureLayout();
@@ -247,7 +278,7 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         ensureLayout();
         for (LanguageRow row : languages) {
             if (row.dropdown.mouseScrolled(mouseX, mouseY, scrollY, row.options.size())) {
@@ -264,9 +295,39 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     @Override
-    public List<Component> getTooltip(int mouseX, int mouseY) {
+    public void onClose() {
+        closeToParent();
+    }
+
+    @Override
+    public void removed() {
+        release();
+    }
+
+    /** Releases every listener/resource this screen owns. Safe to call more than once. */
+    private void release() {
+        if (released) {
+            return;
+        }
+        released = true;
+        TmaSettingsClientState.removeListener(refreshListener);
+        for (SliderRow row : sliders) {
+            row.slider.mouseReleased();
+        }
+        saveVolumes();
+    }
+
+    /** Restores the screen that opened this panel (the maid GUI). */
+    private void closeToParent() {
+        release();
+        if (minecraft != null) {
+            minecraft.setScreen(parent);
+        }
+    }
+
+    private List<Component> getTooltip(int mouseX, int mouseY) {
         ensureLayout();
-        FooterLayout footer = footerLayout(host.getFont());
+        FooterLayout footer = footerLayout(this.font);
         if (hasActiveChanges()
                 && within(mouseX, mouseY, footer.reloadLeft(), footer.reloadWidth(), footer.top(), FOOTER_BUTTON_HEIGHT)) {
             return List.of(Component.translatable("bond.settings.button.reload.tip"));
@@ -303,15 +364,6 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
             }
         }
         return List.of();
-    }
-
-    @Override
-    public void onClose() {
-        TmaSettingsClientState.removeListener(refreshListener);
-        for (SliderRow row : sliders) {
-            row.slider.mouseReleased();
-        }
-        saveVolumes();
     }
 
     // ---- State wiring ----
@@ -410,7 +462,14 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
             row.options = buildLanguageOptions(row.key);
             row.selectedIndex = Math.max(0, row.options.indexOf(TmaSettingsClientState.getValue(row.key)));
             row.x = contentRight - DROPDOWN_WIDTH;
-            row.dropdown.setPosition(row.x, rowTop + row.y);
+            int dropdownTop = rowTop + row.y;
+            row.dropdown.setPosition(row.x, dropdownTop);
+            // Flip the expanded list above the header when it would spill past the bottom of the
+            // screen, so every option stays reachable (scrolling is preserved either way).
+            int listHeight = row.dropdown.overlayHeight(row.options.size());
+            boolean flipAbove = dropdownTop + DROPDOWN_HEADER_HEIGHT + listHeight > height
+                    && dropdownTop - listHeight >= 0;
+            row.dropdown.setOverlayAbove(flipAbove);
         }
         for (SliderRow row : sliders) {
             row.slider.setPosition(contentRight - SLIDER_WIDTH, rowTop + row.y);
@@ -659,34 +718,22 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     /**
-     * Decorative rose vine sitting at the bottom of the navigation rail: horizontally centred inside
-     * the rail ({@link #NAV_WIDTH} - {@link #NAV_VINE_WIDTH} = 2px, 1px per side) and
-     * {@link #NAV_VINE_BOTTOM_MARGIN}px above the rail's bottom edge, which is the footer separator.
+     * Decorative rose vine anchored to the footer: its top edge is aligned with the footer "done"
+     * button ({@link FooterLayout#top()}) and it is horizontally centred inside the navigation rail
+     * ({@link #NAV_WIDTH} - {@link #NAV_VINE_WIDTH} = 2px, 1px per side).
      *
      * <p>The high resolution source texture ({@link #NAV_VINE_TEXTURE_WIDTH} x
      * {@link #NAV_VINE_TEXTURE_HEIGHT}) is blitted down to {@link #NAV_VINE_WIDTH} x
-     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation.
-     *
-     * <p>Because the anchor lies entirely inside the rail, the draw is scissored to the rail below
-     * the tab strip - the decoration can never spill onto the content column. The vine never
-     * receives mouse input.
+     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation. It is
+     * intentionally not scissored: the decoration grows out of the panel's lower-left corner and may
+     * spill below the panel's bottom edge. The vine never receives mouse input.
      */
     private void renderVine(GuiGraphics graphics) {
-        int navLeft = navLeft();
-        int navRight = navRight();
-        int navTop = navTop();
-        int navBottom = navBottom();
-        int tabAreaBottom = navTop + NAV_PADDING_Y + 3 * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
-        int vineLeft = navLeft + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
-        int vineTop = navBottom - NAV_VINE_BOTTOM_MARGIN - NAV_VINE_HEIGHT;
-        graphics.enableScissor(navLeft, Math.min(tabAreaBottom, navBottom), navRight, navBottom);
-        try {
-            graphics.blit(ROSE_VINE, vineLeft, vineTop, NAV_VINE_WIDTH, NAV_VINE_HEIGHT,
-                    0, 0, NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT,
-                    NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT);
-        } finally {
-            graphics.disableScissor();
-        }
+        int vineLeft = navLeft() + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
+        int vineTop = footerLayout(font).top();
+        graphics.blit(ROSE_VINE, vineLeft, vineTop, NAV_VINE_WIDTH, NAV_VINE_HEIGHT,
+                0, 0, NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT,
+                NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT);
     }
 
     private void renderScrollbar(GuiGraphics graphics, int viewportTop, int viewportBottom) {
@@ -770,25 +817,15 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
         );
     }
 
-    private void renderDropdownOverlays(GuiGraphics graphics, Font font, int mouseX, int mouseY, BondModalPage modal) {
-        boolean anyExpanded = false;
+    private void renderDropdownOverlays(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         for (LanguageRow row : languages) {
-            if (row.dropdown.isExpanded()) {
-                anyExpanded = true;
-                break;
+            if (!row.dropdown.isExpanded()) {
+                continue;
             }
-        }
-        if (!anyExpanded) {
-            return;
-        }
-        graphics.enableScissor(contentLeft(), contentTop(), modal.right() - 2, modal.bottom() - 2);
-        try {
-            for (LanguageRow row : languages) {
-                row.dropdown.renderOverlay(graphics, font, row.options, row.selectedIndex, mouseX, mouseY,
-                        SettingsSecondaryPage::renderDropdownEntry);
-            }
-        } finally {
-            graphics.disableScissor();
+            // No panel-content scissor here: BondDropdown clamps/flips the list inside the screen so
+            // every entry stays visible and the hit test matches the drawn position.
+            row.dropdown.renderOverlay(graphics, font, row.options, row.selectedIndex, mouseX, mouseY,
+                    TmaSettingsScreen::renderDropdownEntry);
         }
     }
 
@@ -815,12 +852,12 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     private boolean handleFooterClick(double mouseX, double mouseY) {
-        FooterLayout layout = footerLayout(host.getFont());
+        FooterLayout layout = footerLayout(this.font);
         if (mouseY < layout.top() || mouseY >= layout.top() + FOOTER_BUTTON_HEIGHT) {
             return false;
         }
         if (mouseX >= layout.doneLeft() && mouseX < layout.doneLeft() + layout.doneWidth()) {
-            host.closeSecondaryPage();
+            closeToParent();
             return true;
         }
         if (hasActiveChanges()
@@ -944,13 +981,10 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
 
     private BondModalPage modal() {
         if (modal == null) {
-            modal = createModal();
+            modal = new BondModalPage(0, 0, width, height, MODAL_WIDTH, MODAL_HEIGHT,
+                    Component.translatable("bond.settings.title"));
         }
         return modal;
-    }
-
-    private BondModalPage createModal() {
-        return host.createModal(MODAL_WIDTH, MODAL_HEIGHT, Component.translatable("bond.settings.title"));
     }
 
     private int navLeft() {

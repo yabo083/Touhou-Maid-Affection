@@ -13,6 +13,7 @@ public final class BondDropdown<T> {
     private final int rowHeight;
     private final int maxVisibleRows;
     private boolean expanded;
+    private boolean overlayAbove;
     private int scrollOffset;
 
     public BondDropdown(int left, int top, int width, int headerHeight, int rowHeight, int maxVisibleRows) {
@@ -61,9 +62,8 @@ public final class BondDropdown<T> {
             return;
         }
 
-        int headerBottom = top + headerHeight;
         int visibleRows = Math.min(maxVisibleRows, items.size());
-        int listTop = headerBottom;
+        int listTop = overlayTop(items.size());
         int listBottom = listTop + visibleRows * rowHeight;
         BondGuiTokens.drawFramedPanel(graphics, left, listTop, right(), listBottom, BondGuiTokens.COLOR_BG_PANEL);
         graphics.enableScissor(left + 2, listTop + 2, right() - 2, listBottom - 2);
@@ -134,7 +134,7 @@ public final class BondDropdown<T> {
         if (!expanded || !containsExpanded(mouseX, mouseY, itemCount)) {
             return -1;
         }
-        int local = (int) ((mouseY - (top + headerHeight)) / rowHeight);
+        int local = (int) ((mouseY - overlayTop(itemCount)) / rowHeight);
         int index = scrollOffset + local;
         return index >= 0 && index < itemCount ? index : -1;
     }
@@ -167,10 +167,29 @@ public final class BondDropdown<T> {
     }
 
     private boolean containsExpanded(double mouseX, double mouseY, int itemCount) {
+        int listTop = overlayTop(itemCount);
         int visibleRows = Math.min(maxVisibleRows, Math.max(0, itemCount));
         return mouseX >= left && mouseX < right()
-                && mouseY >= top + headerHeight
-                && mouseY < top + headerHeight + visibleRows * rowHeight;
+                && mouseY >= listTop
+                && mouseY < listTop + visibleRows * rowHeight;
+    }
+
+    /**
+     * Places the expanded list above the header instead of below it. The caller decides this from the
+     * available screen space; hit testing, hover highlighting and scrolling all follow the same
+     * placement, so the click target always matches the drawn rows.
+     */
+    public void setOverlayAbove(boolean above) {
+        this.overlayAbove = above;
+    }
+
+    /** @return the height of the expanded list for {@code itemCount} items. */
+    public int overlayHeight(int itemCount) {
+        return Math.max(0, Math.min(maxVisibleRows, itemCount)) * rowHeight;
+    }
+
+    private int overlayTop(int itemCount) {
+        return overlayAbove ? top - overlayHeight(itemCount) : top + headerHeight;
     }
 
     private int right() {

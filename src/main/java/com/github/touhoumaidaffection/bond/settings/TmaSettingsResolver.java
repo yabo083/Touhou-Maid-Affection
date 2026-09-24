@@ -65,8 +65,6 @@ public final class TmaSettingsResolver {
             case TmaSettingsKeys.MAID_PRAYER_BUFF_ENABLED -> ModConfig.BUFF_ENABLED;
             case TmaSettingsKeys.MORNING_KISS_DISPLAY_LANGUAGE -> ModConfig.BOND_MORNING_KISS_DISPLAY_LANGUAGE;
             case TmaSettingsKeys.MORNING_KISS_VOICE_LANGUAGE -> ModConfig.BOND_MORNING_KISS_VOICE_LANGUAGE;
-            case TmaSettingsKeys.MORNING_KISS_AI_DIALOGUE_LANGUAGE -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE;
-            case TmaSettingsKeys.MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE;
             default -> null;
         };
     }

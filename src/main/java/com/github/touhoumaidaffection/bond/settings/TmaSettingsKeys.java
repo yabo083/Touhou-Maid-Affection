@@ -28,8 +28,6 @@ public final class TmaSettingsKeys {
     // Language values (auto / tlm / inherit / default / explicit locale)
     public static final String MORNING_KISS_DISPLAY_LANGUAGE = "morning_kiss.display_language";
     public static final String MORNING_KISS_VOICE_LANGUAGE = "morning_kiss.voice_language";
-    public static final String MORNING_KISS_AI_DIALOGUE_LANGUAGE = "morning_kiss.ai_dialogue_language";
-    public static final String MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE = "morning_kiss.ai_dialogue_voice_language";
 
     public static final String LABEL_KEY_PREFIX = "bond.settings.key.";
     public static final String SUB_LABEL_KEY_PREFIX = "bond.settings.sub.";
@@ -64,8 +62,6 @@ public final class TmaSettingsKeys {
         keys.put(MAID_PRAYER_BUFF_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_DISPLAY_LANGUAGE, Type.LANGUAGE);
         keys.put(MORNING_KISS_VOICE_LANGUAGE, Type.LANGUAGE);
-        keys.put(MORNING_KISS_AI_DIALOGUE_LANGUAGE, Type.LANGUAGE);
-        keys.put(MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE, Type.LANGUAGE);
         // Keep insertion order: the panel renders switches, then languages, then volumes.
         return java.util.Collections.unmodifiableMap(keys);
     }
