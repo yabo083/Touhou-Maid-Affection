@@ -28,7 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * voice / volume) and one section per tab. Feature switches and languages are server-authoritative
  * and go through the settings channel, while the volume sliders are pure client preferences
  * written straight into the local config. Every control applies instantly; the rail bottom hosts a
- * decorative rose vine that never accepts mouse input.
+ * decorative rose vine rooted on the panel's left border and footer separator, and it never
+ * accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
@@ -50,7 +51,8 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     private static final int NAV_HOVER_BG = 0x14FFFFFF;
     private static final int NAV_VINE_WIDTH = 44;
     private static final int NAV_VINE_HEIGHT = 55;
-    private static final int NAV_VINE_BOTTOM_MARGIN = 6;
+    /** How far the vine's root overlaps the panel chrome (left border and footer separator). */
+    private static final int NAV_VINE_ROOT_OVERLAP = 3;
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;
@@ -164,6 +166,8 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
         renderNav(graphics, font, mouseX, mouseY);
         renderDropdownOverlays(graphics, font, mouseX, mouseY, modal);
         renderFooter(graphics, font, mouseX, mouseY);
+        // The vine presses the footer separator, so it must land on top of the footer band.
+        renderVine(graphics);
     }
 
     @Override
@@ -649,16 +653,20 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
             graphics.drawString(font, tabLabel(index), navLeft + NAV_TAB_TEXT_LEFT,
                     y + (NAV_TAB_HEIGHT - font.lineHeight) / 2, color, false);
         }
+    }
 
-        int tabAreaBottom = tabTop + 3 * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
-        int vineTop = navBottom - NAV_VINE_BOTTOM_MARGIN - NAV_VINE_HEIGHT;
-        int vineLeft = navLeft + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
-        graphics.enableScissor(navLeft, Math.min(tabAreaBottom, navBottom), navRight, navBottom);
-        try {
-            graphics.blit(ROSE_VINE, vineLeft, vineTop, 0, 0, NAV_VINE_WIDTH, NAV_VINE_HEIGHT, NAV_VINE_WIDTH, NAV_VINE_HEIGHT);
-        } finally {
-            graphics.disableScissor();
-        }
+    /**
+     * Decorative rose vine rooted on the panel chrome: its left edge presses the modal's left border
+     * and its stem base presses the footer separator, so it reads as growing out of that corner.
+     *
+     * <p>Drawn after the footer (it overlaps the footer band) and deliberately without a scissor:
+     * the anchor sits 1px outside the modal rectangle, which a modal-sized scissor would clip away.
+     * The vine never receives mouse input, and the geometry is static, so nothing can leak.
+     */
+    private void renderVine(GuiGraphics graphics) {
+        int vineLeft = navLeft() - NAV_VINE_ROOT_OVERLAP;
+        int vineTop = modal().footerTop() + NAV_VINE_ROOT_OVERLAP - NAV_VINE_HEIGHT;
+        graphics.blit(ROSE_VINE, vineLeft, vineTop, 0, 0, NAV_VINE_WIDTH, NAV_VINE_HEIGHT, NAV_VINE_WIDTH, NAV_VINE_HEIGHT);
     }
 
     private void renderScrollbar(GuiGraphics graphics, int viewportTop, int viewportBottom) {
