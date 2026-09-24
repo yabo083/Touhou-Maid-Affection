@@ -79,6 +79,8 @@ neoForge {
 dependencies {
     // Touhou Little Maid - compile only, not bundled
     compileOnly "maven.modrinth:touhou-little-maid:${tlm_version}"
+    // 开发运行（runClient/runServer）需要 TLM 在运行时类路径上；不会进入发布 jar
+    runtimeOnly "maven.modrinth:touhou-little-maid:${tlm_version}"
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'com.google.code.gson:gson:2.10.1'
