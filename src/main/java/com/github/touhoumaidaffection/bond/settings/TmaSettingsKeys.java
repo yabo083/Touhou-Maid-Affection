@@ -29,11 +29,17 @@ public final class TmaSettingsKeys {
     public static final String MORNING_KISS_DISPLAY_LANGUAGE = "morning_kiss.display_language";
     public static final String MORNING_KISS_VOICE_LANGUAGE = "morning_kiss.voice_language";
 
+    // Free text values (Morning Kiss prompt template)
+    public static final String MORNING_KISS_TEXT_PROMPT = "morning_kiss.text_prompt";
+
     public static final String LABEL_KEY_PREFIX = "bond.settings.key.";
     public static final String SUB_LABEL_KEY_PREFIX = "bond.settings.sub.";
 
     /** Maximum accepted length of a language value. */
     public static final int MAX_LANGUAGE_LENGTH = 32;
+
+    /** Maximum accepted length of a {@link Type#TEXT} value (prompt template). */
+    public static final int MAX_TEXT_LENGTH = 1024;
 
     /** Legacy keyword semantics shared by every language setting. */
     public static final List<String> LANGUAGE_KEYWORDS = List.of("auto", "tlm", "inherit", "default");
@@ -48,7 +54,8 @@ public final class TmaSettingsKeys {
     /** Value grammar of a whitelisted key. */
     public enum Type {
         BOOLEAN,
-        LANGUAGE
+        LANGUAGE,
+        TEXT
     }
 
     private static Map<String, Type> createWhitelist() {
@@ -62,7 +69,8 @@ public final class TmaSettingsKeys {
         keys.put(MAID_PRAYER_BUFF_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_DISPLAY_LANGUAGE, Type.LANGUAGE);
         keys.put(MORNING_KISS_VOICE_LANGUAGE, Type.LANGUAGE);
-        // Keep insertion order: the panel renders switches, then languages, then volumes.
+        keys.put(MORNING_KISS_TEXT_PROMPT, Type.TEXT);
+        // Keep insertion order: the panel renders switches, then languages, then free text.
         return java.util.Collections.unmodifiableMap(keys);
     }
 
@@ -104,6 +112,7 @@ public final class TmaSettingsKeys {
         return switch (type) {
             case BOOLEAN -> parseBoolean(rawValue).map(value -> value ? "true" : "false");
             case LANGUAGE -> normalizeLanguage(rawValue);
+            case TEXT -> normalizeText(rawValue);
         };
     }
 
@@ -148,6 +157,20 @@ public final class TmaSettingsKeys {
 
     public static boolean isAllowedLanguage(String rawValue) {
         return normalizeLanguage(rawValue).isPresent();
+    }
+
+    /**
+     * Validates a free text value (prompt template).
+     *
+     * <p>Any non-null string up to {@link #MAX_TEXT_LENGTH} characters is accepted verbatim. The
+     * empty string is valid on purpose: the server interprets it as "restore the built-in default
+     * template" instead of storing an empty prompt.
+     */
+    public static Optional<String> normalizeText(String rawValue) {
+        if (rawValue == null || rawValue.length() > MAX_TEXT_LENGTH) {
+            return Optional.empty();
+        }
+        return Optional.of(rawValue);
     }
 
     /**

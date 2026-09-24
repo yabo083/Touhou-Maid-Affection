@@ -14,6 +14,7 @@ import com.github.touhoumaidaffection.handler.LapPillowPoseConfigHandler;
 import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
+import com.github.touhoumaidaffection.handler.TmaAiStatusRequestHandler;
 import com.github.touhoumaidaffection.handler.VoicePreviewRequestHandler;
 import com.github.touhoumaidaffection.handler.TmaSettingsRequestHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
@@ -32,6 +33,9 @@ import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
+import com.github.touhoumaidaffection.network.TmaAiCacheClearPayload;
+import com.github.touhoumaidaffection.network.TmaAiStatusPayload;
+import com.github.touhoumaidaffection.network.TmaAiStatusRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
@@ -190,6 +194,21 @@ public class TouhouMaidAffection {
                 TmaSettingsStatePayload.TYPE,
                 TmaSettingsStatePayload.STREAM_CODEC,
                 BondClientPayloadHandler::handleSettingsState
+        );
+        registrar.playToServer(
+                TmaAiStatusRequestPayload.TYPE,
+                TmaAiStatusRequestPayload.STREAM_CODEC,
+                TmaAiStatusRequestHandler::handleStatusRequest
+        );
+        registrar.playToClient(
+                TmaAiStatusPayload.TYPE,
+                TmaAiStatusPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleAiStatus
+        );
+        registrar.playToServer(
+                TmaAiCacheClearPayload.TYPE,
+                TmaAiCacheClearPayload.STREAM_CODEC,
+                TmaAiStatusRequestHandler::handleClear
         );
     }
 }

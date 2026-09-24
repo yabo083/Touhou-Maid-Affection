@@ -12,16 +12,42 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TmaSettingsKeysTest {
     @Test
-    void whitelistCoversEveryFeatureSwitchAndLanguage() {
-        assertEquals(9, TmaSettingsKeys.keys().size());
+    void whitelistCoversEveryFeatureSwitchLanguageAndText() {
+        assertEquals(10, TmaSettingsKeys.keys().size());
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.enabled"));
         assertTrue(TmaSettingsKeys.isWhitelisted("maid_prayer_buff.enabled"));
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.display_language"));
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.voice_language"));
+        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
         assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_language"));
         assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_voice_language"));
         assertEquals(TmaSettingsKeys.Type.BOOLEAN, TmaSettingsKeys.typeOf("random_gift.enabled"));
         assertEquals(TmaSettingsKeys.Type.LANGUAGE, TmaSettingsKeys.typeOf("morning_kiss.display_language"));
+        assertEquals(TmaSettingsKeys.Type.TEXT, TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
+    }
+
+    @Test
+    void textAcceptsAnythingUpToTheLengthLimitIncludingEmpty() {
+        assertEquals(Optional.of(""), TmaSettingsKeys.normalize(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT, ""));
+        assertEquals(Optional.of("你正在扮演 {maid}"),
+                TmaSettingsKeys.normalize(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT, "你正在扮演 {maid}"));
+        assertEquals(Optional.empty(), TmaSettingsKeys.normalize(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT, null));
+
+        String atLimit = "x".repeat(TmaSettingsKeys.MAX_TEXT_LENGTH);
+        assertEquals(Optional.of(atLimit), TmaSettingsKeys.normalizeText(atLimit));
+        String overLimit = "x".repeat(TmaSettingsKeys.MAX_TEXT_LENGTH + 1);
+        assertEquals(Optional.empty(), TmaSettingsKeys.normalizeText(overLimit));
+    }
+
+    @Test
+    void batchRejectsAnOverlongTextEntry() {
+        String overLimit = "x".repeat(TmaSettingsKeys.MAX_TEXT_LENGTH + 1);
+        assertTrue(TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT, overLimit)
+        )).isEmpty());
+        assertTrue(TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT, "")
+        )).isPresent());
     }
 
     @Test

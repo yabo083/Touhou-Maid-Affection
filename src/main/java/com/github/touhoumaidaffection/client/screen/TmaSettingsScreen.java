@@ -1,8 +1,12 @@
 package com.github.touhoumaidaffection.client.screen;
 
+import com.github.tartaricacid.touhoulittlemaid.ai.manager.site.AvailableSites;
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.ai.settings.AIChatSettingsHubScreen;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.github.touhoumaidaffection.bond.settings.TmaAiStatusWire;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsKeys;
+import com.github.touhoumaidaffection.client.TmaAiStatusClientState;
 import com.github.touhoumaidaffection.client.TmaSettingsClientState;
 import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
@@ -12,6 +16,7 @@ import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -29,10 +34,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>It is deliberately not a {@code BondSecondaryPage}: it is entered from the maid GUI's
  * "settings" button via {@link net.minecraft.client.Minecraft#setScreen(Screen)} and closing it
  * (footer "done", ESC or a click on the dimmed area) restores the parent screen it was opened from.
- * Layout follows the reviewed mockup: a 300x188 modal with a 46px navigation rail (features / voice
- * / volume) and one section per tab. Feature switches and languages are server-authoritative and go
- * through the settings channel, while the volume sliders are pure client preferences written
- * straight into the local config. Every control applies instantly; the rail bottom hosts a
+ * Layout follows the reviewed mockup: a 340x230 modal with a 46px navigation rail (features / voice
+ * / volume / status) and one section per tab. Feature switches, languages and the Morning Kiss
+ * prompt template are server-authoritative and go through the settings channel, the status tab is
+ * fed by the read-only AI status channel, while the volume sliders are pure client preferences
+ * written straight into the local config. Every control applies instantly; the rail bottom hosts a
  * decorative rose vine whose stem base rests on the panel's bottom border (fully inside the panel,
  * so it is never clipped by the physical bottom of the screen). It never accepts mouse input.
  *
@@ -68,6 +74,8 @@ public final class TmaSettingsScreen extends Screen {
     private static final int TOGGLE_ROW_HEIGHT = 18;
     private static final int LANGUAGE_ROW_HEIGHT = 20;
     private static final int SLIDER_ROW_HEIGHT = 18;
+    /** Number of tabs in the navigation rail. */
+    private static final int TAB_COUNT = 4;
 
     // ---- Control geometry ----
     private static final int TOGGLE_WIDTH = 26;
@@ -86,6 +94,19 @@ public final class TmaSettingsScreen extends Screen {
     private static final int SCROLLBAR_WIDTH = 2;
     private static final int SCROLL_STEP = 10;
 
+    // ---- Voice tab (prompt template + AI site) ----
+    private static final int PROMPT_BOX_HEIGHT = 52;
+    private static final int PROMPT_LABEL_BLOCK = 18;
+    private static final int LEGEND_HEIGHT = 12;
+    private static final int TEXT_BUTTON_HEIGHT = 14;
+    private static final int SITE_ROW_HEIGHT = 18;
+
+    // ---- Status tab ----
+    private static final int STATUS_KV_HEIGHT = 12;
+    private static final int STATUS_MAID_HEIGHT = 18;
+    private static final int STATUS_ROW_GAP = 2;
+    private static final int STATUS_CLEAR_BUTTON_WIDTH = 26;
+
     // ---- Footer ----
     private static final int FOOTER_BUTTON_HEIGHT = 17;
     private static final int FOOTER_PADDING = 8;
@@ -102,6 +123,7 @@ public final class TmaSettingsScreen extends Screen {
 
     // ---- Values ----
     private static final String LANGUAGE_AUTO = "auto";
+    private static final String PROMPT_KEY = TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT;
     private static final List<String> COMMON_LANGUAGES = List.of("zh_cn", "en_us", "ja_jp", "zh_tw", "ko_kr");
     private static final double VOLUME_STEP = 0.05D;
 
@@ -125,10 +147,13 @@ public final class TmaSettingsScreen extends Screen {
 
     private final Screen parent;
     private final Runnable refreshListener = this::refreshFromState;
+    private final Runnable statusListener = this::onStatusPushed;
 
     private final List<ToggleRow> toggles = new ArrayList<>();
     private final List<LanguageRow> languages = new ArrayList<>();
     private final List<SliderRow> sliders = new ArrayList<>();
+    /** Status tab rows, rebuilt on every layout pass from the pushed status. */
+    private final List<StatusRow> statusRows = new ArrayList<>();
 
     /** Server keys with a request in flight: key -> requested value + send timestamp. */
     private final Map<String, PendingRequest> pending = new ConcurrentHashMap<>();
@@ -143,11 +168,25 @@ public final class TmaSettingsScreen extends Screen {
     private boolean volumesDirty;
     private boolean released;
 
+    // ---- Voice tab state ----
+    private MultiLineEditBox promptBox;
+    private int voicePromptSectionY;
+    private int voicePromptLabelY;
+    private int voicePromptBoxY;
+    private int voicePromptLegendY;
+    private int voicePromptResetY;
+    private int voiceSiteSectionY;
+    private int voiceSiteRowY;
+    private int voiceContentHeight;
+    /** Whether a status request is already in flight, so opening the tab does not spam the server. */
+    private boolean statusRequested;
+
     public TmaSettingsScreen(Screen parent) {
         super(Component.translatable("bond.settings.title"));
         this.parent = parent;
         buildRows();
         TmaSettingsClientState.addListener(refreshListener);
+        TmaAiStatusClientState.addListener(statusListener);
         // Always re-read: the cache may still hold the state of a previous world or server.
         TmaSettingsClientState.requestSync();
     }
@@ -156,6 +195,7 @@ public final class TmaSettingsScreen extends Screen {
     protected void init() {
         super.init();
         modal = null;
+        promptBox = null;
         layoutDirty = true;
     }
 
@@ -218,6 +258,7 @@ public final class TmaSettingsScreen extends Screen {
 
         int tab = tabAt(mouseX, mouseY);
         if (tab >= 0) {
+            blurPrompt();
             for (LanguageRow row : languages) {
                 row.dropdown.collapse();
             }
@@ -225,6 +266,7 @@ public final class TmaSettingsScreen extends Screen {
                 activeTab = tab;
                 scrollOffset = 0;
                 layoutDirty = true;
+                requestStatusIfNeeded();
             }
             return true;
         }
@@ -235,6 +277,7 @@ public final class TmaSettingsScreen extends Screen {
             return true;
         }
         if (!isInsideViewport(mouseX, mouseY)) {
+            blurPrompt();
             return true;
         }
         clickActiveTabRow(mouseX, mouseY);
@@ -243,16 +286,54 @@ public final class TmaSettingsScreen extends Screen {
 
     private void clickActiveTabRow(double mouseX, double mouseY) {
         switch (activeTab) {
-            case 0 -> clickToggle(mouseX, mouseY);
-            case 1 -> clickLanguage(mouseX, mouseY);
-            default -> clickSlider(mouseX, mouseY);
+            case 0 -> {
+                blurPrompt();
+                clickToggle(mouseX, mouseY);
+            }
+            case 1 -> {
+                if (!clickPromptBox(mouseX, mouseY)) {
+                    blurPrompt();
+                    if (!clickVoiceExtras(mouseX, mouseY)) {
+                        clickLanguage(mouseX, mouseY);
+                    }
+                }
+            }
+            case 2 -> {
+                blurPrompt();
+                clickSlider(mouseX, mouseY);
+            }
+            default -> {
+                blurPrompt();
+                clickStatus(mouseX, mouseY);
+            }
         }
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeTab == 1 && promptBox != null && promptBox.isFocused()
+                && promptBox.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (activeTab == 1 && promptBox != null && promptBox.isFocused()
+                && promptBox.charTyped(codePoint, modifiers)) {
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (button != 0) {
             return false;
+        }
+        if (promptBox != null && promptBox.mouseReleased(mouseX, mouseY, button)) {
+            return true;
         }
         for (SliderRow row : sliders) {
             if (row.slider.mouseReleased()) {
@@ -267,6 +348,9 @@ public final class TmaSettingsScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (button != 0) {
             return false;
+        }
+        if (promptBox != null && promptBox.isFocused() && promptBox.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
         }
         for (SliderRow row : sliders) {
             if (row.slider.mouseDragged(mouseX, mouseY)) {
@@ -310,7 +394,9 @@ public final class TmaSettingsScreen extends Screen {
             return;
         }
         released = true;
+        blurPrompt();
         TmaSettingsClientState.removeListener(refreshListener);
+        TmaAiStatusClientState.removeListener(statusListener);
         for (SliderRow row : sliders) {
             row.slider.mouseReleased();
         }
@@ -328,9 +414,10 @@ public final class TmaSettingsScreen extends Screen {
     private List<Component> getTooltip(int mouseX, int mouseY) {
         ensureLayout();
         FooterLayout footer = footerLayout(this.font);
-        if (hasActiveChanges()
-                && within(mouseX, mouseY, footer.reloadLeft(), footer.reloadWidth(), footer.top(), FOOTER_BUTTON_HEIGHT)) {
-            return List.of(Component.translatable("bond.settings.button.reload.tip"));
+        for (FooterButton button : footer.buttons()) {
+            if (within(mouseX, mouseY, button.left(), button.width(), footer.top(), FOOTER_BUTTON_HEIGHT)) {
+                return List.of(Component.translatable(button.labelKey() + ".tip"));
+            }
         }
         if (!isInsideViewport(mouseX, mouseY)) {
             return List.of();
@@ -351,8 +438,18 @@ public final class TmaSettingsScreen extends Screen {
                         return rowTooltip(row.key, Component.translatable("bond.settings.language.tip").withStyle(ChatFormatting.GRAY));
                     }
                 }
+                if (promptBox != null && promptBox.isMouseOver(mouseX, mouseY)) {
+                    return rowTooltip(PROMPT_KEY, Component.translatable("bond.settings.prompt.tip").withStyle(ChatFormatting.GRAY));
+                }
+                if (within(mouseX, mouseY, contentLeft(), promptResetWidth(this.font), contentTop() - scrollOffset + voicePromptResetY, TEXT_BUTTON_HEIGHT)) {
+                    return List.of(Component.translatable("bond.settings.prompt.reset.tip"));
+                }
+                if (within(mouseX, mouseY, siteButtonLeft(this.font), siteButtonWidth(this.font),
+                        contentTop() - scrollOffset + voiceSiteRowY, TEXT_BUTTON_HEIGHT)) {
+                    return List.of(Component.translatable("bond.settings.site.open.tip"));
+                }
             }
-            default -> {
+            case 2 -> {
                 for (SliderRow row : sliders) {
                     if (row.slider.contains(mouseX, mouseY)) {
                         return List.of(
@@ -360,6 +457,11 @@ public final class TmaSettingsScreen extends Screen {
                                 Component.translatable("bond.settings.volume.tip").withStyle(ChatFormatting.GRAY)
                         );
                     }
+                }
+            }
+            default -> {
+                if (statusClearHovered(mouseX, mouseY) != null) {
+                    return List.of(Component.translatable("bond.settings.status.clear.tip"));
                 }
             }
         }
@@ -371,6 +473,21 @@ public final class TmaSettingsScreen extends Screen {
     private void refreshFromState() {
         resolvePending();
         layoutDirty = true;
+    }
+
+    /** Called after every AI status push; just re-lays out the status tab. */
+    private void onStatusPushed() {
+        statusRequested = false;
+        layoutDirty = true;
+    }
+
+    /** Asks for the AI status the first time the status tab becomes active (or after a failure). */
+    private void requestStatusIfNeeded() {
+        if (activeTab != 3 || statusRequested) {
+            return;
+        }
+        statusRequested = true;
+        TmaAiStatusClientState.requestSync();
     }
 
     /** Compares every in-flight request against the freshly pushed authoritative values. */
@@ -435,6 +552,22 @@ public final class TmaSettingsScreen extends Screen {
             ), y));
             y += LANGUAGE_ROW_HEIGHT + ROW_GAP;
         }
+        // Voice tab: prompt template editor + "open TLM AI settings" jump button.
+        voicePromptSectionY = y;
+        y += SECTION_HEADER_HEIGHT;
+        voicePromptLabelY = y;
+        y += PROMPT_LABEL_BLOCK;
+        voicePromptBoxY = y;
+        y += PROMPT_BOX_HEIGHT;
+        voicePromptLegendY = y + 2;
+        y += LEGEND_HEIGHT + 2;
+        voicePromptResetY = y;
+        y += TEXT_BUTTON_HEIGHT + ROW_GAP;
+        voiceSiteSectionY = y;
+        y += SECTION_HEADER_HEIGHT;
+        voiceSiteRowY = y;
+        y += SITE_ROW_HEIGHT + ROW_GAP;
+        voiceContentHeight = y;
         y = SECTION_HEADER_HEIGHT;
         for (VolumeSetting setting : VOLUME_SETTINGS) {
             sliders.add(new SliderRow(setting, new BondSlider(
@@ -474,6 +607,14 @@ public final class TmaSettingsScreen extends Screen {
         for (SliderRow row : sliders) {
             row.slider.setPosition(contentRight - SLIDER_WIDTH, rowTop + row.y);
         }
+        ensurePromptBox();
+        if (promptBox != null) {
+            promptBox.setX(contentLeft());
+            promptBox.setY(rowTop + voicePromptBoxY);
+            promptBox.setWidth(Math.max(20, contentRight - contentLeft()));
+            syncPromptBox();
+        }
+        buildStatusRows();
         contentHeight = contentHeight(activeTab);
         layoutDirty = false;
     }
@@ -481,9 +622,155 @@ public final class TmaSettingsScreen extends Screen {
     private int contentHeight(int tab) {
         return switch (tab) {
             case 0 -> SECTION_HEADER_HEIGHT + toggles.size() * (TOGGLE_ROW_HEIGHT + ROW_GAP);
-            case 1 -> SECTION_HEADER_HEIGHT + languages.size() * (LANGUAGE_ROW_HEIGHT + ROW_GAP);
+            case 1 -> voiceContentHeight;
+            case 3 -> Math.max(STATUS_KV_HEIGHT, statusRows.isEmpty()
+                    ? STATUS_KV_HEIGHT + ROW_GAP
+                    : statusRows.get(statusRows.size() - 1).y() + statusRows.get(statusRows.size() - 1).height() + ROW_GAP);
             default -> SECTION_HEADER_HEIGHT + sliders.size() * (SLIDER_ROW_HEIGHT + ROW_GAP);
         };
+    }
+
+    private void buildStatusRows() {
+        statusRows.clear();
+        TmaAiStatusWire.Status status = TmaAiStatusClientState.get();
+        if (status == null) {
+            return;
+        }
+        int y = 0;
+        y = addStatusHeader(y, "bond.settings.status.section.switches");
+        y = addStatusKv(y, tr("bond.settings.status.switch.morning_kiss"), onOff(status.morningKissEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.ai_dialogue"), onOff(status.aiDialogueEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.ai_tts"), onOff(status.aiTtsEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.fallback"), onOff(status.immediateFallbackEnabled()));
+        y = addStatusHeader(y, "bond.settings.status.section.languages");
+        y = addStatusKv(y, tr("bond.settings.status.language.global"),
+                literal(status.globalDisplayLanguage() + " / " + status.globalVoiceLanguage()));
+        y = addStatusKv(y, tr("bond.settings.status.language.ai"),
+                literal(status.aiDialogueLanguage() + " / " + status.aiVoiceLanguage()));
+        y = addStatusKv(y, tr("bond.settings.status.language.priority"), null);
+        y = addStatusHeader(y, "bond.settings.status.section.cache_policy");
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.target"),
+                literal(String.valueOf(status.cacheTargetPerPool())));
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.scan"),
+                literal(status.scanIntervalTicks() + "t"));
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.consume"), onOff(status.consumeOnUse()));
+        y = addStatusHeader(y, "bond.settings.status.section.cache_stats");
+        y = addStatusKv(y, tr("bond.settings.status.cache.entries"),
+                literal(status.totalEntries() + " (" + status.voiceEntries() + " / " + status.textOnlyEntries() + ")"));
+        y = addStatusKv(y, tr("bond.settings.status.cache.runtime"),
+                literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
+        y = addStatusHeader(y, "bond.settings.status.section.maids");
+        for (TmaAiStatusWire.MaidStatus maid : status.maids()) {
+            statusRows.add(new StatusRow(StatusRow.Kind.MAID, y, STATUS_MAID_HEIGHT, null,
+                    literal(maid.name().isEmpty() ? maid.maidUuid() : maid.name()),
+                    literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + maid.target()),
+                    maid.maidUuid()));
+            y += STATUS_MAID_HEIGHT + STATUS_ROW_GAP;
+        }
+    }
+
+    private int addStatusHeader(int y, String headerKey) {
+        statusRows.add(new StatusRow(StatusRow.Kind.HEADER, y, SECTION_HEADER_HEIGHT, headerKey, null, null, null));
+        return y + SECTION_HEADER_HEIGHT;
+    }
+
+    private int addStatusKv(int y, Component label, Component value) {
+        statusRows.add(new StatusRow(StatusRow.Kind.KV, y, STATUS_KV_HEIGHT, null, label, value, null));
+        return y + STATUS_KV_HEIGHT + STATUS_ROW_GAP;
+    }
+
+    private static String poolSummary(TmaAiStatusWire.MaidStatus maid) {
+        StringBuilder summary = new StringBuilder();
+        for (TmaAiStatusWire.PoolStatus pool : maid.pools()) {
+            if (summary.length() > 0) {
+                summary.append(" · ");
+            }
+            summary.append(Component.translatable("bond.settings.status.pool." + pool.pool()).getString())
+                    .append(' ')
+                    .append(pool.totalEntries());
+        }
+        return summary.toString();
+    }
+
+    private static Component tr(String key) {
+        return Component.translatable(key);
+    }
+
+    private static Component literal(String value) {
+        return Component.literal(value == null ? "" : value);
+    }
+
+    private static Component onOff(boolean on) {
+        return Component.translatable(on ? "bond.settings.status.on" : "bond.settings.status.off");
+    }
+
+    private void ensurePromptBox() {
+        if (promptBox != null) {
+            return;
+        }
+        promptBox = new MultiLineEditBox(
+                this.font,
+                contentLeft(),
+                0,
+                Math.max(20, contentRight() - contentLeft()),
+                PROMPT_BOX_HEIGHT,
+                Component.translatable("bond.settings.prompt.placeholder"),
+                Component.translatable("bond.settings.prompt.label")
+        );
+        promptBox.setCharacterLimit(TmaSettingsKeys.MAX_TEXT_LENGTH);
+        promptBox.setValue(TmaSettingsClientState.getValue(PROMPT_KEY));
+    }
+
+    /**
+     * Mirrors the authoritative prompt into the editor, but never while the player is typing:
+     * server pushes must not clobber an in-progress edit (the same contract as the pending machine).
+     */
+    private void syncPromptBox() {
+        if (promptBox == null || promptBox.isFocused()) {
+            return;
+        }
+        String authoritative = TmaSettingsClientState.getValue(PROMPT_KEY);
+        if (!authoritative.equals(promptBox.getValue())) {
+            promptBox.setValue(authoritative);
+        }
+    }
+
+    /** Submits the editor content (if it changed) and drops focus. */
+    private void blurPrompt() {
+        if (promptBox == null || !promptBox.isFocused()) {
+            return;
+        }
+        promptBox.setFocused(false);
+        submitPrompt();
+    }
+
+    private void submitPrompt() {
+        if (promptBox == null) {
+            return;
+        }
+        String value = promptBox.getValue();
+        if (value.equals(TmaSettingsClientState.getValue(PROMPT_KEY))) {
+            return;
+        }
+        // An empty template means "restore the built-in default"; the client resolves the default
+        // locally so the pending marker can match the server's pushed value.
+        applyServerValue(PROMPT_KEY, value.isEmpty() ? promptDefault() : value);
+    }
+
+    private String promptDefault() {
+        String defaultValue = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.getDefault();
+        return defaultValue == null ? "" : defaultValue;
+    }
+
+    private boolean clickPromptBox(double mouseX, double mouseY) {
+        if (promptBox == null || activeTab != 1) {
+            return false;
+        }
+        if (!promptBox.mouseClicked(mouseX, mouseY, 0)) {
+            return false;
+        }
+        promptBox.setFocused(true);
+        return true;
     }
 
     private boolean currentToggleValue(String key) {
@@ -553,14 +840,110 @@ public final class TmaSettingsScreen extends Screen {
                 for (LanguageRow row : languages) {
                     renderLanguageRow(graphics, font, row, rowTop + row.y, mouseX, mouseY);
                 }
+                renderPromptSection(graphics, font, rowTop, mouseX, mouseY);
+                renderSiteSection(graphics, font, rowTop, mouseX, mouseY);
             }
-            default -> {
+            case 2 -> {
                 renderSectionHeader(graphics, font, rowTop, "bond.settings.section.volumes", BondGuiTokens.TAG_LOCAL);
                 for (SliderRow row : sliders) {
                     renderSliderRow(graphics, font, row, rowTop + row.y, mouseX, mouseY);
                 }
             }
+            default -> renderStatusTab(graphics, font, rowTop, mouseX, mouseY);
         }
+    }
+
+    private void renderPromptSection(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
+        renderSectionHeader(graphics, font, rowTop + voicePromptSectionY, "bond.settings.section.prompt", BondGuiTokens.TAG_SERVER);
+        drawLabelBlock(graphics, font, "bond.settings.prompt.label", "bond.settings.prompt.sub",
+                rowTop + voicePromptLabelY, contentRight());
+        if (promptBox != null) {
+            promptBox.render(graphics, mouseX, mouseY, 0.0F);
+        }
+        Component legend = Component.translatable("bond.settings.prompt.legend");
+        graphics.drawString(font, font.plainSubstrByWidth(legend.getString(), Math.max(0, contentRight() - contentLeft())),
+                contentLeft(), rowTop + voicePromptLegendY, BondGuiTokens.COLOR_TEXT_HINT, false);
+        int resetLeft = contentLeft();
+        int resetTop = rowTop + voicePromptResetY;
+        boolean resetHovered = within(mouseX, mouseY, resetLeft, promptResetWidth(font), resetTop, TEXT_BUTTON_HEIGHT);
+        if (resetHovered) {
+            graphics.fill(resetLeft, resetTop, resetLeft + promptResetWidth(font), resetTop + TEXT_BUTTON_HEIGHT,
+                    BondGuiTokens.HOVER_OVERLAY);
+        }
+        graphics.drawString(font, Component.translatable("bond.settings.prompt.reset"), resetLeft + TEXT_BUTTON_PADDING,
+                resetTop + (TEXT_BUTTON_HEIGHT - font.lineHeight) / 2, BondGuiTokens.COLOR_TEXT_BODY, false);
+    }
+
+    private void renderSiteSection(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
+        renderSectionHeader(graphics, font, rowTop + voiceSiteSectionY, "bond.settings.section.site", BondGuiTokens.TAG_LOCAL);
+        int labelTop = rowTop + voiceSiteRowY;
+        int buttonWidth = siteButtonWidth(font);
+        int buttonLeft = siteButtonLeft(font);
+        drawLabelBlock(graphics, font, "bond.settings.site.label", "bond.settings.site.sub",
+                labelTop, buttonLeft - STATUS_DOT_GAP - LABEL_CONTROL_GAP);
+        int buttonTop = labelTop + (SITE_ROW_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+        boolean hovered = within(mouseX, mouseY, buttonLeft, buttonWidth, buttonTop, TEXT_BUTTON_HEIGHT);
+        drawTextButton(graphics, font, Component.translatable("bond.settings.site.open"), buttonLeft, buttonTop,
+                buttonWidth, hovered);
+    }
+
+    private void renderStatusTab(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
+        if (!TmaAiStatusClientState.hasStatus()) {
+            graphics.drawString(font, Component.translatable("bond.settings.status.loading"),
+                    contentLeft(), rowTop, BondGuiTokens.COLOR_TEXT_HINT, false);
+            return;
+        }
+        for (StatusRow row : statusRows) {
+            int y = rowTop + row.y();
+            switch (row.kind()) {
+                case HEADER -> renderSectionHeader(graphics, font, y, row.headerKey(), BondGuiTokens.TAG_SERVER);
+                case KV -> drawKvRow(graphics, font, y, row.label(), row.value());
+                case MAID -> renderMaidRow(graphics, font, y, row, mouseX, mouseY);
+            }
+        }
+    }
+
+    private void drawKvRow(GuiGraphics graphics, Font font, int y, Component label, Component value) {
+        graphics.drawString(font, label, contentLeft(), y, BondGuiTokens.COLOR_TEXT_BODY, false);
+        if (value != null) {
+            graphics.drawString(font, value, contentRight() - font.width(value), y, BondGuiTokens.HIGHLIGHT_TEXT, false);
+        }
+    }
+
+    private void renderMaidRow(GuiGraphics graphics, Font font, int y, StatusRow row, int mouseX, int mouseY) {
+        int buttonLeft = contentRight() - STATUS_CLEAR_BUTTON_WIDTH;
+        int labelRight = buttonLeft - STATUS_DOT_GAP - LABEL_CONTROL_GAP;
+        Component name = Component.literal(row.label().getString());
+        graphics.drawString(font, font.plainSubstrByWidth(name.getString(), Math.max(0, labelRight - contentLeft())),
+                contentLeft(), y, BondGuiTokens.COLOR_TEXT_BODY, false);
+        Component detail = row.value();
+        if (detail != null) {
+            int detailRight = labelRight;
+            graphics.drawString(font, detail, Math.max(contentLeft(), detailRight - font.width(detail)), y,
+                    BondGuiTokens.COLOR_TEXT_HINT, false);
+        }
+        boolean canClear = TmaAiStatusClientState.get() != null && TmaAiStatusClientState.get().canClear();
+        int buttonTop = y + (STATUS_MAID_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+        boolean hovered = canClear && within(mouseX, mouseY, buttonLeft, STATUS_CLEAR_BUTTON_WIDTH, buttonTop, TEXT_BUTTON_HEIGHT);
+        drawTextButton(graphics, font, Component.translatable("bond.settings.status.clear"), buttonLeft, buttonTop,
+                STATUS_CLEAR_BUTTON_WIDTH, hovered, canClear);
+    }
+
+    private void drawTextButton(GuiGraphics graphics, Font font, Component label, int left, int top, int width, boolean hovered) {
+        drawTextButton(graphics, font, label, left, top, width, hovered, true);
+    }
+
+    private void drawTextButton(GuiGraphics graphics, Font font, Component label, int left, int top, int width,
+                                boolean hovered, boolean enabled) {
+        int background = !enabled
+                ? BondGuiTokens.TOGGLE_DISABLED_BG
+                : hovered ? BondGuiTokens.PRIMARY_BUTTON_HOVER_BG : BondGuiTokens.PRIMARY_BUTTON_BG;
+        int border = enabled ? BondGuiTokens.FIELD_BORDER : BondGuiTokens.TOGGLE_DISABLED_BORDER;
+        graphics.fill(left, top, left + width, top + TEXT_BUTTON_HEIGHT, border);
+        graphics.fill(left + 1, top + 1, left + width - 1, top + TEXT_BUTTON_HEIGHT - 1, background);
+        int color = enabled ? BondGuiTokens.COLOR_TEXT_TITLE : BondGuiTokens.COLOR_TEXT_DISABLED;
+        graphics.drawCenteredString(font, label, left + width / 2,
+                top + (TEXT_BUTTON_HEIGHT - font.lineHeight) / 2, color);
     }
 
     private void renderSectionHeader(GuiGraphics graphics, Font font, int y, String labelKey, int tagColor) {
@@ -614,6 +997,15 @@ public final class TmaSettingsScreen extends Screen {
         graphics.drawString(font, font.plainSubstrByWidth(label.getString(), maxWidth),
                 contentLeft(), rowTop, BondGuiTokens.COLOR_TEXT_BODY, false);
         drawRowSubtitle(graphics, font, TmaSettingsKeys.subKey(key), rowTop + font.lineHeight, labelRight);
+    }
+
+    /** Draws a label + hint subtitle block using explicit translation keys (voice tab extras). */
+    private void drawLabelBlock(GuiGraphics graphics, Font font, String labelKey, String subKey, int rowTop, int labelRight) {
+        int maxWidth = Math.max(0, labelRight - contentLeft());
+        Component label = Component.translatable(labelKey);
+        graphics.drawString(font, font.plainSubstrByWidth(label.getString(), maxWidth),
+                contentLeft(), rowTop, BondGuiTokens.COLOR_TEXT_BODY, false);
+        drawRowSubtitle(graphics, font, subKey, rowTop + font.lineHeight, labelRight);
     }
 
     private void drawRowSubtitle(GuiGraphics graphics, Font font, String subKey, int y, int labelRight) {
@@ -700,7 +1092,7 @@ public final class TmaSettingsScreen extends Screen {
         graphics.vLine(navRight, navTop, navBottom - 1, BondGuiTokens.DIVIDER_COLOR);
 
         int tabTop = navTop + NAV_PADDING_Y;
-        for (int index = 0; index < 3; index++) {
+        for (int index = 0; index < TAB_COUNT; index++) {
             int y = tabTop + index * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
             boolean selected = index == activeTab;
             boolean hovered = mouseX >= navLeft && mouseX < navRight && mouseY >= y && mouseY < y + NAV_TAB_HEIGHT;
@@ -778,23 +1170,22 @@ public final class TmaSettingsScreen extends Screen {
                 BondGuiTokens.COLOR_TEXT_TITLE
         );
 
-        if (!hasActiveChanges()) {
-            return;
+        for (FooterButton button : layout.buttons()) {
+            boolean buttonHovered = mouseX >= button.left() && mouseX < button.left() + button.width()
+                    && mouseY >= layout.top() && mouseY < layout.top() + FOOTER_BUTTON_HEIGHT;
+            if (buttonHovered) {
+                graphics.fill(button.left(), layout.top(), button.left() + button.width(),
+                        layout.top() + FOOTER_BUTTON_HEIGHT, BondGuiTokens.HOVER_OVERLAY);
+            }
+            graphics.drawString(
+                    font,
+                    Component.translatable(button.labelKey()),
+                    button.left() + TEXT_BUTTON_PADDING,
+                    layout.top() + (FOOTER_BUTTON_HEIGHT - font.lineHeight) / 2,
+                    BondGuiTokens.COLOR_TEXT_BODY,
+                    false
+            );
         }
-        boolean reloadHovered = mouseX >= layout.reloadLeft() && mouseX < layout.reloadLeft() + layout.reloadWidth()
-                && mouseY >= layout.top() && mouseY < layout.top() + FOOTER_BUTTON_HEIGHT;
-        if (reloadHovered) {
-            graphics.fill(layout.reloadLeft(), layout.top(), layout.reloadLeft() + layout.reloadWidth(),
-                    layout.top() + FOOTER_BUTTON_HEIGHT, BondGuiTokens.HOVER_OVERLAY);
-        }
-        graphics.drawString(
-                font,
-                Component.translatable("bond.settings.button.reload"),
-                layout.reloadLeft() + TEXT_BUTTON_PADDING,
-                layout.top() + (FOOTER_BUTTON_HEIGHT - font.lineHeight) / 2,
-                BondGuiTokens.COLOR_TEXT_BODY,
-                false
-        );
     }
 
     private void renderFooterStatus(GuiGraphics graphics, Font font, FooterLayout layout) {
@@ -809,7 +1200,10 @@ public final class TmaSettingsScreen extends Screen {
         } else {
             return;
         }
-        int maxWidth = Math.max(0, layout.reloadLeft() - CONTENT_PADDING - contentLeft());
+        int hintRight = layout.buttons().isEmpty()
+                ? layout.doneLeft() - FOOTER_GAP
+                : layout.buttons().get(0).left() - FOOTER_GAP;
+        int maxWidth = Math.max(0, hintRight - CONTENT_PADDING - contentLeft());
         if (maxWidth <= 0) {
             return;
         }
@@ -866,9 +1260,17 @@ public final class TmaSettingsScreen extends Screen {
             closeToParent();
             return true;
         }
-        if (hasActiveChanges()
-                && mouseX >= layout.reloadLeft() && mouseX < layout.reloadLeft() + layout.reloadWidth()) {
-            reloadFromServer();
+        for (FooterButton button : layout.buttons()) {
+            if (mouseX < button.left() || mouseX >= button.left() + button.width()) {
+                continue;
+            }
+            switch (button.action()) {
+                case RELOAD -> reloadFromServer();
+                case REFRESH -> refreshStatus();
+                case CLEAR_ALL -> TmaAiStatusClientState.clearAll();
+                default -> {
+                }
+            }
             return true;
         }
         return false;
@@ -879,6 +1281,82 @@ public final class TmaSettingsScreen extends Screen {
         pending.clear();
         rejectedUntil.clear();
         TmaSettingsClientState.requestSync();
+    }
+
+    /** Re-requests the AI status; the push lands through {@link #onStatusPushed()}. */
+    private void refreshStatus() {
+        statusRequested = true;
+        TmaAiStatusClientState.requestSync();
+    }
+
+    private boolean clickVoiceExtras(double mouseX, double mouseY) {
+        int resetTop = contentTop() - scrollOffset + voicePromptResetY;
+        if (within(mouseX, mouseY, contentLeft(), promptResetWidth(this.font), resetTop, TEXT_BUTTON_HEIGHT)) {
+            if (TmaSettingsClientState.canEdit()) {
+                applyServerValue(PROMPT_KEY, promptDefault());
+            }
+            return true;
+        }
+        int buttonTop = contentTop() - scrollOffset + voiceSiteRowY + (SITE_ROW_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+        if (within(mouseX, mouseY, siteButtonLeft(this.font), siteButtonWidth(this.font), buttonTop, TEXT_BUTTON_HEIGHT)) {
+            openAiSettings();
+            return true;
+        }
+        return false;
+    }
+
+    /** Opens Touhou Little Maid's native AI settings hub, returning to this panel when closed. */
+    private void openAiSettings() {
+        if (minecraft == null) {
+            return;
+        }
+        minecraft.setScreen(AIChatSettingsHubScreen.openDefault(
+                this,
+                AvailableSites.LLM_SITES,
+                AvailableSites.TTS_SITES,
+                false
+        ));
+    }
+
+    private void clickStatus(double mouseX, double mouseY) {
+        String maidUuid = statusClearHovered(mouseX, mouseY);
+        if (maidUuid == null) {
+            return;
+        }
+        TmaAiStatusClientState.clearMaid(maidUuid);
+    }
+
+    /** @return the maid uuid whose "clear" button is hovered, or {@code null}. */
+    private String statusClearHovered(double mouseX, double mouseY) {
+        TmaAiStatusWire.Status status = TmaAiStatusClientState.get();
+        if (status == null || !status.canClear()) {
+            return null;
+        }
+        int rowTop = contentTop() - scrollOffset;
+        int buttonLeft = contentRight() - STATUS_CLEAR_BUTTON_WIDTH;
+        for (StatusRow row : statusRows) {
+            if (row.kind() != StatusRow.Kind.MAID) {
+                continue;
+            }
+            int y = rowTop + row.y();
+            int buttonTop = y + (STATUS_MAID_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+            if (within(mouseX, mouseY, buttonLeft, STATUS_CLEAR_BUTTON_WIDTH, buttonTop, TEXT_BUTTON_HEIGHT)) {
+                return row.maidUuid();
+            }
+        }
+        return null;
+    }
+
+    private int promptResetWidth(Font font) {
+        return font.width(Component.translatable("bond.settings.prompt.reset")) + TEXT_BUTTON_PADDING * 2;
+    }
+
+    private int siteButtonWidth(Font font) {
+        return font.width(Component.translatable("bond.settings.site.open")) + TEXT_BUTTON_PADDING * 2 + 8;
+    }
+
+    private int siteButtonLeft(Font font) {
+        return contentRight() - siteButtonWidth(font);
     }
 
     private void clickToggle(double mouseX, double mouseY) {
@@ -940,7 +1418,7 @@ public final class TmaSettingsScreen extends Screen {
             return -1;
         }
         int tabTop = navTop() + NAV_PADDING_Y;
-        for (int index = 0; index < 3; index++) {
+        for (int index = 0; index < TAB_COUNT; index++) {
             int y = tabTop + index * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
             if (mouseY >= y && mouseY < y + NAV_TAB_HEIGHT) {
                 return index;
@@ -979,7 +1457,8 @@ public final class TmaSettingsScreen extends Screen {
         return Component.translatable(switch (index) {
             case 0 -> "bond.settings.nav.features";
             case 1 -> "bond.settings.nav.voice";
-            default -> "bond.settings.nav.volume";
+            case 2 -> "bond.settings.nav.volume";
+            default -> "bond.settings.nav.status";
         });
     }
 
@@ -1031,10 +1510,29 @@ public final class TmaSettingsScreen extends Screen {
         int doneWidth = Math.max(BondGuiTokens.BUTTON_MIN_WIDTH, font.width(done) + BondGuiTokens.BUTTON_HORIZONTAL_PADDING * 2);
         int top = modal.footerTop() + (BondGuiTokens.MODAL_FOOTER_HEIGHT - FOOTER_BUTTON_HEIGHT) / 2;
         int doneLeft = modal.right() - 2 - FOOTER_PADDING - doneWidth;
-        Component reload = Component.translatable("bond.settings.button.reload");
-        int reloadWidth = font.width(reload) + TEXT_BUTTON_PADDING * 2;
-        int reloadLeft = doneLeft - FOOTER_GAP - reloadWidth;
-        return new FooterLayout(doneLeft, doneWidth, reloadLeft, reloadWidth, top);
+
+        List<FooterAction> actions = footerActions();
+        List<FooterButton> buttons = new ArrayList<>(actions.size());
+        int right = doneLeft - FOOTER_GAP;
+        for (FooterAction action : actions) {
+            int width = font.width(Component.translatable(action.labelKey())) + TEXT_BUTTON_PADDING * 2;
+            buttons.add(new FooterButton(right - width, width, action.labelKey(), action));
+            right -= width + FOOTER_GAP;
+        }
+        return new FooterLayout(doneLeft, doneWidth, List.copyOf(buttons), top);
+    }
+
+    /** Left-side footer buttons: reload while changes are pending, refresh/clear on the status tab. */
+    private List<FooterAction> footerActions() {
+        if (activeTab == 3) {
+            List<FooterAction> actions = new ArrayList<>(2);
+            actions.add(FooterAction.REFRESH);
+            if (TmaAiStatusClientState.get() != null && TmaAiStatusClientState.get().canClear()) {
+                actions.add(FooterAction.CLEAR_ALL);
+            }
+            return actions;
+        }
+        return hasActiveChanges() ? List.of(FooterAction.RELOAD) : List.of();
     }
 
     private int maxScroll() {
@@ -1045,10 +1543,39 @@ public final class TmaSettingsScreen extends Screen {
         return "bond.settings.volume." + id;
     }
 
-    private record FooterLayout(int doneLeft, int doneWidth, int reloadLeft, int reloadWidth, int top) {
+    private enum FooterAction {
+        RELOAD("bond.settings.button.reload"),
+        REFRESH("bond.settings.button.refresh"),
+        CLEAR_ALL("bond.settings.button.clear_all");
+
+        private final String labelKey;
+
+        FooterAction(String labelKey) {
+            this.labelKey = labelKey;
+        }
+
+        private String labelKey() {
+            return labelKey;
+        }
+    }
+
+    private record FooterButton(int left, int width, String labelKey, FooterAction action) {
+    }
+
+    private record FooterLayout(int doneLeft, int doneWidth, List<FooterButton> buttons, int top) {
     }
 
     private record PendingRequest(String value, long sentAt) {
+    }
+
+    /** One rendered row of the status tab; {@code y} is relative to the top of the content area. */
+    private record StatusRow(Kind kind, int y, int height, String headerKey, Component label, Component value,
+                             String maidUuid) {
+        private enum Kind {
+            HEADER,
+            KV,
+            MAID
+        }
     }
 
     private static final class ToggleRow {

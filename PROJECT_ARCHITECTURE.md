@@ -143,14 +143,18 @@ src/main/resources
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 
-`TmaSettingsScreen` 是与女仆无关的全局设置面板，作为**独立 Screen** 从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage` 内部改为 `Minecraft#setScreen(new TmaSettingsScreen(this))`，不走 `BondSecondaryPageRegistry` 的能力页流程）：面板不再嵌在女仆 GUI 内，而是自带全屏压暗背景的独立窗口，关闭（footer「完成」/ESC/点击压暗区）时 `setScreen` 回来源界面。模态框比其它二级页宽且高（300×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航轨内一条装饰藤蔓（`textures/gui/rose_vine.png`，素材 132×165、按 44×55 绘制、水平居中于导航轨、茎根落在面板底边上且整株在面板内）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。白名单为 **7 个开关 + 2 个语种 = 9 项**：面板语种只暴露「文本语种」（`morning_kiss.display_language`）与「配音语种」（`morning_kiss.voice_language`）；AI 专用语种 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 仍是有效的 toml 配置（AI 语言解析逻辑不变），但已不再出现在面板白名单里，需要时请手改 toml。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）；展开的下拉弹层不做面板内容区裁剪，而是夹在屏幕范围内——向下会溢出屏幕底部时翻到表头之上渲染，命中测试/高亮/点击与实际渲染位置一致，所有条目可达。
+`TmaSettingsScreen` 是与女仆无关的全局设置面板，作为**独立 Screen** 从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage` 内部改为 `Minecraft#setScreen(new TmaSettingsScreen(this))`，不走 `BondSecondaryPageRegistry` 的能力页流程）：面板不再嵌在女仆 GUI 内，而是自带全屏压暗背景的独立窗口，关闭（footer「完成」/ESC/点击压暗区）时 `setScreen` 回来源界面。模态框比其它二级页宽且高（340×230，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量 / 状态」四个 tab 切换单区内容，导航轨内一条装饰藤蔓（`textures/gui/rose_vine.png`，素材 132×165、按 44×55 绘制、水平居中于导航轨、茎根落在面板底边上且整株在面板内）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。白名单为 **7 个开关 + 2 个语种 + 1 个自由文本 = 10 项**：面板语种只暴露「文本语种」（`morning_kiss.display_language`）与「配音语种」（`morning_kiss.voice_language`）；`morning_kiss.text_prompt` 是早安吻台词模板（`Type.TEXT`，上限 1024 字符，空值写回内置默认）；AI 专用语种 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 仍是有效的 toml 配置（AI 语言解析逻辑不变），但已不再出现在面板白名单里，需要时请手改 toml。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）；展开的下拉弹层不做面板内容区裁剪，而是夹在屏幕范围内——向下会溢出屏幕底部时翻到表头之上渲染，命中测试/高亮/点击与实际渲染位置一致，所有条目可达。
+
+「语音」tab 在语种下拉框下方增加「台词提示词」区：一个原版 `MultiLineEditBox` 编辑 `morning_kiss.text_prompt`（模板占位符 `{maid}` 女仆名 / `{player}` 玩家名 / `{pool}` 时段 / `{time}` 允许时段），下方是占位符图例与「恢复默认」纯文字按钮（把模板写回 `ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT` 的内置默认；客户端用 `getDefault()` 本地解析默认串，使 pending 比对能匹配服务端回推）。提交时机为编辑框失焦（点击别处 / 切换 tab / 关闭面板），聚焦期间服务端回推不覆盖输入。该 tab 底部「AI 站点」区只有**唯一**一个 AI 入口按钮「打开车万女仆的 AI 设置」，跳转到 TLM 原生 `AIChatSettingsHubScreen.openDefault(this, AvailableSites.LLM_SITES, AvailableSites.TTS_SITES, false)`，parent 传本面板，关闭后回到这里：站点 / 密钥 / 模型 / TTS 音色全部由 TLM 原生页面配置，TMA 只提供跳转，不自建站点表单。
+
+「状态」tab 移植 `/tma morning_kiss status` 与 `/tma morning_kiss cache` 的只读信息：开关（早安吻 / AI 台词 / AI 语音 / 立即兜底）、语种（全局显示/配音、AI 覆盖台词/配音、生效优先级）、缓存策略（每池目标条数 / 扫描间隔 tick / 消费即用）、缓存统计（条目总数与语音/纯文本拆分、女仆数 / 在途请求数 / 版本号 revision）与按女仆列表（名字 + 各时段池条目数 + 该女仆总条目/目标 + 行内「清空」按钮）。数据来源：开关与语种来自 `ModConfig`，全局语种来自 `MorningKissGeneratedDialogueService.globalDisplayLanguage()/globalVoiceLanguage()`，缓存统计来自 `MorningKissGeneratedDialogueService.cacheStats()`，按女仆列表用 TLM 的 `MaidBackupsManager.getMaidIndexMap(player)` 限定为**该玩家名下**的女仆（名字取自备份索引，缺失时回退缓存标签）。footer 为「刷新 / 清空全部 / 完成」：刷新重发 `TmaAiStatusRequestPayload`；清空全部与行内清空走 `TmaAiCacheClearPayload`（scope = ALL / MAID），服务端要求权限等级 2、打印审计日志，并**复用与 `/tma morning_kiss clear_ai_cache` 完全相同的** `MorningKissGeneratedDialogueService.clearCache(...)` 方法，随后回推一份新状态，所有打开的状态 tab 自动收敛。
 
 ### 4.8 AI 集成
 
 早安吻的 LLM/TTS 一律使用车万女仆自己的 AI 站点（TLM 原生支持类 OpenAI 站点）；TMA 不再注册自己的 provider，也不提供站点表单。语音音色由 TLM 站点配置决定（voice/model；GPT-SoVITS 站点另有其原生的 prompt 字段）：
 
 - 早安吻的台词生成与 TTS 请求全部走 `maid.getAiChatManager()` 内 TLM 自己的站点选择，TMA 不介入协议层。
-- 羁绊页不再提供 AI 入口按钮：原右上角按钮已整条删除，AI 相关配置今后由 TMA 自己的设置面板承担（后续批次实现）。
+- 羁绊页不再提供 AI 入口按钮：原右上角按钮已整条删除；全局唯一的 AI 入口是设置面板「语音」tab 的「打开车万女仆的 AI 设置」按钮，它只是 `setScreen` 到 TLM 原生 `AIChatSettingsHubScreen`，站点表单仍由 TLM 提供。
 - API key、启用状态与站点保存全部由 TLM 管理（`config/touhou_little_maid/sites/*.json`）。
 - 旧版 TMA 注册过的 `tma_mimo_chat` / `tma_mimo_tts` 站点条目在 TLM 读取时因缺少对应 serializer 被跳过（仅记 error 日志），随后 TLM 保存站点时即被清除；无需玩家手动删除。
 
@@ -226,6 +230,10 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `TmaSettingsRequestPayload`：客户端设置请求（C2S）。空 `entries` 表示只读状态；非空表示请求修改。服务端要求权限等级 2，逐条按白名单与取值语法校验，**任一条不合法整包拒绝**，合法则写入 `ModConfig` 并 `SPEC.save()`，逐条打印审计日志 `[TMA Settings] player=<name> key=<k> old=<a> new=<b>`。
 - `TmaSettingsStatePayload`：服务端回推完整生效状态（S2C），包含全部白名单键的当前值与 `canEdit`（是否 OP）。只读请求也会收到该包。
 - 两个设置包的条目列表编解码复用纯逻辑类 `bond/settings/TmaSettingsWire`（≤ 32 条），netty `ByteBuf` 适配在 `network/TmaSettingsByteBuf`；白名单与取值校验在纯逻辑类 `bond/settings/TmaSettingsKeys`，逻辑键到 `ModConfig` 的映射在 `bond/settings/TmaSettingsResolver`。
+- `TmaAiStatusRequestPayload`：只读 AI 状态请求（C2S，空包）。
+- `TmaAiStatusPayload`：服务端回推的只读 AI 状态（S2C）。`maids` **只包含该玩家名下**的女仆（uuid + 名字 + 各时段池条目数 + 总条目/目标），其余为服务器全局计数；`canClear` 表示接收者是否可清缓存（权限等级 2）。
+- `TmaAiCacheClearPayload`：清缓存请求（C2S，`scope` = ALL / MAID / POOL）。服务端要求权限等级 2、打印审计日志，并复用与 `/tma morning_kiss clear_ai_cache` 相同的 `MorningKissGeneratedDialogueService.clearCache(...)`，随后回推一份 `TmaAiStatusPayload`。
+- 三个 AI 状态包的编解码复用纯逻辑类 `bond/settings/TmaAiStatusWire`（maids ≤ 64、pools ≤ 8、字符串 ≤ 128），netty `ByteBuf` 适配在 `network/TmaAiStatusByteBuf`。
 
 ## 8. 演进规范
 
