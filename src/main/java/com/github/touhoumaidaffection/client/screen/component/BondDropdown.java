@@ -6,6 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.List;
 
 public final class BondDropdown<T> {
+    /** Opaque variant of {@link BondGuiTokens#COLOR_BG_PANEL} used by the expanded list. */
+    private static final int OPAQUE_PANEL = 0xFF000000 | (BondGuiTokens.COLOR_BG_PANEL & 0xFFFFFF);
     private int left;
     private int top;
     private final int width;
@@ -65,7 +67,9 @@ public final class BondDropdown<T> {
         int visibleRows = Math.min(maxVisibleRows, items.size());
         int listTop = overlayTop(items.size());
         int listBottom = listTop + visibleRows * rowHeight;
-        BondGuiTokens.drawFramedPanel(graphics, left, listTop, right(), listBottom, BondGuiTokens.COLOR_BG_PANEL);
+        // An expanded list must be opaque: the panel token is translucent for windows, but a dropdown
+        // that lets the row underneath bleed through reads as a layering bug.
+        BondGuiTokens.drawFramedPanel(graphics, left, listTop, right(), listBottom, OPAQUE_PANEL);
         graphics.enableScissor(left + 2, listTop + 2, right() - 2, listBottom - 2);
         try {
             int max = Math.min(items.size(), scrollOffset + visibleRows);
