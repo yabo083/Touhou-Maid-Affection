@@ -72,7 +72,7 @@ public final class TmaSettingsScreen extends Screen {
 
     // ---- Navigation rail ----
     /** Rail width; matches the sidebar separator baked into the background artwork (50 / 340). */
-    private static final int NAV_WIDTH = 50;
+    private static final int NAV_WIDTH = 46;
     private static final int NAV_PADDING_Y = 8;
     private static final int NAV_TAB_HEIGHT = 20;
     private static final int NAV_TAB_GAP = 1;

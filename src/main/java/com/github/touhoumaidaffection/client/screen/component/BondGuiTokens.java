@@ -25,7 +25,7 @@ public final class BondGuiTokens {
      * separator at exactly this fraction of the panel height (20 / 230), so the two must stay in
      * sync; the other modals simply inherit the slightly shorter title bar.
      */
-    public static final int MODAL_TITLE_HEIGHT = 20;
+    public static final int MODAL_TITLE_HEIGHT = 21;
     public static final int MODAL_FOOTER_HEIGHT = 30;
     public static final int CONTENT_SIDE_PADDING = SPACING_MD;
 
