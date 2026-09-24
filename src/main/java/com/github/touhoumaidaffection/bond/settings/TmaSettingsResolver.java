@@ -42,6 +42,8 @@ public final class TmaSettingsResolver {
             ModConfigSpec.ConfigValue<String> stringValue = (ModConfigSpec.ConfigValue<String>) configValue;
             // An empty value means "restore the built-in default template" rather than storing "".
             stringValue.set(normalizedValue.isEmpty() ? stringValue.getDefault() : normalizedValue);
+        } else if (type == TmaSettingsKeys.Type.INT) {
+            ((ModConfigSpec.ConfigValue<Integer>) configValue).set(Integer.parseInt(normalizedValue));
         } else {
             ((ModConfigSpec.ConfigValue<String>) configValue).set(normalizedValue);
         }
@@ -65,12 +67,20 @@ public final class TmaSettingsResolver {
             case TmaSettingsKeys.MORNING_KISS_AUTO_ENABLED -> ModConfig.BOND_MORNING_KISS_AUTO_ENABLED;
             case TmaSettingsKeys.MORNING_KISS_AI_DIALOGUE_ENABLED -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_ENABLED;
             case TmaSettingsKeys.MORNING_KISS_AI_TTS_ENABLED -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_TTS_ENABLED;
+            case TmaSettingsKeys.MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED ->
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED;
             case TmaSettingsKeys.EMERGENCY_RESCUE_ENABLED -> ModConfig.BOND_EMERGENCY_RESCUE_ENABLED;
             case TmaSettingsKeys.RANDOM_GIFT_ENABLED -> ModConfig.BOND_RANDOM_GIFT_ENABLED;
             case TmaSettingsKeys.MAID_PRAYER_BUFF_ENABLED -> ModConfig.BUFF_ENABLED;
             case TmaSettingsKeys.MORNING_KISS_DISPLAY_LANGUAGE -> ModConfig.BOND_MORNING_KISS_DISPLAY_LANGUAGE;
             case TmaSettingsKeys.MORNING_KISS_VOICE_LANGUAGE -> ModConfig.BOND_MORNING_KISS_VOICE_LANGUAGE;
             case TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT;
+            case TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL ->
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL;
+            case TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS ->
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS;
+            case TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE ->
+                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE;
             default -> null;
         };
     }
