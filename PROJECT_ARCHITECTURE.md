@@ -166,9 +166,11 @@ src/main/resources
 
 - **契约**：`BondMaidMigrationProvider` 实现管理器的 `MaidMigrationProvider`，把 TMA 唯一「挂在女仆身上但不在女仆实体 NBT 内」的数据——主人玩家 persistentData 中 `touhou_maid_affection.bond.maids.<女仆UUID>` 子树（即 `BondData` 的女仆粒度数据）——导出为 `.maid` 的 extras 段，导入时按新女仆 UUID 整体写回并刷新 `LastSeen`。extras 的对外格式始终是「base 名 → 值」的 compound，与旧版扁平键时代一致，因此**旧导出文件仍可导入**。女仆实体 NBT（含 ForgeData）由管理器自身负责，TMA 不重复导出。
 - **迁移边界：画像随迁、运行态不随迁**：`exportMaidData` 取子树副本后剔除 `BondKeys.RUNTIME_KEYS`（见 4.3）与空字符串值；`importMaidData` 防御性再剔一遍（旧 `.maid` 文件里可能带着运行态键），然后**整体替换**目标子树（源里没有的键在目标上即为缺失，因此导入仍能清掉多余值）并刷新 `LastSeen`。理由：运行态键是会话/世界相关的绝对时间，随 `.maid` 迁到另一只女仆或另一个存档会带上别处的会话时间戳，导致新女仆的礼物计时或「今天是否已亲过」判定被污染。导入仍是整体替换语义，不是合并。
-- **为什么 vendored**：SPI v1.4.0 未发布到 CurseForge/Modrinth，也没有 Maven 仓库，因此按上游文档认可的方式把 `io.github.zgxhzhr.maidfm.spi` 两个源文件复制进源码树，仅作编译期 shim。
+- **为什么 vendored**：最初 SPI v1.4.0 尚未发布（无 CurseForge/Modrinth/Maven 产物），因此按上游文档认可的方式把 `io.github.zgxhzhr.maidfm.spi` 两个源文件复制进源码树，仅作编译期 shim。**2026-09-25 上游 1.4.0 正式发布后已核对：官方 `MaidMigrationProvider` / `MaidMigrationRegistry` 的 class 与 vendored 版**逐字节一致**（md5 相同，neoforge 与 forge 皆然），签名集合为 `getId / getDependencyModId / export / importData / isAvailable` + `register / getAvailable / get`，故无需改动任何集成代码。
 - **为什么必须从 jar 排除**：NeoForge 1.21.1 用 securejarhandler 的 module classloader（每个 mod 一个 module），跨 mod 的同名类**不保证**被去重；若 TMA 的 jar 也带一份同名 SPI，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。因此 `build.gradle` 的 `jar` 任务 exclude 掉整个 `io/github/zgxhzhr/**` 命名空间，运行期只有管理器提供这两个类。
 - **为什么注册要守卫**：`BondMaidMigrationProvider` 在类加载期会解析 SPI 类型，管理器缺失时会 `NoClassDefFoundError`；主类构造器用 `ModList.get().isLoaded("maid_file_manager")` 包裹 `register()`，未安装时该分支不执行，provider 类不会被解析。
+- **`.maid` 格式版本 5 → 6（上游 1.4.0 起）**：上游新增 `Constants.MAID_FILE_FORMAT_VERSION = 6` 与 `NbtMigration.migrate(from, to)`，迁移内容只有 `renameModelId` 与删除运行态/背包/日程标签，**全部作用于女仆实体 NBT**；`extras` 是 `MaidFileData` 的独立字段，因此 TMA 的羁绊数据不参与迁移、不会丢失，旧 v5 文件由上游自动升级后仍可读回我们的 extras。
+- **dev 运行注意（split package）**：本地 `runServer` 若同时加载 MaidFileManager 会因 `Module touhou_maid_affection contains package io.github.zgxhzhr.maidfm.spi` 启动失败——dev 跑的是 `build/classes/java/main`（含 vendored SPI），而发布 jar 已 exclude 该命名空间。**发布侧不受影响**（两个发布 jar 内零 `io/github/zgxhzhr` 条目）；若需要 dev 冒烟该链路，可把 vendored SPI 移到独立 source set（`compileOnly`，不进主输出）。
 - **不做 AI 缓存迁移**：`world/generated_morning_kiss/<uuid>/` 下的 AI 台词/TTS 语音是可再生缓存，已有 MAID_REVISIONS 失效机制，迁移到新存档反而可能携带过期内容；玩家粒度的 `MorningKissSelectedWindowId/MaidId` 与每日救护次数（`EmergencyRescueAttachment`，玩家 Capability）也不属于女仆粒度，因此一并排除。
 
 ## 5. 数据与配置边界
