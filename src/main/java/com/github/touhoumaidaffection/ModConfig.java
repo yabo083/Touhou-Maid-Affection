@@ -52,8 +52,6 @@ public class ModConfig {
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_DISPLAY_LANGUAGE;
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_VOICE_LANGUAGE;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_ENABLED;
-    public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE;
-    public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE;
     public static final ForgeConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_PROMPT;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_PREGENERATE_ENABLED;
     public static final ForgeConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED;
@@ -333,20 +331,20 @@ public class ModConfig {
                 .define("dialogueChatBubbleEnabled", true);
 
         BOND_MORNING_KISS_DISPLAY_LANGUAGE = builder
-                .comment("Global subtitle/text language for Morning Kiss data-pack dialogue and AI dialogue",
-                        "Default auto keeps the 1.7.3.0 behavior and does not filter anything",
-                        "Set an explicit locale such as zh_cn, ja_jp, en_us, zh_tw to filter dialogue by its language tag",
+                .comment("Text language used for Morning Kiss dialogue (data-pack lines and AI-generated lines)",
+                        "auto (default) follows the game language: built-in lines use the client locale and unmarked data-pack lines are never filtered",
+                        "Set an explicit locale such as zh_cn, ja_jp, en_us, zh_tw to always show that language",
+                        "Legacy keywords tlm/inherit/default are still accepted and behave exactly like auto",
                         "Data-pack dialogue entries may be plain strings (unmarked/wildcard) or {\"text\": \"...\", \"language\": \"zh_cn\"}",
-                        "Priority: aiDialogueLanguage (explicit locale) > displayLanguage (explicit locale) > tlm/inherit/auto semantics",
                         "Example: displayLanguage = \"zh_cn\" shows Chinese subtitles while voiceLanguage = \"ja_jp\" plays Japanese voices")
                 .define("displayLanguage", "auto");
 
         BOND_MORNING_KISS_VOICE_LANGUAGE = builder
-                .comment("Global spoken/voice language for Morning Kiss data-pack voices and generated TTS voices",
-                        "Default auto keeps the 1.7.3.0 behavior and does not filter anything",
-                        "Set an explicit locale such as ja_jp, zh_cn, en_us to prefer matching data-pack voice_files entries",
+                .comment("Spoken/voice language used for Morning Kiss data-pack voices and generated TTS voices",
+                        "auto (default) follows the maid's Touhou Little Maid AI language settings: data-pack voices are never filtered and generated TTS uses the maid's TTS language",
+                        "Set an explicit locale such as ja_jp, zh_cn, en_us to prefer matching data-pack voice_files entries and to synthesize TTS in that language",
+                        "Legacy keywords tlm/inherit/default are still accepted and behave exactly like auto",
                         "voice_files entries may be plain file names (unmarked/wildcard) or {\"file\": \"x.ogg\", \"language\": \"ja_jp\", \"text\": \"optional subtitle\", \"text_language\": \"zh_cn\"}",
-                        "Priority: aiDialogueVoiceLanguage (explicit locale) > voiceLanguage (explicit locale) > tlm/inherit/auto semantics",
                         "TLM sound packs have no language metadata and are never filtered")
                 .define("voiceLanguage", "auto");
 
@@ -354,18 +352,6 @@ public class ModConfig {
                 .comment("Enable Morning Kiss AI-generated dialogue integration",
                         "Requires Touhou Little Maid LLM to be enabled and configured on the maid")
                 .define("aiDialogueEnabled", false);
-
-        BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE = builder
-                .comment("Display-text language used for Morning Kiss AI dialogue pregeneration and live fallback",
-                        "Use tlm/auto/default to follow Touhou Little Maid's per-maid chat language; set zh_cn, en_us, ja_jp, etc. to override")
-                .define("aiDialogueLanguage", "tlm");
-
-        BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE = builder
-                .comment("Spoken-text language used for generated Morning Kiss TTS voices",
-                        "inherit keeps an explicit aiDialogueLanguage override, otherwise follows the maid's TLM TTS language",
-                        "Use tlm to always follow the maid's TLM TTS language, or set ja_jp, zh_cn, en_us, etc. independently",
-                        "When display and voice languages differ, TMA translates each generated line before requesting TTS")
-                .define("aiDialogueVoiceLanguage", "inherit");
 
         BOND_MORNING_KISS_AI_DIALOGUE_PROMPT = builder
                 .comment("Prompt template for Morning Kiss AI-generated dialogue",

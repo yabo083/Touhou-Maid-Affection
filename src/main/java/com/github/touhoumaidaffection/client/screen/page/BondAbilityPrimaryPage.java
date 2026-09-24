@@ -28,7 +28,7 @@ public final class BondAbilityPrimaryPage {
     private final int panelWidth;
     private final int settingsButtonX;
     private final int settingsButtonY;
-    private static final int SETTINGS_BUTTON_WIDTH = 44;
+    private static final int SETTINGS_BUTTON_WIDTH = 50;
     private static final int SETTINGS_BUTTON_HEIGHT = 12;
 
     public BondAbilityPrimaryPage(BondPrimaryPageHost host,
@@ -52,9 +52,10 @@ public final class BondAbilityPrimaryPage {
         this.secondaryButtonGap = secondaryButtonGap;
         this.panelX = panelX;
         this.panelWidth = panelWidth;
-        this.settingsButtonX = panelX + 2;
-        // Kept inside the bond page frame so the screen's click routing reaches this button.
-        this.settingsButtonY = panelY - SETTINGS_BUTTON_HEIGHT;
+        // Sits in the top-right slot of the panel frame (where the removed AI button used to be),
+        // kept inside the bond page frame so the screen's click routing reaches this button.
+        this.settingsButtonX = panelX + panelWidth - SETTINGS_BUTTON_WIDTH - 2;
+        this.settingsButtonY = panelY - SETTINGS_BUTTON_HEIGHT - 3;
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY) {

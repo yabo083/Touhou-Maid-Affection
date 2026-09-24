@@ -174,6 +174,26 @@ public final class TmaSettingsKeys {
     }
 
     /**
+     * Canonicalises a language value for display.
+     *
+     * <p>Every legacy keyword ({@code tlm}/{@code inherit}/{@code default}, case-insensitive) is shown
+     * as {@code auto} because they all mean "follow the game / maid AI language"; an explicit locale
+     * is returned unchanged so the dropdown still shows what is stored. Blank values fall back to
+     * {@code auto} as well.</p>
+     */
+    public static String languageForDisplay(String rawValue) {
+        if (rawValue == null) {
+            return "auto";
+        }
+        String value = rawValue.trim();
+        if (value.isEmpty()) {
+            return "auto";
+        }
+        String lowerCase = value.toLowerCase(Locale.ROOT);
+        return LANGUAGE_KEYWORDS.contains(lowerCase) ? "auto" : value;
+    }
+
+    /**
      * Canonicalises a language value.
      *
      * <p>Accepted: the legacy keywords {@code auto}/{@code tlm}/{@code inherit}/{@code default}

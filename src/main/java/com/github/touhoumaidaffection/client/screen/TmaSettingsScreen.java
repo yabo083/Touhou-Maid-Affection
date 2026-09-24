@@ -97,7 +97,10 @@ public final class TmaSettingsScreen extends Screen {
     // ---- Voice tab (prompt template + AI site) ----
     private static final int PROMPT_BOX_HEIGHT = 52;
     private static final int PROMPT_LABEL_BLOCK = 18;
-    private static final int LEGEND_HEIGHT = 12;
+    /** Inner padding of the vanilla multi-line editor; the counter is inset by the same amount. */
+    private static final int PROMPT_INNER_PADDING = 4;
+    /** Height of the legend + "restore default" row directly below the prompt box. */
+    private static final int PROMPT_ROW_HEIGHT = 14;
     private static final int TEXT_BUTTON_HEIGHT = 14;
     private static final int SITE_ROW_HEIGHT = 18;
 
@@ -173,8 +176,7 @@ public final class TmaSettingsScreen extends Screen {
     private int voicePromptSectionY;
     private int voicePromptLabelY;
     private int voicePromptBoxY;
-    private int voicePromptLegendY;
-    private int voicePromptResetY;
+    private int voicePromptRowY;
     private int voiceSiteSectionY;
     private int voiceSiteRowY;
     private int voiceContentHeight;
@@ -313,6 +315,7 @@ public final class TmaSettingsScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (activeTab == 1 && promptBox != null && promptBox.isFocused()
                 && promptBox.keyPressed(keyCode, scanCode, modifiers)) {
+            clampPromptLength();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -322,6 +325,7 @@ public final class TmaSettingsScreen extends Screen {
     public boolean charTyped(char codePoint, int modifiers) {
         if (activeTab == 1 && promptBox != null && promptBox.isFocused()
                 && promptBox.charTyped(codePoint, modifiers)) {
+            clampPromptLength();
             return true;
         }
         return super.charTyped(codePoint, modifiers);
@@ -441,7 +445,8 @@ public final class TmaSettingsScreen extends Screen {
                 if (promptBox != null && promptBox.isMouseOver(mouseX, mouseY)) {
                     return rowTooltip(PROMPT_KEY, Component.translatable("bond.settings.prompt.tip").withStyle(ChatFormatting.GRAY));
                 }
-                if (within(mouseX, mouseY, contentLeft(), promptResetWidth(this.font), contentTop() - scrollOffset + voicePromptResetY, TEXT_BUTTON_HEIGHT)) {
+                if (within(mouseX, mouseY, contentRight() - promptResetWidth(this.font), promptResetWidth(this.font),
+                        contentTop() - scrollOffset + voicePromptRowY, PROMPT_ROW_HEIGHT)) {
                     return List.of(Component.translatable("bond.settings.prompt.reset.tip"));
                 }
                 if (within(mouseX, mouseY, siteButtonLeft(this.font), siteButtonWidth(this.font),
@@ -559,10 +564,9 @@ public final class TmaSettingsScreen extends Screen {
         y += PROMPT_LABEL_BLOCK;
         voicePromptBoxY = y;
         y += PROMPT_BOX_HEIGHT;
-        voicePromptLegendY = y + 2;
-        y += LEGEND_HEIGHT + 2;
-        voicePromptResetY = y;
-        y += TEXT_BUTTON_HEIGHT + ROW_GAP;
+        // Legend (left) and "restore default" (right) share one row under the editor.
+        voicePromptRowY = y + ROW_GAP;
+        y = voicePromptRowY + PROMPT_ROW_HEIGHT + ROW_GAP;
         voiceSiteSectionY = y;
         y += SECTION_HEADER_HEIGHT;
         voiceSiteRowY = y;
@@ -593,7 +597,8 @@ public final class TmaSettingsScreen extends Screen {
         int rowTop = contentTop() - scrollOffset;
         for (LanguageRow row : languages) {
             row.options = buildLanguageOptions(row.key);
-            row.selectedIndex = Math.max(0, row.options.indexOf(TmaSettingsClientState.getValue(row.key)));
+            row.selectedIndex = Math.max(0, row.options.indexOf(
+                    TmaSettingsKeys.languageForDisplay(TmaSettingsClientState.getValue(row.key))));
             row.x = contentRight - DROPDOWN_WIDTH;
             int dropdownTop = rowTop + row.y;
             row.dropdown.setPosition(row.x, dropdownTop);
@@ -643,11 +648,10 @@ public final class TmaSettingsScreen extends Screen {
         y = addStatusKv(y, tr("bond.settings.status.switch.ai_tts"), onOff(status.aiTtsEnabled()));
         y = addStatusKv(y, tr("bond.settings.status.switch.fallback"), onOff(status.immediateFallbackEnabled()));
         y = addStatusHeader(y, "bond.settings.status.section.languages");
-        y = addStatusKv(y, tr("bond.settings.status.language.global"),
-                literal(status.globalDisplayLanguage() + " / " + status.globalVoiceLanguage()));
-        y = addStatusKv(y, tr("bond.settings.status.language.ai"),
-                literal(status.aiDialogueLanguage() + " / " + status.aiVoiceLanguage()));
-        y = addStatusKv(y, tr("bond.settings.status.language.priority"), null);
+        y = addStatusKv(y, tr("bond.settings.status.language.display"),
+                languageValue(status.globalDisplayLanguage(), "bond.settings.status.language.auto.display"));
+        y = addStatusKv(y, tr("bond.settings.status.language.voice"),
+                languageValue(status.globalVoiceLanguage(), "bond.settings.status.language.auto.voice"));
         y = addStatusHeader(y, "bond.settings.status.section.cache_policy");
         y = addStatusKv(y, tr("bond.settings.status.cache_policy.target"),
                 literal(String.valueOf(status.cacheTargetPerPool())));
@@ -701,6 +705,17 @@ public final class TmaSettingsScreen extends Screen {
         return Component.literal(value == null ? "" : value);
     }
 
+    /**
+     * Renders a language value: {@code auto} (including any legacy keyword the server may still hold)
+     * becomes the plain-language description, an explicit locale stays as-is.
+     */
+    private static Component languageValue(String language, String autoKey) {
+        if (language == null || language.isBlank() || LANGUAGE_AUTO.equalsIgnoreCase(language.trim())) {
+            return Component.translatable(autoKey);
+        }
+        return Component.literal(language);
+    }
+
     private static Component onOff(boolean on) {
         return Component.translatable(on ? "bond.settings.status.on" : "bond.settings.status.off");
     }
@@ -718,7 +733,9 @@ public final class TmaSettingsScreen extends Screen {
                 Component.translatable("bond.settings.prompt.placeholder"),
                 Component.translatable("bond.settings.prompt.label")
         );
-        promptBox.setCharacterLimit(TmaSettingsKeys.MAX_TEXT_LENGTH);
+        // No vanilla character limit: MultiLineEditBox would draw its counter below the box where it
+        // collides with the legend row. The screen draws the counter inside and clamps the length.
+        promptBox.setCharacterLimit(Integer.MAX_VALUE);
         promptBox.setValue(TmaSettingsClientState.getValue(PROMPT_KEY));
     }
 
@@ -749,6 +766,7 @@ public final class TmaSettingsScreen extends Screen {
         if (promptBox == null) {
             return;
         }
+        clampPromptLength();
         String value = promptBox.getValue();
         if (value.equals(TmaSettingsClientState.getValue(PROMPT_KEY))) {
             return;
@@ -756,6 +774,22 @@ public final class TmaSettingsScreen extends Screen {
         // An empty template means "restore the built-in default"; the client resolves the default
         // locally so the pending marker can match the server's pushed value.
         applyServerValue(PROMPT_KEY, value.isEmpty() ? promptDefault() : value);
+    }
+
+    /**
+     * Keeps the editor within {@link TmaSettingsKeys#MAX_TEXT_LENGTH}.
+     *
+     * <p>The editor runs without a vanilla character limit (see {@link #ensurePromptBox()}), so the
+     * cap is enforced here after every key/char event and once more before submitting.</p>
+     */
+    private void clampPromptLength() {
+        if (promptBox == null) {
+            return;
+        }
+        String value = promptBox.getValue();
+        if (value.length() > TmaSettingsKeys.MAX_TEXT_LENGTH) {
+            promptBox.setValue(value.substring(0, TmaSettingsKeys.MAX_TEXT_LENGTH));
+        }
     }
 
     private String promptDefault() {
@@ -779,7 +813,7 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     private List<String> buildLanguageOptions(String key) {
-        String current = TmaSettingsClientState.getValue(key);
+        String current = TmaSettingsKeys.languageForDisplay(TmaSettingsClientState.getValue(key));
         List<String> options = new ArrayList<>(COMMON_LANGUAGES.size() + 2);
         options.add(LANGUAGE_AUTO);
         if (!current.isBlank() && !options.contains(current)) {
@@ -861,18 +895,37 @@ public final class TmaSettingsScreen extends Screen {
         if (promptBox != null) {
             promptBox.render(graphics, mouseX, mouseY, 0.0F);
         }
+        drawPromptCounter(graphics, font, rowTop);
+        int rowTopY = rowTop + voicePromptRowY;
+        int resetWidth = promptResetWidth(font);
+        int resetLeft = contentRight() - resetWidth;
         Component legend = Component.translatable("bond.settings.prompt.legend");
-        graphics.drawString(font, font.plainSubstrByWidth(legend.getString(), Math.max(0, contentRight() - contentLeft())),
-                contentLeft(), rowTop + voicePromptLegendY, BondGuiTokens.COLOR_TEXT_HINT, false);
-        int resetLeft = contentLeft();
-        int resetTop = rowTop + voicePromptResetY;
-        boolean resetHovered = within(mouseX, mouseY, resetLeft, promptResetWidth(font), resetTop, TEXT_BUTTON_HEIGHT);
-        if (resetHovered) {
-            graphics.fill(resetLeft, resetTop, resetLeft + promptResetWidth(font), resetTop + TEXT_BUTTON_HEIGHT,
-                    BondGuiTokens.HOVER_OVERLAY);
+        int legendWidth = Math.max(0, resetLeft - LABEL_CONTROL_GAP - contentLeft());
+        graphics.drawString(font, font.plainSubstrByWidth(legend.getString(), legendWidth),
+                contentLeft(), rowTopY + (PROMPT_ROW_HEIGHT - font.lineHeight) / 2,
+                BondGuiTokens.COLOR_TEXT_HINT, false);
+        boolean resetHovered = within(mouseX, mouseY, resetLeft, resetWidth, rowTopY, PROMPT_ROW_HEIGHT);
+        drawTextButton(graphics, font, Component.translatable("bond.settings.prompt.reset"), resetLeft, rowTopY,
+                resetWidth, resetHovered, TmaSettingsClientState.canEdit());
+    }
+
+    /**
+     * Draws the character counter inside the editor's bottom-right corner.
+     *
+     * <p>The vanilla {@code MultiLineEditBox} paints its counter below the box (at {@code y + height + 4}),
+     * which collides with the legend row; the editor therefore runs without a vanilla character limit
+     * and this screen owns both the counter and the length cap.</p>
+     */
+    private void drawPromptCounter(GuiGraphics graphics, Font font, int rowTop) {
+        if (promptBox == null) {
+            return;
         }
-        graphics.drawString(font, Component.translatable("bond.settings.prompt.reset"), resetLeft + TEXT_BUTTON_PADDING,
-                resetTop + (TEXT_BUTTON_HEIGHT - font.lineHeight) / 2, BondGuiTokens.COLOR_TEXT_BODY, false);
+        Component counter = Component.translatable("gui.multiLineEditBox.character_limit",
+                promptBox.getValue().length(), TmaSettingsKeys.MAX_TEXT_LENGTH);
+        int boxRight = contentRight();
+        int boxBottom = rowTop + voicePromptBoxY + PROMPT_BOX_HEIGHT;
+        graphics.drawString(font, counter, boxRight - PROMPT_INNER_PADDING - font.width(counter),
+                boxBottom - PROMPT_INNER_PADDING - font.lineHeight, BondGuiTokens.COLOR_TEXT_HINT, false);
     }
 
     private void renderSiteSection(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
@@ -1291,8 +1344,9 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     private boolean clickVoiceExtras(double mouseX, double mouseY) {
-        int resetTop = contentTop() - scrollOffset + voicePromptResetY;
-        if (within(mouseX, mouseY, contentLeft(), promptResetWidth(this.font), resetTop, TEXT_BUTTON_HEIGHT)) {
+        int rowTop = contentTop() - scrollOffset + voicePromptRowY;
+        int resetWidth = promptResetWidth(this.font);
+        if (within(mouseX, mouseY, contentRight() - resetWidth, resetWidth, rowTop, PROMPT_ROW_HEIGHT)) {
             if (TmaSettingsClientState.canEdit()) {
                 applyServerValue(PROMPT_KEY, promptDefault());
             }
@@ -1349,11 +1403,16 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     private int promptResetWidth(Font font) {
-        return font.width(Component.translatable("bond.settings.prompt.reset")) + TEXT_BUTTON_PADDING * 2;
+        return textButtonWidth(font, "bond.settings.prompt.reset");
     }
 
     private int siteButtonWidth(Font font) {
-        return font.width(Component.translatable("bond.settings.site.open")) + TEXT_BUTTON_PADDING * 2 + 8;
+        return textButtonWidth(font, "bond.settings.site.open");
+    }
+
+    /** Shared width of a {@link #drawTextButton} control (centred label plus even side padding). */
+    private static int textButtonWidth(Font font, String labelKey) {
+        return font.width(Component.translatable(labelKey)) + TEXT_BUTTON_PADDING * 2 + 8;
     }
 
     private int siteButtonLeft(Font font) {

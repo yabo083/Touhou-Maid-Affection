@@ -132,4 +132,16 @@ class TmaSettingsKeysTest {
     void labelKeysAreDerivedFromLogicalKeys() {
         assertEquals("bond.settings.key.morning_kiss.enabled", TmaSettingsKeys.labelKey("morning_kiss.enabled"));
     }
+
+    @Test
+    void displayLanguageCollapsesLegacyKeywordsToAuto() {
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay("auto"));
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay("tlm"));
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay("inherit"));
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay("Default"));
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay(""));
+        assertEquals("auto", TmaSettingsKeys.languageForDisplay(null));
+        assertEquals("zh_cn", TmaSettingsKeys.languageForDisplay("zh_cn"));
+        assertEquals("ja_jp", TmaSettingsKeys.languageForDisplay(" ja_jp "));
+    }
 }
