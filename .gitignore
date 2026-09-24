@@ -42,3 +42,6 @@ GUI_STYLE_REQUIREMENTS_FOR_GEMINI.md
 .agents
 .codegraph
 .codegraph/.gitignore
+
+# Local working docs (agent roadmap, not for release)
+ROADMAP.md
