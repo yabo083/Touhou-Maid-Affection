@@ -49,7 +49,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          # 需要完整历史与 tags 来定位「上一个已发布版本」；
+          # 不能用 fetch-tags: true——tag 触发时它会尝试同时 fetch commit 与 tag 到同一 ref，git 报 exit 128。
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -78,18 +80,23 @@ jobs:
         shell: bash
         run: |
           CUR="${GITHUB_REF_NAME#v}"; CUR="${CUR%-forge1.20.1}"
-          PREV_TAG="$(git tag --sort=-v:refname | grep -v -F "$GITHUB_REF_NAME" | head -n1 || true)"
+          PREV_TAG="$( (git tag --sort=-v:refname 2>/dev/null || true) | grep -v -F "$GITHUB_REF_NAME" | head -n1 || true)"
           PREV="${PREV_TAG#v}"; PREV="${PREV%-forge1.20.1}"
-          {
-            echo "body<<CHANGELOG_EOF"
-            awk -v cur="$CUR" -v prev="$PREV" '
+          BODY="$(awk -v cur="$CUR" -v prev="$PREV" '
               index($0, "## [" cur "]") == 1 { p = 1 }
               p && prev != "" && index($0, "## [" prev "]") == 1 { exit }
               p { print }
-            ' CHANGELOG.md
+            ' CHANGELOG.md 2>/dev/null || true)"
+          if [ -z "$BODY" ]; then
+            BODY="Release ${GITHUB_REF_NAME}. See CHANGELOG.md in the repository."
+          fi
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$BODY"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "Extracted changelog for $CUR (previous tag: ${PREV_TAG:-none})"
+          echo "Extracted changelog for $CUR (previous tag: ${PREV_TAG:-none}, $(echo "$BODY" | wc -l) lines)"
+        continue-on-error: true
 
       - name: Publish to Modrinth
         if: env.MODRINTH_TOKEN != ''
