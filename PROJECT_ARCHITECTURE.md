@@ -9,7 +9,7 @@
 - 以亲吻作为基础互动入口，提供好感提升、冷却、镜头、粒子、音效与按键入口。
 - 以羁绊系统承载长期关系状态，并逐步解锁膝枕、早安吻、残血救护、随机礼物等能力。
 - 以服务端为权威状态来源，客户端只负责缓存、界面、音频和视觉表现。
-- 以数据包、TLM 音包、YSM 动作、TLM AI 站点与 TMA AI Hub 形成可选增强，缺失时应降级而不是中断主流程。
+- 以数据包、TLM 音包、YSM 动作与 TLM AI 站点形成可选增强，缺失时应降级而不是中断主流程。
 
 ## 2. 技术栈与发布约束
 
@@ -31,7 +31,6 @@ src/main/java/com/github/touhoumaidaffection
 ├─ TouhouMaidAffection.java
 ├─ ModConfig.java
 ├─ ModAttachments.java / ModEffects.java / ModSounds.java
-├─ ai/mimo
 ├─ bond
 │  ├─ BondData.java / BondManager.java
 │  ├─ BondKeys.java / BondDataMigration.java / BondRetention.java
@@ -77,7 +76,7 @@ src/main/resources
 
 `TouhouMaidAffection.java` 负责配置、注册表、payload、事件和 tick 入口的装配。它是启动门面，不应承载具体业务判定。
 
-`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却、好感收益、亲吻音效音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、显示/配音语言、扫描频率、缓存策略与 TMA AI Hub 默认值都在这里定义。
+`ModConfig.java` 只描述全局规则和默认供应商参数，不保存玩家或女仆运行结果。亲吻冷却、好感收益、亲吻音效音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻语音音量、残血救护音量、语音试听音量、早安吻 AI/TTS 的运行时开关、提示词、显示/配音语言、扫描频率与缓存策略都在这里定义。
 
 ### 4.2 亲吻主链
 
@@ -146,19 +145,18 @@ src/main/resources
 
 `TmaSettingsScreen` 是与女仆无关的全局设置面板，作为**独立 Screen** 从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage` 内部改为 `Minecraft#setScreen(new TmaSettingsScreen(this))`，不走 `BondSecondaryPageRegistry` 的能力页流程）：面板不再嵌在女仆 GUI 内，而是自带全屏压暗背景的独立窗口，关闭（footer「完成」/ESC/点击压暗区）时 `setScreen` 回来源界面。模态框比其它二级页宽且高（300×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航轨内一条装饰藤蔓（`textures/gui/rose_vine.png`，素材 132×165、按 44×55 绘制、水平居中于导航轨、茎根落在面板底边上且整株在面板内）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。白名单为 **7 个开关 + 2 个语种 = 9 项**：面板语种只暴露「文本语种」（`morning_kiss.display_language`）与「配音语种」（`morning_kiss.voice_language`）；AI 专用语种 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 仍是有效的 toml 配置（AI 语言解析逻辑不变），但已不再出现在面板白名单里，需要时请手改 toml。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）；展开的下拉弹层不做面板内容区裁剪，而是夹在屏幕范围内——向下会溢出屏幕底部时翻到表头之上渲染，命中测试/高亮/点击与实际渲染位置一致，所有条目可达。
 
-### 4.8 TMA AI Hub / MiMo 适配层
+### 4.8 AI 集成
 
-`ai/mimo` 是当前第三方模型协议适配层。用户界面统一称为 `TMA AI Hub`，内部包名与 `tma_mimo_chat` / `tma_mimo_tts` 站点类型保持稳定以兼容已有配置：
+早安吻的 LLM/TTS 一律使用车万女仆自己的 AI 站点（TLM 原生支持类 OpenAI 站点）；TMA 不再注册自己的 provider，也不提供站点表单。语音音色由 TLM 站点配置决定（voice/model；GPT-SoVITS 站点另有其原生的 prompt 字段）：
 
-- LLM 侧保持 OpenAI 风格站点兼容，尽量复用 TLM 原生聊天客户端和工具调用语义。
-- TTS 侧解析 MiMo chat-completions 风格响应中的 base64 音频，交给 TLM 播放链路。
-- `BoundedHttpClient` / `BoundedHttpResponse` 在字节进入字符串缓冲前执行响应上限；TTS 还会在 Base64 解码前后复核音频大小，错误正文只传递有界摘要。
-- API key、启用状态与站点保存仍由 TLM 管理；TMA 只提供默认 URL、模型、格式与站点类型。
-- TMA 不接管 TLM STT，也不把远程服务失败变成阻断错误。
+- 早安吻的台词生成与 TTS 请求全部走 `maid.getAiChatManager()` 内 TLM 自己的站点选择，TMA 不介入协议层。
+- 羁绊页不再提供 AI 入口按钮：原右上角按钮已整条删除，AI 相关配置今后由 TMA 自己的设置面板承担（后续批次实现）。
+- API key、启用状态与站点保存全部由 TLM 管理（`config/touhou_little_maid/sites/*.json`）。
+- 旧版 TMA 注册过的 `tma_mimo_chat` / `tma_mimo_tts` 站点条目在 TLM 读取时因缺少对应 serializer 被跳过（仅记 error 日志），随后 TLM 保存站点时即被清除；无需玩家手动删除。
 
 ### 4.9 兼容层
 
-`ysm`、`mixin`、`ai/<provider>` 与小型 helper 是外部生态适配的边界。与 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 的适配逻辑应保持隔离，不能扩散成到处可见的条件分支。
+`ysm`、`mixin`、`compat/<mod>` 与小型 helper 是外部生态适配的边界。与 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 的适配逻辑应保持隔离，不能扩散成到处可见的条件分支。
 
 `compat/maidfm` 是对 MaidFileManager（女仆档案管理器，modid `maid_file_manager`）迁移 SPI 的适配边界，为**软依赖**：未安装管理器时行为与之前完全一致。
 
