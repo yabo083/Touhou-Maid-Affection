@@ -23,6 +23,9 @@ public interface BondPrimaryPageHost {
 
     void openSecondaryPageForAbility(IBondAbility ability);
 
+    /** Opens the global settings panel; it is independent of the current maid and ability. */
+    void openSettingsPage();
+
     void openEmergencyRescueActionPage();
 
     void openMimoAdapterSettings();

@@ -15,6 +15,7 @@ import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.VoicePreviewRequestHandler;
+import com.github.touhoumaidaffection.handler.TmaSettingsRequestHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -32,6 +33,8 @@ import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
+import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
+import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
 import io.netty.buffer.ByteBuf;
@@ -129,6 +132,8 @@ public class TouhouMaidAffection {
                     context.setPacketHandled(true);
                 }
         );
+        id = registerMessage(id, TmaSettingsRequestPayload.class, TmaSettingsRequestPayload.STREAM_CODEC, TmaSettingsRequestHandler::handle);
+        id = registerMessage(id, TmaSettingsStatePayload.class, TmaSettingsStatePayload.STREAM_CODEC, BondClientPayloadHandler::handleSettingsState);
         return id + 1;
     }
 }

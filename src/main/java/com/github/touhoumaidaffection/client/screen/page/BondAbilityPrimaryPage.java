@@ -28,8 +28,12 @@ public final class BondAbilityPrimaryPage {
     private final int panelWidth;
     private final int adapterButtonX;
     private final int adapterButtonY;
+    private final int settingsButtonX;
+    private final int settingsButtonY;
     private static final int ADAPTER_BUTTON_WIDTH = 44;
     private static final int ADAPTER_BUTTON_HEIGHT = 12;
+    private static final int SETTINGS_BUTTON_WIDTH = 44;
+    private static final int SETTINGS_BUTTON_HEIGHT = 12;
 
     public BondAbilityPrimaryPage(BondPrimaryPageHost host,
                                   int panelX,
@@ -54,6 +58,9 @@ public final class BondAbilityPrimaryPage {
         this.panelWidth = panelWidth;
         this.adapterButtonX = panelX + panelWidth - ADAPTER_BUTTON_WIDTH - 2;
         this.adapterButtonY = panelY - ADAPTER_BUTTON_HEIGHT - 3;
+        this.settingsButtonX = panelX + 2;
+        // Kept inside the bond page frame so the screen's click routing reaches this button.
+        this.settingsButtonY = panelY - SETTINGS_BUTTON_HEIGHT;
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -67,6 +74,7 @@ public final class BondAbilityPrimaryPage {
         int rowLeft = panelX + 2;
 
         renderAdapterButton(graphics, font, mouseX, mouseY);
+        renderSettingsButton(graphics, font, mouseX, mouseY);
 
         listPanel.renderViewport(graphics, () -> {
             int visible = listPanel.getVisibleRowCount();
@@ -84,6 +92,10 @@ public final class BondAbilityPrimaryPage {
         }
         if (isAdapterButtonHovered(mouseX, mouseY) && host.isMimoAdapterAvailable()) {
             host.openMimoAdapterSettings();
+            return true;
+        }
+        if (isSettingsButtonHovered(mouseX, mouseY)) {
+            host.openSettingsPage();
             return true;
         }
         if (!listPanel.contains(mouseX, mouseY)) {
@@ -138,6 +150,12 @@ public final class BondAbilityPrimaryPage {
                     Component.translatable(host.isMimoAdapterAvailable()
                             ? "bond.mimo_adapter.tip"
                             : "bond.mimo_adapter.disabled").withStyle(ChatFormatting.GRAY)
+            );
+        }
+        if (isSettingsButtonHovered(mouseX, mouseY)) {
+            return List.of(
+                    Component.translatable("bond.settings.title"),
+                    Component.translatable("bond.settings.entry.tip").withStyle(ChatFormatting.GRAY)
             );
         }
         if (!listPanel.contains(mouseX, mouseY)) {
@@ -328,6 +346,30 @@ public final class BondAbilityPrimaryPage {
                 && mouseX < adapterButtonX + ADAPTER_BUTTON_WIDTH
                 && mouseY >= adapterButtonY
                 && mouseY < adapterButtonY + ADAPTER_BUTTON_HEIGHT;
+    }
+
+    private void renderSettingsButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
+        renderActionButton(
+                graphics,
+                font,
+                settingsButtonX,
+                settingsButtonY,
+                SETTINGS_BUTTON_WIDTH,
+                SETTINGS_BUTTON_HEIGHT,
+                Component.translatable("bond.settings.entry"),
+                true,
+                mouseX,
+                mouseY,
+                BondGuiTokens.COLOR_TEXT_SELECTED,
+                false
+        );
+    }
+
+    private boolean isSettingsButtonHovered(double mouseX, double mouseY) {
+        return mouseX >= settingsButtonX
+                && mouseX < settingsButtonX + SETTINGS_BUTTON_WIDTH
+                && mouseY >= settingsButtonY
+                && mouseY < settingsButtonY + SETTINGS_BUTTON_HEIGHT;
     }
 
     private BondAbilityRowLayout createLayout(int index, boolean hasSecondaryButton) {

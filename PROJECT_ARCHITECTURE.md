@@ -170,6 +170,8 @@ examples/TMA-Custom-Voice-Pack
 
 `BondMaidGuiTabHandler` 运行时扫描可用 tab 位置，降低与 TLM 或其他扩展页签冲突。
 
+`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。它复用 `BondModalPage` / `BondButtonRow` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`。面板分三区：功能开关、AI 早安吻语种、音量。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
+
 ## 11. AI / MiMo 适配层
 
 `ai/mimo` 是 MiMo 协议适配层，通过 TLM 扩展入口注册 `tma_mimo_chat` 与 `tma_mimo_tts`：
@@ -244,7 +246,10 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `MorningKissVoicePlayPayload`：TLM 音包语音播放。
 - `MorningKissDataVoicePlayPayload`：数据包或运行时 TTS 字节语音播放。
 - `MaidRescuePopPayload`：救援弹出、救援者档案与可选救援音频字节。
-- `VoicePreviewRequestPayload` / `VoicePreviewDataPackPlayPayload`：语音列表试听请求与数据包试听字节下发。
+- `VoicePreviewRequestPayload` / `VoicePreviewDataPackPlayPayload`：语音配置页的数据包语音试听请求与回放，服务端负责女仆归属、能力解锁和文件存在性校验。
+- `TmaSettingsRequestPayload`：客户端设置请求（C2S）。空 `entries` 表示只读状态；非空表示请求修改。服务端要求权限等级 2，逐条按白名单与取值语法校验，**任一条不合法整包拒绝**，合法则写入 `ModConfig` 并 `SPEC.save()`，逐条打印审计日志 `[TMA Settings] player=<name> key=<k> old=<a> new=<b>`。
+- `TmaSettingsStatePayload`：服务端回推完整生效状态（S2C），包含全部白名单键的当前值与 `canEdit`（是否 OP）。只读请求也会收到该包。
+- 两个设置包的条目列表编解码复用纯逻辑类 `bond/settings/TmaSettingsWire`（≤ 32 条），netty `ByteBuf` 适配在 `network/TmaSettingsByteBuf`；白名单与取值校验在纯逻辑类 `bond/settings/TmaSettingsKeys`，逻辑键到 `ModConfig` 的映射在 `bond/settings/TmaSettingsResolver`。
 
 ## 15. 演进规范
 

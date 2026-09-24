@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.List;
 
 public final class BondDropdown<T> {
-    private final int left;
-    private final int top;
+    private int left;
+    private int top;
     private final int width;
     private final int headerHeight;
     private final int rowHeight;
@@ -141,6 +141,12 @@ public final class BondDropdown<T> {
 
     public boolean contains(double mouseX, double mouseY, int itemCount) {
         return containsHeader(mouseX, mouseY) || (expanded && containsExpanded(mouseX, mouseY, itemCount));
+    }
+
+    /** Repositions the control; used by pages that scroll their content. */
+    public void setPosition(int left, int top) {
+        this.left = left;
+        this.top = top;
     }
 
     public boolean isExpanded() {
