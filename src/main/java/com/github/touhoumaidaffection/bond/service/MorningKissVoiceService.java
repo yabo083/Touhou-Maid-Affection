@@ -181,7 +181,11 @@ final class MorningKissVoiceService {
         if (includeBasePool) {
             ids.add(VoicePoolIds.BUILTIN_MORNING_KISS);
         }
-        ids.addAll(profile.fileNames().stream().map(VoicePoolIds::dataPack).toList());
+        ids.addAll(MorningKissProfileData
+                .filterVoiceFilesByLanguage(profile.fileNames(), MorningKissLanguageSettings.voiceLanguage())
+                .stream()
+                .map(VoicePoolIds::dataPack)
+                .toList());
         return ids;
     }
 
@@ -238,7 +242,7 @@ final class MorningKissVoiceService {
     }
 
     private static boolean playDataPackVoice(ServerPlayer player, EntityMaid maid) {
-        return MorningKissProfileData.selectVoice(player.getRandom())
+        return MorningKissProfileData.selectVoice(player.getRandom(), MorningKissLanguageSettings.voiceLanguage())
                 .map(voice -> {
                     TouhouMaidAffection.LOGGER.info("Sending morning kiss data-pack voice '{}' ({} bytes) to {}",
                             voice.fileName(), voice.data().length, player.getGameProfile().getName());
@@ -258,19 +262,45 @@ final class MorningKissVoiceService {
             EntityMaid maid,
             InteractionVoiceProfileData.ResolvedVoiceProfile profile
     ) {
-        return InteractionVoiceProfileData.selectVoice(profile, player.getRandom())
-                .map(voice -> {
-                    TouhouMaidAffection.LOGGER.info("Sending unified morning kiss data-pack voice '{}' ({} bytes) to {}",
-                            voice.fileName(), voice.data().length, player.getGameProfile().getName());
-                    PacketDistributor.sendToPlayer(player, new MorningKissDataVoicePlayPayload(
-                            maid.getId(),
-                            maid.getUUID(),
-                            voice.fileName(),
-                            voice.data()
-                    ));
-                    return true;
-                })
-                .orElse(false);
+        List<InteractionVoiceProfileData.DataPackVoice> eligible = eligibleDataPackVoices(profile);
+        if (eligible.isEmpty()) {
+            return false;
+        }
+        InteractionVoiceProfileData.DataPackVoice voice = eligible.get(player.getRandom().nextInt(eligible.size()));
+        TouhouMaidAffection.LOGGER.info("Sending unified morning kiss data-pack voice '{}' ({} bytes) to {}",
+                voice.fileName(), voice.data().length, player.getGameProfile().getName());
+        PacketDistributor.sendToPlayer(player, new MorningKissDataVoicePlayPayload(
+                maid.getId(),
+                maid.getUUID(),
+                voice.fileName(),
+                voice.data()
+        ));
+        return true;
+    }
+
+    private static List<InteractionVoiceProfileData.DataPackVoice> eligibleDataPackVoices(
+            InteractionVoiceProfileData.ResolvedVoiceProfile profile
+    ) {
+        String target = MorningKissLanguageSettings.voiceLanguage();
+        if (target.isBlank()) {
+            return profile.voices();
+        }
+        return MorningKissDataPackEntries.selectByLanguage(
+                profile.voices(),
+                voice -> MorningKissProfileData.voiceLanguageOf(voice.fileName()),
+                target
+        );
+    }
+
+    /** 返回选中数据包语音配对的可选字幕；没有配对、或与目标显示语种不匹配时返回空串。 */
+    static String pairedSubtitle(Selection selection) {
+        if (selection == null || selection.dataPackVoice() == null) {
+            return "";
+        }
+        return MorningKissProfileData.pairedSubtitle(
+                selection.dataPackVoice().fileName(),
+                MorningKissLanguageSettings.displayLanguage()
+        );
     }
 
     record Selection(String selectedId, InteractionVoiceProfileData.DataPackVoice dataPackVoice) {

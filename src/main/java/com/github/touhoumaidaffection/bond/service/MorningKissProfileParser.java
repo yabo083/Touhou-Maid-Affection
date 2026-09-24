@@ -1,13 +1,12 @@
 package com.github.touhoumaidaffection.bond.service;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 final class MorningKissProfileParser {
@@ -17,12 +16,18 @@ final class MorningKissProfileParser {
     }
 
     static MorningKissProfile merge(MorningKissProfile base, JsonObject root) {
+        return merge(base, root, ignored -> {
+        });
+    }
+
+    static MorningKissProfile merge(MorningKissProfile base, JsonObject root, Consumer<String> debugLog) {
         String kissSoundEventId = base.kissSoundEventId();
         DialogueMode dialogueMode = base.dialogueMode();
         VoiceMode voiceMode = base.voiceMode();
         boolean playKissSoundWithVoice = base.playKissSoundWithVoice();
-        Map<MorningKissScheduleRules.DialoguePool, List<String>> dialogues = new EnumMap<>(base.dialogues());
-        List<String> voiceFiles = base.voiceFiles();
+        Map<MorningKissScheduleRules.DialoguePool, List<MorningKissDataPackEntries.DialogueLine>> dialogues =
+                new EnumMap<>(base.dialogues());
+        List<MorningKissDataPackEntries.VoiceFile> voiceFiles = base.voiceFiles();
 
         if (root.has("kiss_sound_event")) {
             kissSoundEventId = parseSoundEventId(root.get("kiss_sound_event").getAsString(), kissSoundEventId);
@@ -39,57 +44,20 @@ final class MorningKissProfileParser {
         if (root.has("dialogue") && root.get("dialogue").isJsonObject()) {
             JsonObject dialogueRoot = root.getAsJsonObject("dialogue");
             for (MorningKissScheduleRules.DialoguePool pool : MorningKissScheduleRules.DialoguePool.values()) {
-                List<String> parsed = parseDialogueList(dialogueRoot.get(pool.name().toLowerCase(Locale.ROOT)));
+                List<MorningKissDataPackEntries.DialogueLine> parsed = MorningKissDataPackEntries.parseDialogueList(
+                        dialogueRoot.get(pool.name().toLowerCase(Locale.ROOT)),
+                        debugLog
+                );
                 if (!parsed.isEmpty()) {
                     dialogues.put(pool, parsed);
                 }
             }
         }
         if (root.has("voice_files")) {
-            voiceFiles = parseVoiceFiles(root.get("voice_files"));
+            voiceFiles = MorningKissDataPackEntries.parseVoiceFiles(root.get("voice_files"), debugLog);
         }
 
         return new MorningKissProfile(kissSoundEventId, dialogueMode, voiceMode, playKissSoundWithVoice, Map.copyOf(dialogues), voiceFiles);
-    }
-
-    private static List<String> parseDialogueList(JsonElement element) {
-        if (element == null || !element.isJsonArray()) {
-            return List.of();
-        }
-        JsonArray array = element.getAsJsonArray();
-        java.util.ArrayList<String> output = new java.util.ArrayList<>();
-        for (JsonElement value : array) {
-            if (!value.isJsonPrimitive()) {
-                continue;
-            }
-            String text = value.getAsString();
-            if (text != null && !text.isBlank()) {
-                output.add(text.trim());
-            }
-        }
-        return output;
-    }
-
-    private static List<String> parseVoiceFiles(JsonElement element) {
-        if (element == null || !element.isJsonArray()) {
-            return List.of();
-        }
-        JsonArray array = element.getAsJsonArray();
-        java.util.LinkedHashSet<String> output = new java.util.LinkedHashSet<>();
-        for (JsonElement value : array) {
-            if (!value.isJsonPrimitive()) {
-                continue;
-            }
-            String path = normalizeVoicePath(value.getAsString());
-            if (!path.isBlank() && output.size() < 64) {
-                output.add(path);
-            }
-        }
-        return List.copyOf(output);
-    }
-
-    private static String normalizeVoicePath(String raw) {
-        return VoiceFilePath.normalizeOgg(raw);
     }
 
     private static String parseSoundEventId(String raw, String fallback) {
@@ -105,13 +73,13 @@ final class MorningKissProfileParser {
             DialogueMode dialogueMode,
             VoiceMode voiceMode,
             boolean playKissSoundWithVoice,
-            Map<MorningKissScheduleRules.DialoguePool, List<String>> dialogues,
-            List<String> voiceFiles
+            Map<MorningKissScheduleRules.DialoguePool, List<MorningKissDataPackEntries.DialogueLine>> dialogues,
+            List<MorningKissDataPackEntries.VoiceFile> voiceFiles
     ) {
         static final String DEFAULT_KISS_SOUND_EVENT_ID = "touhou_maid_affection:touhou_maid_affection.kiss";
 
         static MorningKissProfile defaults() {
-            Map<MorningKissScheduleRules.DialoguePool, List<String>> dialogues =
+            Map<MorningKissScheduleRules.DialoguePool, List<MorningKissDataPackEntries.DialogueLine>> dialogues =
                     new EnumMap<>(MorningKissScheduleRules.DialoguePool.class);
             for (MorningKissScheduleRules.DialoguePool pool : MorningKissScheduleRules.DialoguePool.values()) {
                 dialogues.put(pool, List.of());

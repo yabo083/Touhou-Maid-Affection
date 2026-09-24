@@ -125,25 +125,9 @@ public final class InteractionVoiceProfileParser {
     }
 
     private static List<String> parseVoiceFiles(JsonElement element) {
-        if (element == null || !element.isJsonArray()) {
-            return List.of();
-        }
-        JsonArray array = element.getAsJsonArray();
-        java.util.LinkedHashSet<String> output = new java.util.LinkedHashSet<>();
-        for (JsonElement value : array) {
-            if (!value.isJsonPrimitive()) {
-                continue;
-            }
-            String path = normalizeVoicePath(value.getAsString());
-            if (!path.isBlank() && output.size() < 64) {
-                output.add(path);
-            }
-        }
-        return List.copyOf(output);
-    }
-
-    private static String normalizeVoicePath(String raw) {
-        return VoiceFilePath.normalizeOgg(raw);
+        return MorningKissDataPackEntries.parseVoiceFiles(element, null).stream()
+                .map(MorningKissDataPackEntries.VoiceFile::file)
+                .toList();
     }
 
     private static String parseSoundEventId(String raw) {

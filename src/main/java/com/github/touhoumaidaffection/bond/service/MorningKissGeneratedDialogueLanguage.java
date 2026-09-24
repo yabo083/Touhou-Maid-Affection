@@ -37,10 +37,18 @@ final class MorningKissGeneratedDialogueLanguage {
         return normalizeLocaleCode(rawLanguage);
     }
 
-    static String resolveGeneratedTextLanguage(String configuredLanguage, String tlmTtsLanguage, String tlmChatLanguage) {
+    /**
+     * 显示文本语种取值链：AI 专用显式 locale → 全局显式 locale → TLM 聊天语言 → TLM TTS 语言。
+     */
+    static String resolveGeneratedTextLanguage(String configuredLanguage, String globalLanguage,
+                                               String tlmTtsLanguage, String tlmChatLanguage) {
         String configured = normalizeLanguageCodeForChat(configuredLanguage);
         if (!configured.isBlank()) {
             return configured;
+        }
+        String global = normalizeLanguageCodeForChat(globalLanguage);
+        if (!global.isBlank()) {
+            return global;
         }
         String chat = normalizeLanguageCodeForChat(tlmChatLanguage);
         if (!chat.isBlank()) {
@@ -49,9 +57,17 @@ final class MorningKissGeneratedDialogueLanguage {
         return normalizeLanguageCodeForChat(tlmTtsLanguage);
     }
 
+    /**
+     * 配音文本语种取值链：AI 专用显式 locale → 全局显式配音 locale → 继承（AI 显示 locale → 全局显示 locale）→ TLM 语言。
+     *
+     * <p>{@code inherit} 保留旧语义：优先继承显式显示语种，否则继续向下回退到 TLM。
+     * {@code tlm}/{@code auto}/{@code default} 视为未指定，在全局配置缺省时跟随 TLM。</p>
+     */
     static String resolveGeneratedVoiceTextLanguage(
             String configuredVoiceLanguage,
             String configuredTextLanguage,
+            String globalVoiceLanguage,
+            String globalDisplayLanguage,
             String tlmTtsLanguage,
             String tlmChatLanguage
     ) {
@@ -59,15 +75,24 @@ final class MorningKissGeneratedDialogueLanguage {
                 ? ""
                 : configuredVoiceLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
         boolean inheritTextLanguage = rawVoice.isBlank() || "inherit".equals(rawVoice);
+        if (!inheritTextLanguage) {
+            String configuredVoice = normalizeLanguageCodeForChat(rawVoice);
+            if (!configuredVoice.isBlank()) {
+                return configuredVoice;
+            }
+        }
+        String globalVoice = normalizeLanguageCodeForChat(globalVoiceLanguage);
+        if (!globalVoice.isBlank()) {
+            return globalVoice;
+        }
         if (inheritTextLanguage) {
             String configuredText = normalizeLanguageCodeForChat(configuredTextLanguage);
             if (!configuredText.isBlank()) {
                 return configuredText;
             }
-        } else {
-            String configuredVoice = normalizeLanguageCodeForChat(rawVoice);
-            if (!configuredVoice.isBlank()) {
-                return configuredVoice;
+            String globalDisplay = normalizeLanguageCodeForChat(globalDisplayLanguage);
+            if (!globalDisplay.isBlank()) {
+                return globalDisplay;
             }
         }
         String tts = normalizeLanguageCodeForChat(tlmTtsLanguage);
@@ -142,7 +167,7 @@ final class MorningKissGeneratedDialogueLanguage {
                 + generationInstruction(language);
     }
 
-    private static String normalizeLocaleCode(String rawLanguage) {
+    static String normalizeLocaleCode(String rawLanguage) {
         if (rawLanguage == null || rawLanguage.isBlank()) {
             return "";
         }

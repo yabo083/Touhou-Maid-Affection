@@ -17,7 +17,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
@@ -30,6 +33,7 @@ public final class MorningKissProfileData {
     private static volatile MorningKissProfileParser.MorningKissProfile activeProfile =
             MorningKissProfileParser.MorningKissProfile.defaults();
     private static volatile List<DataPackVoice> activeVoices = List.of();
+    private static volatile Map<String, MorningKissDataPackEntries.VoiceFile> activeVoiceEntries = Map.of();
 
     private MorningKissProfileData() {
     }
@@ -51,12 +55,38 @@ public final class MorningKissProfileData {
         return activeProfile.playKissSoundWithVoice();
     }
 
-    public static Optional<DataPackVoice> selectVoice(net.minecraft.util.RandomSource random) {
-        List<DataPackVoice> voices = activeVoices;
-        if (voices.isEmpty()) {
+    public static Optional<DataPackVoice> selectVoice(net.minecraft.util.RandomSource random, String targetLanguage) {
+        List<DataPackVoice> eligible = eligibleVoices(targetLanguage);
+        if (eligible.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(voices.get(random.nextInt(voices.size())));
+        return Optional.of(eligible.get(random.nextInt(eligible.size())));
+    }
+
+    /** 按目标配音语种筛选候选语音（匹配 → 未标记 → 全部）；语种为空时不过滤。 */
+    public static List<DataPackVoice> eligibleVoices(String targetLanguage) {
+        return MorningKissDataPackEntries.selectByLanguage(activeVoices, DataPackVoice::language, targetLanguage);
+    }
+
+    /** 按目标配音语种筛选给定的文件名列表（用于统一语音池）；语种为空时不过滤。 */
+    public static List<String> filterVoiceFilesByLanguage(List<String> fileNames, String targetLanguage) {
+        return MorningKissDataPackEntries.selectByLanguage(fileNames, MorningKissProfileData::voiceLanguageOf, targetLanguage);
+    }
+
+    /** 返回某个数据包语音文件声明的语种；未声明或未知返回空串。 */
+    public static String voiceLanguageOf(String fileName) {
+        MorningKissDataPackEntries.VoiceFile entry = activeVoiceEntries.get(fileName);
+        return entry == null ? "" : entry.language();
+    }
+
+    /**
+     * 返回某个数据包语音文件配对的可选字幕。
+     *
+     * <p>没有配对文本、或配对文本的 {@code text_language} 与目标显示语种不匹配时返回空串，
+     * 调用方应回退到随机台词。</p>
+     */
+    public static String pairedSubtitle(String fileName, String targetDisplayLanguage) {
+        return MorningKissDataPackEntries.pairedSubtitle(activeVoiceEntries.get(fileName), targetDisplayLanguage);
     }
 
     public static boolean hasDataPackVoices() {
@@ -74,34 +104,42 @@ public final class MorningKissProfileData {
                  InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
                 JsonObject root = GSON.fromJson(reader, JsonObject.class);
                 if (root != null) {
-                    profile = MorningKissProfileParser.merge(profile, root);
+                    profile = MorningKissProfileParser.merge(profile, root, message ->
+                            TouhouMaidAffection.LOGGER.debug("{} ({})", message, PROFILE_PATH));
                 }
             } catch (Exception ex) {
                 TouhouMaidAffection.LOGGER.warn("Failed to load morning kiss profile from {}", PROFILE_PATH, ex);
             }
         }
 
+        Map<String, MorningKissDataPackEntries.VoiceFile> voiceEntries = new LinkedHashMap<>();
+        for (MorningKissDataPackEntries.VoiceFile voiceFile : profile.voiceFiles()) {
+            voiceEntries.putIfAbsent(voiceFile.file(), voiceFile);
+        }
         List<DataPackVoice> voices = loadVoices(resourceManager, profile.voiceFiles());
         activeProfile = profile;
+        activeVoiceEntries = Map.copyOf(voiceEntries);
         activeVoices = voices;
         TouhouMaidAffection.LOGGER.info("Morning kiss profile loaded: sound={}, dialogueMode={}, voiceMode={}, voices={}, voiceFiles={}",
-                profile.kissSoundEventId(), profile.dialogueMode().name().toLowerCase(java.util.Locale.ROOT),
-                profile.voiceMode().name().toLowerCase(java.util.Locale.ROOT), voices.size(), profile.voiceFiles());
+                profile.kissSoundEventId(), profile.dialogueMode().name().toLowerCase(Locale.ROOT),
+                profile.voiceMode().name().toLowerCase(Locale.ROOT), voices.size(),
+                profile.voiceFiles().stream().map(MorningKissDataPackEntries.VoiceFile::file).toList());
     }
 
-    private static List<DataPackVoice> loadVoices(ResourceManager resourceManager, List<String> voiceFiles) {
+    private static List<DataPackVoice> loadVoices(ResourceManager resourceManager,
+                                                  List<MorningKissDataPackEntries.VoiceFile> voiceFiles) {
         if (voiceFiles.isEmpty()) {
             return List.of();
         }
         ArrayList<DataPackVoice> voices = new ArrayList<>();
-        for (String voiceFile : voiceFiles) {
+        for (MorningKissDataPackEntries.VoiceFile voiceFile : voiceFiles) {
             ResourceLocation voicePath = ResourceLocation.fromNamespaceAndPath(
                     TouhouMaidAffection.MOD_ID,
-                    "morning_kiss/voices/" + voiceFile
+                    "morning_kiss/voices/" + voiceFile.file()
             );
             byte[] data = readVoiceBytes(resourceManager, voicePath);
             if (data.length > 0) {
-                voices.add(new DataPackVoice(voiceFile, data));
+                voices.add(new DataPackVoice(voiceFile.file(), data, voiceFile.language()));
             }
         }
         return List.copyOf(voices);
@@ -132,7 +170,7 @@ public final class MorningKissProfileData {
         return data;
     }
 
-    public record DataPackVoice(String fileName, byte[] data) {
+    public record DataPackVoice(String fileName, byte[] data, String language) {
     }
 
     private static final class ReloadListener implements ResourceManagerReloadListener {

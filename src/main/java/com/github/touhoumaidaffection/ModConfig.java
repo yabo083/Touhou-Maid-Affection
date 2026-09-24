@@ -50,6 +50,8 @@ public class ModConfig {
     public static final ModConfigSpec.IntValue BOND_MORNING_KISS_MAIDS_PRAYER_DURATION;
     public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_MESSAGE_DISPLAY_MODE;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_DIALOGUE_CHAT_BUBBLE_ENABLED;
+    public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_DISPLAY_LANGUAGE;
+    public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_VOICE_LANGUAGE;
     public static final ModConfigSpec.BooleanValue BOND_MORNING_KISS_AI_DIALOGUE_ENABLED;
     public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE;
     public static final ModConfigSpec.ConfigValue<String> BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE;
@@ -336,6 +338,24 @@ public class ModConfig {
                 .comment("Show Morning Kiss dialogue above the maid with Touhou Little Maid chat bubbles when possible",
                         "If disabled, dialogue uses messageDisplayMode instead")
                 .define("dialogueChatBubbleEnabled", true);
+
+        BOND_MORNING_KISS_DISPLAY_LANGUAGE = builder
+                .comment("Global subtitle/text language for Morning Kiss data-pack dialogue and AI dialogue",
+                        "Default auto keeps the 1.7.3.0 behavior and does not filter anything",
+                        "Set an explicit locale such as zh_cn, ja_jp, en_us, zh_tw to filter dialogue by its language tag",
+                        "Data-pack dialogue entries may be plain strings (unmarked/wildcard) or {\"text\": \"...\", \"language\": \"zh_cn\"}",
+                        "Priority: aiDialogueLanguage (explicit locale) > displayLanguage (explicit locale) > tlm/inherit/auto semantics",
+                        "Example: displayLanguage = \"zh_cn\" shows Chinese subtitles while voiceLanguage = \"ja_jp\" plays Japanese voices")
+                .define("displayLanguage", "auto");
+
+        BOND_MORNING_KISS_VOICE_LANGUAGE = builder
+                .comment("Global spoken/voice language for Morning Kiss data-pack voices and generated TTS voices",
+                        "Default auto keeps the 1.7.3.0 behavior and does not filter anything",
+                        "Set an explicit locale such as ja_jp, zh_cn, en_us to prefer matching data-pack voice_files entries",
+                        "voice_files entries may be plain file names (unmarked/wildcard) or {\"file\": \"x.ogg\", \"language\": \"ja_jp\", \"text\": \"optional subtitle\", \"text_language\": \"zh_cn\"}",
+                        "Priority: aiDialogueVoiceLanguage (explicit locale) > voiceLanguage (explicit locale) > tlm/inherit/auto semantics",
+                        "TLM sound packs have no language metadata and are never filtered")
+                .define("voiceLanguage", "auto");
 
         BOND_MORNING_KISS_AI_DIALOGUE_ENABLED = builder
                 .comment("Enable Morning Kiss AI-generated dialogue integration",

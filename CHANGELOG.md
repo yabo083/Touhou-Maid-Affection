@@ -8,6 +8,21 @@
 - `Fixed`：缺陷修复
 - `Removed`：移除内容
 
+## [1.7.4.0] - 2026-09-24
+
+### Added
+- 新增 `morningKissBehavior.displayLanguage`（默认 `auto`）与 `morningKissBehavior.voiceLanguage`（默认 `auto`），把原先只存在于 AI 链路的「显示语种 / 配音语种」解耦提升为全局可配，并让数据包链路同样支持按语种选择台词与语音。
+- 数据包 `data/touhou_maid_affection/morning_kiss/profile.json` 纯增量扩展：`dialogue.<pool>` 元素接受 `{"text": "...", "language": "zh_cn"}`，`voice_files` 元素接受 `{"file": "x.ogg", "language": "ja_jp", "text": "可选字幕", "text_language": "zh_cn"}`；旧的纯字符串写法保留并视为「未标记」通配，向后兼容。
+- `voice_files[].text` / `text_language` 支持语音与字幕配对：选中该语音时直接显示配对字幕，不再随机抽台词；`text_language` 与目标显示语种不一致时退回随机台词。
+
+### Changed
+- 语言解析优先级统一为「AI 专用显式 locale > 全局显式 locale > 旧语义（`tlm` / `inherit` / `auto`）」；`tlm`/`inherit`/`auto` 语义与翻译、缓存机制保持不变。旧配置项名字与默认值不变。
+- 数据包台词与语音选择新增语种优先级：匹配目标语种的条目 → 未标记条目 → 全部条目。`dialogue_mode=append` 时内置台词按「语言 = 客户端语言」参与同一筛选。
+- `auto`（默认值）下行为与 1.7.3.0 完全一致：不启用任何语种筛选。
+
+### Notes
+- 内置台词仍是 i18n key，由客户端按自身语言渲染，服务端无法指定渲染语种；TLM 音包没有语言元数据，天然单语种，不参与筛选。
+
 ## [1.7.3.0] - 2026-07-24
 
 ### Added

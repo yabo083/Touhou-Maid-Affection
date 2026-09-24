@@ -47,7 +47,7 @@ final class MorningKissDialogueService {
     private MorningKissDialogueService() {
     }
 
-    static boolean show(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool) {
+    static boolean show(ServerPlayer player, EntityMaid maid, DialoguePool dialoguePool, String pairedSubtitle) {
         GeneratedDialogueResult generated = tryShowGeneratedDialogue(player, maid, dialoguePool);
         if (generated != GeneratedDialogueResult.MISSING) {
             return true;
@@ -56,21 +56,31 @@ final class MorningKissDialogueService {
         if (!bilingualVoicePending && tryShowAiDialogue(player, maid, dialoguePool)) {
             return true;
         }
+        if (!bilingualVoicePending && pairedSubtitle != null && !pairedSubtitle.isBlank()) {
+            showDialogue(player, maid, Component.literal(renderTemplate(pairedSubtitle, player, maid, dialoguePool)));
+            return false;
+        }
         MorningKissProfileParser.MorningKissProfile profile = MorningKissProfileData.getActiveProfile();
-        List<String> configuredPool = profile.dialogues().getOrDefault(dialoguePool, List.of());
+        List<MorningKissDataPackEntries.DialogueLine> configuredPool =
+                profile.dialogues().getOrDefault(dialoguePool, List.of());
         if (configuredPool.isEmpty()) {
             configuredPool = profile.dialogues().getOrDefault(DialoguePool.GENERAL, List.of());
         }
         if (!configuredPool.isEmpty()) {
-            if (profile.dialogueMode() == MorningKissProfileParser.DialogueMode.APPEND) {
-                int vanillaCount = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL)).length;
-                int index = player.getRandom().nextInt(configuredPool.size() + vanillaCount);
-                if (index >= configuredPool.size()) {
-                    showBuiltinDialogue(player, maid, dialoguePool, index - configuredPool.size());
-                    return bilingualVoicePending;
-                }
+            String[] builtinKeys = DIALOGUE_KEYS.getOrDefault(dialoguePool, DIALOGUE_KEYS.get(DialoguePool.GENERAL));
+            List<MorningKissDataPackEntries.DialogueChoice> choices = MorningKissDataPackEntries.buildDialogueChoices(
+                    configuredPool,
+                    List.of(builtinKeys),
+                    player.getLanguage(),
+                    profile.dialogueMode() == MorningKissProfileParser.DialogueMode.APPEND
+            );
+            MorningKissDataPackEntries.DialogueChoice chosen = MorningKissDataPackEntries.pickDialogue(
+                    choices, MorningKissLanguageSettings.displayLanguage(), player.getRandom().nextInt());
+            if (chosen.isBuiltin()) {
+                showBuiltinDialogue(player, maid, dialoguePool, chosen.builtinIndex());
+            } else {
+                showConfiguredDialogue(player, maid, dialoguePool, chosen.configured().text());
             }
-            showConfiguredDialogue(player, maid, dialoguePool, configuredPool);
             return bilingualVoicePending;
         }
         showBuiltinDialogue(player, maid, dialoguePool, -1);
@@ -94,10 +104,9 @@ final class MorningKissDialogueService {
             ServerPlayer player,
             EntityMaid maid,
             DialoguePool dialoguePool,
-            List<String> configuredPool
+            String rawText
     ) {
-        String raw = configuredPool.get(player.getRandom().nextInt(configuredPool.size()));
-        showDialogue(player, maid, Component.literal(renderTemplate(raw, player, maid, dialoguePool)));
+        showDialogue(player, maid, Component.literal(renderTemplate(rawText, player, maid, dialoguePool)));
     }
 
     private static void showBuiltinDialogue(
@@ -150,7 +159,7 @@ final class MorningKissDialogueService {
             }
             String prompt = renderTemplate(ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT.get(), player, maid, dialoguePool);
             ChatClientInfo clientInfo = new ChatClientInfo(
-                    ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                    MorningKissLanguageSettings.liveChatLanguage(),
                     MaidDisplayNameResolver.resolveChatSafeDisplayName(maid).getString(),
                     List.of()
             );

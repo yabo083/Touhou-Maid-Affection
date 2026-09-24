@@ -186,6 +186,15 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 `voice_mode=append` 表示追加到功能语音池；`voice_mode=replace` 表示存在数据包语音时替换基础/TLM 候选。文件必须是 `.ogg`，路径不能包含 `..`、反斜杠或绝对路径，单个文件大小受解析器限制。
 
+早安吻数据包自 1.7.4.0 起支持语言标签（纯增量，旧写法仍兼容）：
+
+- `dialogue.<pool>` 元素：`"文本"`（未标记/通配）或 `{"text": "...", "language": "zh_cn"}`。
+- `voice_files` 元素：`"x.ogg"`（未标记/通配）或 `{"file": "x.ogg", "language": "ja_jp", "text": "可选字幕", "text_language": "zh_cn"}`。
+- 语种归一化复用 `MorningKissGeneratedDialogueLanguage.normalizeLocaleCode`（小写、`-` → `_`，`tlm`/`auto`/`default` 视为未指定）；`voice_files[].text` 长度按 `BondDataLimits` 有界（≤256），语音条目上限 64。
+- 选择规则（由 `MorningKissDataPackEntries.selectByLanguage` 承载，纯逻辑可单测）：目标语种显式时按「语言匹配 → 未标记 → 全部」；`auto`（空目标）原样返回，保持 1.7.3.0 行为。`dialogue_mode=append` 时内置 i18n 台词按「语言 = 客户端语言」并入同一候选池。
+- 语音配对字幕：`voice_files[].text` 仅在该语音被选中播放时作为字幕，`text_language` 与目标显示语种不一致时退回随机台词。
+- 全局开关为 `morningKissBehavior.displayLanguage` / `voiceLanguage`；AI 专用配置（`aiDialogueLanguage` / `aiDialogueVoiceLanguage`）显式 locale 时优先于全局。TLM 音包无语言元数据，不参与筛选。
+
 旧的 `rescue_sound/profile.json` 只保留兼容入口，新开发应优先使用 `emergency_rescue/profile.json`。
 
 ## 7. 网络边界

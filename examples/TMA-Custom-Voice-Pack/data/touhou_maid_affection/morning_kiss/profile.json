@@ -8,22 +8,51 @@
       "早安，{player}。今天也要让我陪在你身边哦。",
       "醒啦？{maid} 已经把今天第一份亲亲准备好了。",
       "太阳出来了，{player}，来一个会让运气变好的早安吻。",
-      "今天的第一句喜欢你，由 {maid} 认真送达。"
+      "今天的第一句喜欢你，由 {maid} 认真送达。",
+      {
+        "text": "早安，{player}。{maid} 为你准备了今天的第一份亲亲。",
+        "language": "zh_cn"
+      },
+      {
+        "text": "おはよう、{player}。今日もそばにいてね。",
+        "language": "ja_jp"
+      },
+      {
+        "text": "Good morning, {player}. Here is your first kiss of the day.",
+        "language": "en_us"
+      }
     ],
     "evening": [
       "虽然已经不是早上了，但 {maid} 的亲亲依然有效。",
       "辛苦啦，{player}。这个吻就当作今天的存档奖励。",
-      "夜色很好，所以 {maid} 决定偷偷把晚安吻提前给你。"
+      "夜色很好，所以 {maid} 决定偷偷把晚安吻提前给你。",
+      {
+        "text": "おやすみ、{player}。今日もお疲れさま。",
+        "language": "ja_jp"
+      }
     ],
     "general": [
       "啾。{player}，这下精神恢复了吗？",
       "{maid} 觉得，偶尔主动一点也没关系吧。",
       "靠近一点，{player}。今天也请多多指教。",
-      "这是数据包测试用的随机早安吻台词，{maid} 正在营业中。"
+      "这是数据包测试用的随机早安吻台词，{maid} 正在营业中。",
+      {
+        "text": "This line only appears when displayLanguage = \"en_us\".",
+        "language": "en_us"
+      }
     ]
   },
   "voice_files": [
     "ciallo.ogg",
-    "onjdsk.ogg"
+    {
+      "file": "onjdsk.ogg",
+      "language": "ja_jp"
+    },
+    {
+      "file": "morning_test.ogg",
+      "language": "zh_cn",
+      "text": "早安，{player}。这是 {maid} 的配对字幕示例。",
+      "text_language": "zh_cn"
+    }
   ]
 }
