@@ -20,7 +20,12 @@ public final class BondGuiTokens {
     public static final int SPACING_LG = 12;
     public static final int SPACING_XL = 16;
 
-    public static final int MODAL_TITLE_HEIGHT = 24;
+    /**
+     * Height of a modal's title bar. The settings panel's background artwork paints its header
+     * separator at exactly this fraction of the panel height (20 / 230), so the two must stay in
+     * sync; the other modals simply inherit the slightly shorter title bar.
+     */
+    public static final int MODAL_TITLE_HEIGHT = 20;
     public static final int MODAL_FOOTER_HEIGHT = 30;
     public static final int CONTENT_SIDE_PADDING = SPACING_MD;
 
@@ -32,9 +37,9 @@ public final class BondGuiTokens {
     public static final int BUTTON_HORIZONTAL_PADDING = 8;
     public static final int SECONDARY_MODAL_WIDTH = 172;
     public static final int SECONDARY_MODAL_HEIGHT = 150;
-    /** Wider modal used by the settings panel so it can host the 46px navigation rail and the content columns. */
+    /** Wider modal used by the settings panel so it can host the 50px navigation rail and the content columns. */
     public static final int SETTINGS_MODAL_WIDTH = 340;
-    /** Taller modal used by the settings panel: the rail must fit four tabs plus the 44x55 vine. */
+    /** Taller modal used by the settings panel: the rail must fit four tabs plus the footer. */
     public static final int SETTINGS_MODAL_HEIGHT = 230;
 
     public static final int COLOR_BG_OVERLAY = 0xAA120D09;

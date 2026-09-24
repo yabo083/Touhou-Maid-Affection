@@ -39,14 +39,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>It is deliberately not a {@code BondSecondaryPage}: it is entered from the maid GUI's
  * "settings" button via {@link net.minecraft.client.Minecraft#setScreen(Screen)} and closing it
  * (footer "done", ESC or a click on the dimmed area) restores the parent screen it was opened from.
- * Layout follows the reviewed mockup: a 340x230 modal with a 46px navigation rail (status / features
+ * Layout follows the reviewed mockup: a 340x230 modal with a 50px navigation rail (status / features
  * / voice / volume, status first and selected by default) and one section per tab. Feature switches,
  * the cache policy and the languages are server-authoritative and go through the settings channel,
  * the status tab is a read-only view fed by the AI status channel, while the volume sliders are pure
- * client preferences written straight into the local config. Every control applies instantly; the
- * rail bottom hosts a decorative rose vine whose stem base rests on the panel's bottom border
- * (fully inside the panel, so it is never clipped by the physical bottom of the screen). It never
- * accepts mouse input.
+ * client preferences written straight into the local config. Every control applies instantly. The
+ * panel chrome (outer frame, header/sidebar/footer separators and the rose in the lower-left corner)
+ * is a single baked background artwork blitted 1:1 at GUI scale 3, so this screen draws no frame or
+ * divider of its own and ships no separate rose texture. The panel never accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
@@ -58,20 +58,27 @@ public final class TmaSettingsScreen extends Screen {
     private static final int MODAL_WIDTH = BondGuiTokens.SETTINGS_MODAL_WIDTH;
     private static final int MODAL_HEIGHT = BondGuiTokens.SETTINGS_MODAL_HEIGHT;
 
+    // ---- Panel background artwork ----
+    /**
+     * Whole-panel background (outer frame, header / sidebar / footer separators, content area and
+     * the rose in the lower-left corner) baked into one texture, drawn 1:1 at GUI scale 3 - i.e. the
+     * panel's 340x230 logical size times three. The 0.90 opacity is already baked into the pixels,
+     * so the blit must not tint or scale it; the extra dimming comes from the screen overlay.
+     */
+    private static final ResourceLocation SETTINGS_PANEL =
+            ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/settings_panel.png");
+    private static final int PANEL_TEXTURE_WIDTH = 1020;
+    private static final int PANEL_TEXTURE_HEIGHT = 690;
+
     // ---- Navigation rail ----
-    private static final int NAV_WIDTH = 46;
+    /** Rail width; matches the sidebar separator baked into the background artwork (50 / 340). */
+    private static final int NAV_WIDTH = 50;
     private static final int NAV_PADDING_Y = 8;
     private static final int NAV_TAB_HEIGHT = 20;
     private static final int NAV_TAB_GAP = 1;
     private static final int NAV_TAB_TEXT_LEFT = 8;
     private static final int NAV_SELECTED_BAR_WIDTH = 2;
     private static final int NAV_HOVER_BG = 0x14FFFFFF;
-    /** On-screen size the vine is drawn at; the source texture is {@code NAV_VINE_TEXTURE_*}. */
-    private static final int NAV_VINE_WIDTH = 34;
-    private static final int NAV_VINE_HEIGHT = 76;
-    /** High resolution source texture (102x228), blitted down to {@link #NAV_VINE_WIDTH} x {@link #NAV_VINE_HEIGHT}. */
-    private static final int NAV_VINE_TEXTURE_WIDTH = 102;
-    private static final int NAV_VINE_TEXTURE_HEIGHT = 228;
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;
@@ -148,9 +155,6 @@ public final class TmaSettingsScreen extends Screen {
     private static final String PROMPT_KEY = TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT;
     private static final List<String> COMMON_LANGUAGES = List.of("zh_cn", "en_us", "ja_jp", "zh_tw", "ko_kr");
     private static final double VOLUME_STEP = 0.05D;
-
-    private static final ResourceLocation ROSE_VINE =
-            ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/rose_vine.png");
 
     private static final List<String> TOGGLE_KEYS = TmaSettingsKeys.keys().stream()
             .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.BOOLEAN)
@@ -250,8 +254,8 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics) {
-        // The modal chrome paints the full-screen dim overlay (page == whole screen), so the vanilla
+public void renderBackground(GuiGraphics graphics) {
+        // The panel background paints the full-screen dim overlay (page == whole screen), so the vanilla
         // menu/blur background is intentionally skipped to keep a single dim layer.
     }
 
@@ -259,8 +263,7 @@ public final class TmaSettingsScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
         Font font = this.font;
-        BondModalPage modal = modal();
-        modal.renderChrome(graphics, font);
+        renderPanelBackground(graphics, font);
         renderTitleScope(graphics, font);
         ensureLayout();
         tickState();
@@ -280,8 +283,6 @@ public final class TmaSettingsScreen extends Screen {
         // to the panel content viewport, so an expanded list is always fully visible.
         renderDropdownOverlays(graphics, font, mouseX, mouseY);
         renderFooter(graphics, font, mouseX, mouseY);
-        // Drawn last so the vine lands on top of the rail chrome it decorates.
-        renderVine(graphics);
 
         List<Component> tooltip = getTooltip(mouseX, mouseY);
         if (!tooltip.isEmpty()) {
@@ -642,8 +643,8 @@ public final class TmaSettingsScreen extends Screen {
         // "Consume on use" is deliberately not part of TOGGLE_KEYS, so it exists exactly once.
         //
         // Every tab now breathes with the widened spacing constants and simply scrolls when its
-        // content is taller than the viewport (MODAL_HEIGHT 230 - MODAL_TITLE_HEIGHT 24 -
-        // CONTENT_PADDING 8 - MODAL_FOOTER_HEIGHT 30 = 168px of visible content).
+        // content is taller than the viewport (MODAL_HEIGHT 230 - MODAL_TITLE_HEIGHT 20 -
+        // CONTENT_PADDING 8 - MODAL_FOOTER_HEIGHT 30 = 172px of visible content).
         //   header 15 + 8 * (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)               = 207
         // + cache header 15 + 2 * (NUMBER_ROW_HEIGHT 18 + ROW_GAP 6)         = 270
         // + consume row (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)                   = 294
@@ -1373,11 +1374,9 @@ public final class TmaSettingsScreen extends Screen {
     private void renderNav(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         int navLeft = navLeft();
         int navRight = navRight();
-        int navTop = navTop();
-        int navBottom = navBottom();
-        graphics.vLine(navRight, navTop, navBottom - 1, BondGuiTokens.DIVIDER_COLOR);
-
-        int tabTop = navTop + NAV_PADDING_Y;
+        // The sidebar separator is part of the baked background artwork, so the rail only draws its
+        // tab highlights and labels here.
+        int tabTop = navTop() + NAV_PADDING_Y;
         for (int index = 0; index < TAB_COUNT; index++) {
             int y = tabTop + index * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
             boolean selected = index == activeTab;
@@ -1396,28 +1395,25 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     /**
-     * Decorative rose vine anchored to the panel's bottom edge: its stem base rests on the bottom
-     * border and it is horizontally centred inside the navigation rail
-     * ({@link #NAV_WIDTH} - {@link #NAV_VINE_WIDTH} = 2px, 1px per side).
+     * Paints the panel behind every control: the full-screen dim overlay (the modal page covers the
+     * whole screen), the baked background artwork at 1:1 and the centred title.
      *
-     * <p>Anchoring the top edge to the footer button instead would push the stem below the panel
-     * (the button's top edge is only {@code MODAL_FOOTER_HEIGHT - (MODAL_FOOTER_HEIGHT -
-     * FOOTER_BUTTON_HEIGHT) / 2} px above the bottom border, while the vine is
-     * {@link #NAV_VINE_HEIGHT} px tall), which reads as a decoration escaping the frame. Keeping the
-     * whole vine inside also means it can never be clipped by the physical bottom of the screen at
-     * small GUI heights.
-     *
-     * <p>The high resolution source texture ({@link #NAV_VINE_TEXTURE_WIDTH} x
-     * {@link #NAV_VINE_TEXTURE_HEIGHT}) is blitted down to {@link #NAV_VINE_WIDTH} x
-     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation. The vine never
-     * receives mouse input.
+     * <p>The artwork already carries the outer frame, the header / sidebar / footer separators, the
+     * content area and the lower-left rose, so no fill or line is drawn here. The texture is blitted
+     * at its native {@link #PANEL_TEXTURE_WIDTH} x {@link #PANEL_TEXTURE_HEIGHT} size - exactly the
+     * panel's 340x230 logical size at GUI scale 3 - so it never scales, and its opacity is baked in
+     * so no tint is applied. The title itself is localized text and therefore still drawn by code.
      */
-    private void renderVine(GuiGraphics graphics) {
-        int vineLeft = navLeft() + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
-        int vineTop = modal().bottom() - NAV_VINE_HEIGHT;
-        graphics.blit(ROSE_VINE, vineLeft, vineTop, NAV_VINE_WIDTH, NAV_VINE_HEIGHT,
-                0, 0, NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT,
-                NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT);
+    private void renderPanelBackground(GuiGraphics graphics, Font font) {
+        BondModalPage modal = modal();
+        graphics.fill(0, 0, width, height, BondGuiTokens.COLOR_BG_OVERLAY);
+        graphics.blit(SETTINGS_PANEL, modal.left(), modal.top(), MODAL_WIDTH, MODAL_HEIGHT,
+                0, 0, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT,
+                PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT);
+        Component title = Component.translatable("bond.settings.title");
+        int titleY = modal.top() + Math.max(2, (BondGuiTokens.MODAL_TITLE_HEIGHT - font.lineHeight) / 2);
+        int titleX = modal.left() + (MODAL_WIDTH - font.width(title)) / 2;
+        graphics.drawString(font, title, titleX, titleY, BondGuiTokens.COLOR_TEXT_TITLE, true);
     }
 
     private void renderScrollbar(GuiGraphics graphics, int viewportTop, int viewportBottom) {
@@ -1825,10 +1821,6 @@ public final class TmaSettingsScreen extends Screen {
 
     private int navTop() {
         return modal().top() + BondGuiTokens.MODAL_TITLE_HEIGHT;
-    }
-
-    private int navBottom() {
-        return modal().footerTop();
     }
 
     private int contentLeft() {
