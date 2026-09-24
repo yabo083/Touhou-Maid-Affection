@@ -111,14 +111,15 @@ jobs:
         run: |
           PROJECT_ID="$(grep -E '^modrinth_project_id=' gradle.properties | cut -d= -f2)"
           VERSION="$(grep -E '^mod_version=' gradle.properties | cut -d= -f2)"
-          EXISTING="$(curl -s -H "Authorization: $MODRINTH_TOKEN" \
-            "https://api.modrinth.com/v2/project/$PROJECT_ID/version" \
-            | jq -r --arg v "$VERSION" '.[] | select(.version_number == $v) | .id' | head -n1)"
-          if [ -n "$EXISTING" ]; then
-            echo "Modrinth 已有 $VERSION（id=$EXISTING），仅更新更新说明"
-            jq -n --arg cl "$CHANGELOG" '{changelog: $cl}' > /tmp/modrinth-patch.json
-            curl -sS -X PATCH -H "Authorization: $MODRINTH_TOKEN" -H "Content-Type: application/json" \
-              -d @/tmp/modrinth-patch.json "https://api.modrinth.com/v2/version/$EXISTING" > /dev/null
+          # 零依赖幂等判断：直接问 API「这个版本号是否存在」看状态码。
+          # 不要用 jq / python3 解析列表——它们在某些环境下会静默失败，判空即走上传分支，
+          # 会像 1.7.5.0 那样在 Modrinth 上产生同版本号的重复条目。
+          ENCODED="$(printf '%s' "$VERSION" | sed 's/+/%2B/g')"
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $MODRINTH_TOKEN" \
+            "https://api.modrinth.com/v2/project/$PROJECT_ID/version/$ENCODED" || echo 000)"
+          echo "Modrinth $VERSION 查询结果: HTTP $CODE"
+          if [ "$CODE" = "200" ]; then
+            echo "Modrinth 已有 $VERSION，跳过发布（更新说明可在网页端修改）"
           else
             ./gradlew modrinth
           fi
