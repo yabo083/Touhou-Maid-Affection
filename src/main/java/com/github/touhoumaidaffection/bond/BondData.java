@@ -48,19 +48,43 @@ public class BondData {
     }
 
     /**
+     * 测试用：直接以给定根 compound 构造，不触发迁移、不依赖玩家。
+     *
+     * <p>生产路径见 {@link #of(ServerPlayer)}；此处仅供测试观察迁移前状态。
+     */
+    static BondData forTest(CompoundTag root) {
+        return new BondData(new CompoundTag(), root);
+    }
+
+    /**
+     * 生产适配层：把旧扁平布局迁移到嵌套布局。测试可直接对 {@link CompoundTag} 调用。
+     *
+     * <p>不读写 {@link BondKeys#SCHEMA_VERSION_KEY}，调用方负责在成功后写入版本号。
+     */
+    static BondDataMigration.Result migrateRoot(CompoundTag root) {
+        return BondDataMigration.migrate(new CompoundSink(root));
+    }
+
+    /**
      * 首次读取时把旧扁平布局迁移到嵌套布局；已迁移（{@code SchemaVersion >= CURRENT_SCHEMA}）直接跳过。
      */
     private void migrateIfNeeded() {
         if (root.getInt(BondKeys.SCHEMA_VERSION_KEY) >= BondKeys.CURRENT_SCHEMA) {
             return;
         }
-        BondDataMigration.migrate(new CompoundSink());
+        migrateRoot(root);
         root.putInt(BondKeys.SCHEMA_VERSION_KEY, BondKeys.CURRENT_SCHEMA);
         save();
     }
 
-    /** 把 {@link BondDataMigration.Sink} 适配到根 compound。 */
-    private final class CompoundSink implements BondDataMigration.Sink<Tag> {
+    /** 把 {@link BondDataMigration.Sink} 适配到给定的根 compound。 */
+    private static final class CompoundSink implements BondDataMigration.Sink<Tag> {
+        private final CompoundTag root;
+
+        CompoundSink(CompoundTag root) {
+            this.root = root;
+        }
+
         @Override
         public Set<String> rootKeys() {
             return root.getAllKeys();
@@ -73,7 +97,23 @@ public class BondData {
 
         @Override
         public void writeMaidValue(UUID maidUuid, String baseName, Tag value) {
-            maidTag(maidUuid, true).put(baseName, value.copy());
+            if (maidUuid == null) {
+                return;
+            }
+            CompoundTag maids = root.contains(BondKeys.MAIDS, Tag.TAG_COMPOUND)
+                    ? root.getCompound(BondKeys.MAIDS)
+                    : new CompoundTag();
+            if (!root.contains(BondKeys.MAIDS, Tag.TAG_COMPOUND)) {
+                root.put(BondKeys.MAIDS, maids);
+            }
+            String key = maidUuid.toString();
+            CompoundTag maidTag = maids.contains(key, Tag.TAG_COMPOUND)
+                    ? maids.getCompound(key)
+                    : new CompoundTag();
+            if (!maids.contains(key, Tag.TAG_COMPOUND)) {
+                maids.put(key, maidTag);
+            }
+            maidTag.put(baseName, value.copy());
         }
 
         @Override
