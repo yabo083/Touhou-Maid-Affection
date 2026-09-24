@@ -80,8 +80,13 @@ jobs:
         shell: bash
         run: |
           CUR="${GITHUB_REF_NAME#v}"; CUR="${CUR%-forge1.20.1}"
-          PREV_TAG="$( (git tag --sort=-v:refname 2>/dev/null || true) | grep -v -F "$GITHUB_REF_NAME" | head -n1 || true)"
-          PREV="${PREV_TAG#v}"; PREV="${PREV%-forge1.20.1}"
+          # 取「严格小于当前版本」的最大已发布版本：必须按版本号比较并剥离 -forge1.20.1 后缀，
+          # 否则跨加载器的 tag（例如刚推的 v1.7.5.0）会被误选为“上一个版本”而把正文截空。
+          PREV="$( (git tag 2>/dev/null || true) \
+            | sed 's/^v//; s/-forge1\.20\.1$//' \
+            | sort -uV \
+            | awk -v cur="$CUR" '$0 < cur' \
+            | tail -n1 )"
           BODY="$(awk -v cur="$CUR" -v prev="$PREV" '
               index($0, "## [" cur "]") == 1 { p = 1 }
               p && prev != "" && index($0, "## [" prev "]") == 1 { exit }
@@ -95,22 +100,34 @@ jobs:
             echo "$BODY"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "Extracted changelog for $CUR (previous tag: ${PREV_TAG:-none}, $(echo "$BODY" | wc -l) lines)"
+          echo "Extracted changelog for $CUR (previous version: ${PREV:-none}, $(echo "$BODY" | wc -l) lines)"
         continue-on-error: true
 
       - name: Publish to Modrinth
-        if: ${{ env.MODRINTH_TOKEN != '' }}
-        run: |
-          chmod +x ./gradlew
-          ./gradlew modrinth
+        id: modrinth
+        if: env.MODRINTH_TOKEN != ''
         env:
           CHANGELOG: ${{ steps.changelog.outputs.body }}
+        run: |
+          PROJECT_ID="$(grep -E '^modrinth_project_id=' gradle.properties | cut -d= -f2)"
+          VERSION="$(grep -E '^mod_version=' gradle.properties | cut -d= -f2)"
+          EXISTING="$(curl -s -H "Authorization: $MODRINTH_TOKEN" \
+            "https://api.modrinth.com/v2/project/$PROJECT_ID/version" \
+            | jq -r --arg v "$VERSION" '.[] | select(.version_number == $v) | .id' | head -n1)"
+          if [ -n "$EXISTING" ]; then
+            echo "Modrinth 已有 $VERSION（id=$EXISTING），仅更新更新说明"
+            jq -n --arg cl "$CHANGELOG" '{changelog: $cl}' > /tmp/modrinth-patch.json
+            curl -sS -X PATCH -H "Authorization: $MODRINTH_TOKEN" -H "Content-Type: application/json" \
+              -d @/tmp/modrinth-patch.json "https://api.modrinth.com/v2/version/$EXISTING" > /dev/null
+          else
+            ./gradlew modrinth
+          fi
 
       - name: Resolve release jar
         id: release_jar
         shell: bash
         run: |
-          JAR_PATH=$(ls build/libs/touhou-maid-affection-*.jar | grep -v '\-sources\.jar' | head -n 1)
+          JAR_PATH="$(find build/libs -maxdepth 1 -type f -name 'touhou-maid-affection-*.jar' ! -name '*-sources.jar' | head -n 1)"
           if [ -z "$JAR_PATH" ]; then
             echo "No release jar found in build/libs"
             exit 1
@@ -120,12 +137,14 @@ jobs:
 
       - name: Publish to CurseForge
         if: ${{ env.CURSEFORGE_TOKEN != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
-        uses: itsmeow/curseforge-upload@v3
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
-          token: ${{ env.CURSEFORGE_TOKEN }}
-          project_id: ${{ vars.CURSEFORGE_PROJECT_ID }}
-          game_endpoint: minecraft
-          file_path: ${{ steps.release_jar.outputs.jar_path }}
-          game_versions: "Minecraft 1.21:1.21.1,Java 21,NeoForge"
+          files: ${{ steps.release_jar.outputs.jar_path }}
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ env.CURSEFORGE_TOKEN }}
+          loaders: neoforge
+          game-versions: 1.21.1
+          version: ${{ github.ref_name }}
+          version-type: release
           changelog: |
             ${{ steps.changelog.outputs.body }}
