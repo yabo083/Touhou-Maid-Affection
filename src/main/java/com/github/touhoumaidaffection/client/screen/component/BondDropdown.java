@@ -188,6 +188,19 @@ public final class BondDropdown<T> {
     }
 
     /** @return the height of the expanded list for {@code itemCount} items. */
+    /**
+     * True when the expanded list covers the given screen rectangle (used by callers to skip drawing
+     * controls the open list would hide anyway).
+     */
+    public boolean overlayCovers(int rectLeft, int rectTop, int rectRight, int rectBottom, int itemCount) {
+        if (!expanded || itemCount <= 0) {
+            return false;
+        }
+        int listTop = overlayTop(itemCount);
+        int listBottom = listTop + overlayHeight(itemCount);
+        return rectLeft < right() && rectRight > left && rectTop < listBottom && rectBottom > listTop;
+    }
+
     public int overlayHeight(int itemCount) {
         return Math.max(0, Math.min(maxVisibleRows, itemCount)) * rowHeight;
     }
