@@ -106,8 +106,6 @@ public final class TmaAiStatusWire {
             boolean immediateFallbackEnabled,
             String globalDisplayLanguage,
             String globalVoiceLanguage,
-            String aiDialogueLanguage,
-            String aiVoiceLanguage,
             int cacheTargetPerPool,
             int scanIntervalTicks,
             boolean consumeOnUse,
@@ -146,8 +144,6 @@ public final class TmaAiStatusWire {
         sink.writeBoolean(status.immediateFallbackEnabled());
         sink.writeString(clamp(status.globalDisplayLanguage()));
         sink.writeString(clamp(status.globalVoiceLanguage()));
-        sink.writeString(clamp(status.aiDialogueLanguage()));
-        sink.writeString(clamp(status.aiVoiceLanguage()));
         sink.writeInt(status.cacheTargetPerPool());
         sink.writeInt(status.scanIntervalTicks());
         sink.writeBoolean(status.consumeOnUse());
@@ -180,8 +176,6 @@ public final class TmaAiStatusWire {
         boolean immediateFallbackEnabled = source.readBoolean();
         String globalDisplayLanguage = readString(source);
         String globalVoiceLanguage = readString(source);
-        String aiDialogueLanguage = readString(source);
-        String aiVoiceLanguage = readString(source);
         int cacheTargetPerPool = source.readInt();
         int scanIntervalTicks = source.readInt();
         boolean consumeOnUse = source.readBoolean();
@@ -212,8 +206,6 @@ public final class TmaAiStatusWire {
                 immediateFallbackEnabled,
                 globalDisplayLanguage,
                 globalVoiceLanguage,
-                aiDialogueLanguage,
-                aiVoiceLanguage,
                 cacheTargetPerPool,
                 scanIntervalTicks,
                 consumeOnUse,

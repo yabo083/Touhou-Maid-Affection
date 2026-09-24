@@ -81,7 +81,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 ### AI Hub
 
-早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。`aiDialogueLanguage` 控制显示文本，`aiDialogueVoiceLanguage` 控制配音文本；两者完全独立并接受任意 locale code，不是中日专用。语言不同时，TMA 会批量翻译并严格按行配对后再请求 TTS。例如可使用中文+日文、英文+韩文、法文+德文或其他组合。配置位于 `config/touhou_maid_affection-common.toml`。语言变更无需手动清缓存：缓存读取与满度判定都按当前语种过滤，会自动按新语种重新预热（旧语种条目保留、可随时用 `/tma morning_kiss clear_ai_cache` 清理）；仅提示词变更需要手动执行该命令。
+早安吻可以选择复用 TLM AI 站点，在非触发时段提前生成台词与 TTS 语音缓存。`displayLanguage` 控制文本语种（内置数据包台词 + AI 台词），`voiceLanguage` 控制配音语种（数据包语音 + AI 合成）；两者完全独立并接受任意 locale code，不是中日专用。`auto` 时文本语种跟随游戏语言、配音语种跟随女仆的 TLM AI 语言设置。语言不同时，TMA 会批量翻译并严格按行配对后再请求 TTS。例如可使用中文+日文、英文+韩文、法文+德文或其他组合。配置位于 `config/touhou_maid_affection-common.toml`。语言变更无需手动清缓存：缓存读取与满度判定都按当前语种过滤，会自动按新语种重新预热（旧语种条目保留、可随时用 `/tma morning_kiss clear_ai_cache` 清理）；仅提示词变更需要手动执行该命令。
 
 TMA 不再注册自己的聊天/TTS 站点类型：包括早安吻在内的所有 LLM 与 TTS 请求都走 TLM 自己的站点，因此 API key、模型、音色与启用状态全部由 Touhou Little Maid 自己保存和管理。AI 相关配置将在后续版本移入 TMA 自己的设置面板。
 

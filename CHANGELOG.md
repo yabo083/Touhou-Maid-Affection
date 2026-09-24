@@ -11,10 +11,10 @@
 ## [1.7.5.0] - 2026-09-24
 
 ### Added
-- 新增游戏内「全局设置」面板「语音」tab 的「台词提示词」多行编辑框：直接编辑早安吻 AI 台词模板（占位符 `{maid}` 女仆名 / `{player}` 玩家名 / `{pool}` 时段 / `{time}` 允许时段），带占位符图例与「恢复默认」按钮。这是服务端权威的新设置类型 `TEXT`（逻辑键 `morning_kiss.text_prompt`，上限 1024 字符，保存空值写回内置默认模板），沿用现有 OP2 + 审计日志的写入路径。
-- 新增设置面板「状态」tab：移植 `/tma morning_kiss status` 与 `/tma morning_kiss cache` 的只读信息——开关（早安吻 / AI 台词 / AI 语音 / 立即兜底）、语种（全局显示/配音、AI 覆盖台词/配音、生效优先级）、缓存策略（每池目标 / 扫描间隔 / 消费即用）、缓存统计（条目语音/纯文本、女仆数 / 在途 / 版本号）与按女仆列表（名字 + 各时段池条目数 + 总条目/目标 + 行内「清空」）。配套新增只读状态通道 `TmaAiStatusRequestPayload` / `TmaAiStatusPayload` 与清缓存操作包 `TmaAiCacheClearPayload`：状态只回该玩家名下的女仆，清缓存需 OP2 + 审计日志并复用 `/tma morning_kiss clear_ai_cache` 完全相同的服务方法。
+- 新增游戏内「全局设置」面板「语音」tab 的「台词提示词」多行编辑框：直接编辑早安吻 AI 台词模板（占位符 `{maid}` 女仆名 / `{player}` 玩家名 / `{pool}` 时段 / `{time}` 允许时段），带占位符图例与「恢复默认」按钮。这是服务端权威的新设置类型 `TEXT`（逻辑键 `morning_kiss.text_prompt`，上限 1024 字符，保存空值写回内置默认模板），沿用现有 OP2 + 审计日志的写入路径。字数计数画在编辑框**内部右下角**（次要文字色），占位符图例与「恢复默认」排成同一行（左说明 / 右按钮，长图例按可用宽度截断），「恢复默认」改用面板通用的文字按钮渲染（与「打开」「清空」同一个 `drawTextButton` 模板，无权限时置灰）。
+- 新增设置面板「状态」tab：移植 `/tma morning_kiss status` 与 `/tma morning_kiss cache` 的只读信息——开关（早安吻 / AI 台词 / AI 语音 / 立即兜底）、语种（两行说人话：`文本语种` → 值，`auto` 时显示 `auto（跟随游戏语言）`；`配音语种` → 值，`auto` 时显示 `auto（跟随女仆 AI 设置）`）、缓存策略（每池目标 / 扫描间隔 / 消费即用）、缓存统计（条目语音/纯文本、女仆数 / 在途 / 版本号）与按女仆列表（名字 + 各时段池条目数 + 总条目/目标 + 行内「清空」）。配套新增只读状态通道 `TmaAiStatusRequestPayload` / `TmaAiStatusPayload` 与清缓存操作包 `TmaAiCacheClearPayload`：状态只回该玩家名下的女仆，清缓存需 OP2 + 审计日志并复用 `/tma morning_kiss clear_ai_cache` 完全相同的服务方法。
 - 新增设置面板「语音」tab 的「打开车万女仆的 AI 设置」按钮：跳转 TLM 原生 `AIChatSettingsHubScreen`（parent 传本面板，关闭后回到这里），是全局唯一的 AI 入口；TMA 不自建站点表单。
-- 新增游戏内「全局设置」面板：在羁绊页顶部左侧新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、语种（文本语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–1.0 步进 0.05）。无需再手改 toml。
+- 新增游戏内「全局设置」面板：在羁绊页顶部右侧（原 TMA AI Hub 按钮的槽位）新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、语种（文本语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–1.0 步进 0.05）。无需再手改 toml。
 - 新增服务端权威设置同步通道：`TmaSettingsRequestPayload`（C2S，空列表表示只读状态）与 `TmaSettingsStatePayload`（S2C，回推全部白名单键的当前值与 `canEdit`）。面板里的开关与语种由服务端校验、应用并回推，单人存档与多人服务器行为一致。
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
@@ -25,31 +25,34 @@
 
 ### Changed
 - 设置面板尺寸 300×188 → 340×230，侧栏 tab 从 3 个（功能 / 语音 / 音量）扩到 4 个（新增「状态」）；内容超出可视区走内部滚动。配色 token、玫瑰藤蔓锚点（`modal().bottom() - NAV_VINE_HEIGHT`）、服务端权威语义与既有状态机不变。
+- 羁绊页「设置」按钮从左上空位移到面板右上角（原 TMA AI Hub 按钮的槽位）：尺寸 50×12，位置 `x = panelX + panelWidth - 50 - 2`、`y = panelY - 12 - 3`（即原 AI 按钮的 Y），文案仍是「设置」、居中绘制；命中测试与 tooltip 同步更新，左上空位不再有按钮。
 - 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。
 - 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。
 - 语音试听冷却从 5 秒降到 0.5 秒（100 → 10 tick）；被限流时给客户端一行 action bar 提示「试听过快，请稍候」，不再静默丢弃；非数据包（本地）试听请求不再占用限流额度。
 - 早安吻 AI 台词缓存改为按语种读取：`pollRandom` / `peekRandom` 与预热满度判定（`countMatching`、`addIfBelowTarget`）都按当前解析出的显示/配音语种过滤，改了显示或配音语种后会自动按新语种重新预热，旧语种条目保留但不再被选中，也不再阻塞重新预热（仍可手动 `clear_ai_cache`）。目标语种为空（`auto`）时不过滤，保持旧行为。
-- `/tma morning_kiss status` 的语种行改为显示最终生效信息：全局语种（归一化后，未配置显示 `auto`）、AI 覆盖原始值，以及生效优先级说明。
+- `/tma morning_kiss status` 的语种行改为两行说人话：`文本语种：<值>`（未配置显示 `auto`）、`配音语种：<值>`（未配置显示 `auto`），删掉 AI 覆盖与生效优先级两行。
+- 早安吻语种语义统一为两个：**文本语种**（`displayLanguage`，内置数据包台词 + AI 生成台词用哪种语言显示；`auto` = 跟随游戏语言，内置台词按客户端语言渲染、未标记数据包台词通配、AI 台词沿用女仆的 TLM 聊天语言）与**配音语种**（`voiceLanguage`，数据包语音 + AI 合成语音用哪种语言；`auto` = 跟随女仆的 TLM AI 语言设置，数据包语音不按语言过滤、AI 合成沿用女仆的 TLM TTS 语言）。具体 locale（`zh_cn` / `ja_jp`…）固定该语言。旧关键字 `tlm` / `inherit` / `default` 继续接受，等价于 `auto`，但面板与状态页一律显示归一化后的 `auto`。
 - 全局羁绊 UI 配色统一为「暖木底 + 玫瑰（交互面 / 装饰）+ 金（仅高亮文字）」：`BondGuiTokens` 换用新调色板（保留原常量名，新增开关 / 字段 / 滑块 / 导航等语义色常量），所有调用点自动跟随。设置面板同步按设计稿收口：300×188 模态框、46px 侧栏三 tab、胶囊开关、78×20 字段式下拉、88×13 滑块（数值金色居中）、分区作用域标签、侧栏藤蔓装饰（`rose_vine.png`，素材 132×165、按 44×55 绘制，水平居中于导航轨、茎根落在面板底边上，整株在面板内）、行内请求状态点与「完成 / 重载」footer。不影响功能与其它二级页布局尺寸（仍为 172×150）。
 - 设置面板从「女仆 GUI 内嵌二级页」改为**独立 Screen**（`TmaSettingsScreen`，删除 `SettingsSecondaryPage`）：在羁绊页「设置」按钮处用 `Minecraft#setScreen` 打开，自带全屏压暗背景，关闭（footer「完成」/ESC/点击压暗区）返回来源的女仆 GUI。面板尺寸/配色/控件与交互 token 不变，服务端权威语义、payload、状态机与音量直写零变更；除设置页外的其它二级页与 `BondSecondaryPage` 接口不受影响。
-- 设置面板语种从 4 项砍到 2 项：白名单变为 **7 开关 + 2 语种 = 9 项**，面板只保留「文本语种」（`display_language`）与「配音语种」（`voice_language`）。AI 专用语种 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 仍是有效 toml 配置、AI 语言解析逻辑不变，只是不再暴露在面板里（需要时手改 toml）。
+- 设置面板语种从 4 项砍到 2 项：白名单变为 **7 开关 + 2 语种 = 9 项**，面板只保留「文本语种」（`display_language`）与「配音语种」（`voice_language`），两者统管内置数据包与 AI 两条链路。
 - 羁绊数据改为**按女仆嵌套存储**：女仆粒度数据从「根上扁平键 `<base>_<女仆UUID>`」改为 `touhou_maid_affection.bond.maids.<女仆UUID>.<base>` 子树，玩家粒度键（早安吻选择）仍在根上；键名常量集中到 `BondKeys`。首次读取旧存档时自动执行**一次性迁移**（根上新增 `SchemaVersion`，先写后删、幂等、无法解析的键原样保留），旧存档无损升级，无需手动操作。反查（按能力找女仆、按模型 ID 找女仆、按救护 provider 找女仆、批量重置能力）改为遍历女仆子树，不再全键扫描。
 - 新增 `/tma bond prune [days]`（默认 90 天，权限等级 2）：清理执行者羁绊数据中 `LastSeen` 早于阈值的女仆子树（缺失 `LastSeen` 的历史数据视为过旧；`days <= 0` 只统计不删除），并回显删除/保留数量。`LastSeen` 在同步女仆档案时刷新；**不**在女仆死亡 / 卸载 / 换主人时自动删除数据（TLM 灵魂玩偶、椅子等会临时移除实体，自动删会丢数据），只能靠该命令显式清理。
 - `.maid` 迁移（MaidFileManager SPI）的附加数据对外格式**不变**：仍是「base 名 → 值」的 compound（即女仆子树本身），旧导出文件仍可导入，导入后刷新 `LastSeen`。
 - 删除若干零调用者死代码：`BondData/BondManager.getUnlockedMaidModelIdsForAbility`、`BondData/BondManager.findMaidProfileByRescueProviderId`、`MorningKissGeneratedDialogueService.hasCachedLine`（两个重载）、`MorningKissGeneratedDialogueCache.isEmpty`，以及已被 `BondKeys` 取代的 `compat/maidfm/MaidDataKeyCodec`。
 
 ### Removed
+- 删除 AI 专用语种覆盖层：`ModConfig` 的 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 两项（含 toml 键 `aiDialogueLanguage` / `aiDialogueVoiceLanguage`）与解析链里的优先级逻辑（`MorningKissLanguageSettings#liveChatLanguage` 的「AI 显式 > 全局显式 > 旧语义」判定、`resolveGeneratedTextLanguage` / `resolveGeneratedVoiceTextLanguage` 的 AI 专用入参与配音继承显示语种的规则）。若此前用 AI 覆盖让 AI 台词/配音与内置台词/语音用了不同语言，现在统一由**文本语种**与**配音语种**控制——把原来的值填到这两项即可（例：原来 `aiDialogueLanguage=zh_cn` + `aiDialogueVoiceLanguage=ja_jp`，现在填 `displayLanguage=zh_cn` + `voiceLanguage=ja_jp`）。旧 toml 里残留的这两个键不再被定义，配置系统直接忽略，无需手动清理。
 - 删除 TMA 自研的 AI 站点适配层：`com.github.touhoumaidaffection.ai.mimo` 整包（`TmaMimoAdapterExtension` provider 注册、`MimoLLMSite` / `MimoTTSSite` 站点类型与 serializer、`MimoTTSFormLayout` 站点表单、`MimoLLMClient` / `MimoTTSClient` / `MimoHttp` / `MimoProtocol` / `MimoCodecHelper` 协议实现、`BoundedHttpClient` / `BoundedHttpResponse` 有界响应工具）及其单元测试（`MimoProtocolTest` 7 例、`BoundedHttpResponseTest` 3 例）。
 - 删除 `ModConfig` 的 `tmaMimoAdapter` 配置段：`enabled` / `apiKey` / `chatUrl` / `ttsUrl` / `maxCompletionTokens` / `ttsVoicePrompt` / `ttsAudioFormat` 七项。旧 toml 里残留的 `[tmaMimoAdapter]` 键不再被定义，配置系统会直接忽略，**无需手动清理，也没有迁移代码**。
 - 删除中英文文案中的 MiMo 站点名与入口文案（各 6 个键）。
-- 羁绊页顶部不再有任何 AI 入口：原右上角「TMA AI Hub」按钮整条删除（含字段、渲染、命中测试、tooltip、`BondPrimaryPageHost#openMimoAdapterSettings` / `isMimoAdapterAvailable` 及其实现与 TLM AI hub 跳转）。左上「设置」按钮保持不变；AI 相关配置今后由 TMA 自己的设置面板承担（后续批次实现）。
+- 羁绊页顶部不再有任何 AI 入口：原右上角「TMA AI Hub」按钮整条删除（含字段、渲染、命中测试、tooltip、`BondPrimaryPageHost#openMimoAdapterSettings` / `isMimoAdapterAvailable` 及其实现与 TLM AI hub 跳转）。AI 相关配置今后由 TMA 自己的设置面板承担。
 - 早安吻的 LLM/TTS 本就完全走 `maid.getAiChatManager()` 里 TLM 自己的站点，删除适配层不影响任何功能；TMA 也不再提供全局音色提示词（音色由 TLM 站点配置决定，GPT-SoVITS 站点另有其原生 prompt 字段）。
 - 旧站点条目处理：TLM 读取 `config/touhou_little_maid/sites/{llm,tts}.json` 时，`api_type` 找不到对应 serializer 的条目只记一条 error 日志并跳过（**不抛异常、不崩溃**），随后 TLM 保存站点时把该条目从文件里清掉。**实测**：删掉适配层后启动服务器，日志出现 `Unknown LLM site type: tma_mimo_chat` 与 `Unknown TTS site type: tma_mimo_tts`，服务器正常完成启动，且 `tma_mimo_chat` / `tma_mimo_tts` 两个条目已从两个 json 中消失——玩家无需手动删旧站点条目。
 
 ### Notes
 - 权限：开关与语种属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。
 - 非法请求（未知 key、非法布尔、非法语种、超长值）整包拒绝，不会部分生效。
-- 语种下拉框只提供 `auto` 与常见 locale，当前值若不在列表里会动态补上；`tlm` / `inherit` / `default` 仍是合法值（会作为当前值显示），但不在下拉候选中，需要时请改 toml。
+- 语种下拉框只提供 `auto` 与常见 locale，当前值若不在列表里会动态补上；旧关键字 `tlm` / `inherit` / `default` 仍是合法值（服务端原样存储、语义等价 `auto`），但面板与状态页显示归一化后的 `auto`，不再作为候选条目出现。
 
 ## [1.7.4.0] - 2026-09-24
 

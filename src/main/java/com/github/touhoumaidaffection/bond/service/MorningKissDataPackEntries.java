@@ -56,7 +56,7 @@ final class MorningKissDataPackEntries {
         }
     }
 
-    /** 归一化语言标签，复用 AI 链路的规则：小写、{@code -} → {@code _}，{@code tlm}/{@code auto}/{@code default} 视为未指定。 */
+    /** 归一化语言标签，复用 AI 链路的规则：小写、{@code -} → {@code _}，{@code tlm}/{@code auto}/{@code inherit}/{@code default} 视为未指定。 */
     static String normalizeLanguage(String raw) {
         return MorningKissGeneratedDialogueLanguage.normalizeLocaleCode(raw);
     }

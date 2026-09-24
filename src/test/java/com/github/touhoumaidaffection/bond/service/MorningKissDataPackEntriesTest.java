@@ -19,6 +19,7 @@ class MorningKissDataPackEntriesTest {
         assertEquals("", MorningKissDataPackEntries.normalizeLanguage("tlm"));
         assertEquals("", MorningKissDataPackEntries.normalizeLanguage("auto"));
         assertEquals("", MorningKissDataPackEntries.normalizeLanguage("default"));
+        assertEquals("", MorningKissDataPackEntries.normalizeLanguage("inherit"));
         assertEquals("", MorningKissDataPackEntries.normalizeLanguage(null));
     }
 

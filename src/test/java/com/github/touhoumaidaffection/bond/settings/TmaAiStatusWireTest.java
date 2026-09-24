@@ -14,7 +14,7 @@ class TmaAiStatusWireTest {
     void statusRoundTripsThroughTheCodec() {
         TmaAiStatusWire.Status status = new TmaAiStatusWire.Status(
                 true, true, false, false,
-                "zh_cn", "ja_jp", "tlm", "inherit",
+                "zh_cn", "ja_jp",
                 4, 1200, true,
                 24, 18, 3, 1, 42L, true,
                 List.of(
@@ -35,7 +35,7 @@ class TmaAiStatusWireTest {
     @Test
     void statusDerivesTextOnlyCounts() {
         TmaAiStatusWire.Status status = new TmaAiStatusWire.Status(
-                true, true, true, true, "auto", "auto", "tlm", "inherit",
+                true, true, true, true, "auto", "auto",
                 4, 200, false, 10, 6, 2, 0, 7L, false, List.of()
         );
 
@@ -76,15 +76,13 @@ class TmaAiStatusWireTest {
     @Test
     void decodeClampsHostileMaidAndPoolCounts() {
         MemoryBuffer buffer = new MemoryBuffer();
-        // 17 scalar fields before the maid list.
+        // 15 scalar fields before the maid list.
         buffer.writeBoolean(true);
         buffer.writeBoolean(true);
         buffer.writeBoolean(true);
         buffer.writeBoolean(true);
         buffer.writeString("auto");
         buffer.writeString("auto");
-        buffer.writeString("tlm");
-        buffer.writeString("inherit");
         buffer.writeInt(4);
         buffer.writeInt(200);
         buffer.writeBoolean(false);

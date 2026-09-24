@@ -138,8 +138,6 @@ public final class TmaAiStatusRequestHandler {
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED.get(),
                 languageOrAuto(MorningKissGeneratedDialogueService.globalDisplayLanguage()),
                 languageOrAuto(MorningKissGeneratedDialogueService.globalVoiceLanguage()),
-                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
-                ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE.get(),
                 target,
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_SCAN_INTERVAL_TICKS.get(),
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE.get(),

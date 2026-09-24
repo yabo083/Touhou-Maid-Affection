@@ -38,15 +38,14 @@ final class MorningKissGeneratedDialogueLanguage {
     }
 
     /**
-     * 显示文本语种取值链：AI 专用显式 locale → 全局显式 locale → TLM 聊天语言 → TLM TTS 语言。
+     * 显示文本语种取值链：文本语种显式 locale → 女仆 TLM 聊天语言 → 女仆 TLM TTS 语言。
+     *
+     * <p>文本语种为 {@code auto}（或旧关键字 {@code tlm}/{@code inherit}/{@code default}）时返回空串以外的
+     * 归一化结果，交由 TLM 语言设置决定。</p>
      */
-    static String resolveGeneratedTextLanguage(String configuredLanguage, String globalLanguage,
+    static String resolveGeneratedTextLanguage(String displayLanguage,
                                                String tlmTtsLanguage, String tlmChatLanguage) {
-        String configured = normalizeLanguageCodeForChat(configuredLanguage);
-        if (!configured.isBlank()) {
-            return configured;
-        }
-        String global = normalizeLanguageCodeForChat(globalLanguage);
+        String global = normalizeLanguageCodeForChat(displayLanguage);
         if (!global.isBlank()) {
             return global;
         }
@@ -58,42 +57,19 @@ final class MorningKissGeneratedDialogueLanguage {
     }
 
     /**
-     * 配音文本语种取值链：AI 专用显式 locale → 全局显式配音 locale → 继承（AI 显示 locale → 全局显示 locale）→ TLM 语言。
+     * 配音文本语种取值链：配音语种显式 locale → 女仆 TLM TTS 语言 → 女仆 TLM 聊天语言。
      *
-     * <p>{@code inherit} 保留旧语义：优先继承显式显示语种，否则继续向下回退到 TLM。
-     * {@code tlm}/{@code auto}/{@code default} 视为未指定，在全局配置缺省时跟随 TLM。</p>
+     * <p>配音语种为 {@code auto}（或旧关键字 {@code tlm}/{@code inherit}/{@code default}）时跟随女仆的
+     * TLM AI 语言设置；不再继承文本语种。</p>
      */
     static String resolveGeneratedVoiceTextLanguage(
-            String configuredVoiceLanguage,
-            String configuredTextLanguage,
-            String globalVoiceLanguage,
-            String globalDisplayLanguage,
+            String voiceLanguage,
             String tlmTtsLanguage,
             String tlmChatLanguage
     ) {
-        String rawVoice = configuredVoiceLanguage == null
-                ? ""
-                : configuredVoiceLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
-        boolean inheritTextLanguage = rawVoice.isBlank() || "inherit".equals(rawVoice);
-        if (!inheritTextLanguage) {
-            String configuredVoice = normalizeLanguageCodeForChat(rawVoice);
-            if (!configuredVoice.isBlank()) {
-                return configuredVoice;
-            }
-        }
-        String globalVoice = normalizeLanguageCodeForChat(globalVoiceLanguage);
+        String globalVoice = normalizeLanguageCodeForChat(voiceLanguage);
         if (!globalVoice.isBlank()) {
             return globalVoice;
-        }
-        if (inheritTextLanguage) {
-            String configuredText = normalizeLanguageCodeForChat(configuredTextLanguage);
-            if (!configuredText.isBlank()) {
-                return configuredText;
-            }
-            String globalDisplay = normalizeLanguageCodeForChat(globalDisplayLanguage);
-            if (!globalDisplay.isBlank()) {
-                return globalDisplay;
-            }
         }
         String tts = normalizeLanguageCodeForChat(tlmTtsLanguage);
         if (!tts.isBlank()) {
@@ -173,7 +149,7 @@ final class MorningKissGeneratedDialogueLanguage {
         }
         String value = rawLanguage.trim().toLowerCase(Locale.ROOT).replace('-', '_');
         return switch (value) {
-            case "tlm", "auto", "default" -> "";
+            case "tlm", "auto", "default", "inherit" -> "";
             default -> value;
         };
     }
