@@ -24,12 +24,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Global (maid independent) settings panel.
  *
- * <p>Layout follows the reviewed mockup: a 216x188 modal with a 46px navigation rail (features /
+ * <p>Layout follows the reviewed mockup: a 300x188 modal with a 46px navigation rail (features /
  * voice / volume) and one section per tab. Feature switches and languages are server-authoritative
  * and go through the settings channel, while the volume sliders are pure client preferences
  * written straight into the local config. Every control applies instantly; the rail bottom hosts a
- * decorative rose vine rooted on the panel's left border and footer separator, and it never
- * accepts mouse input.
+ * decorative rose vine centred inside the rail and it never accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
@@ -49,10 +48,14 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     private static final int NAV_TAB_TEXT_LEFT = 8;
     private static final int NAV_SELECTED_BAR_WIDTH = 2;
     private static final int NAV_HOVER_BG = 0x14FFFFFF;
+    /** On-screen size the vine is drawn at; the source texture is {@code NAV_VINE_TEXTURE_*}. */
     private static final int NAV_VINE_WIDTH = 44;
     private static final int NAV_VINE_HEIGHT = 55;
-    /** How far the vine's root overlaps the panel chrome (left border and footer separator). */
-    private static final int NAV_VINE_ROOT_OVERLAP = 3;
+    /** High resolution source texture (132x165), blitted down to {@link #NAV_VINE_WIDTH} x {@link #NAV_VINE_HEIGHT}. */
+    private static final int NAV_VINE_TEXTURE_WIDTH = 132;
+    private static final int NAV_VINE_TEXTURE_HEIGHT = 165;
+    /** Gap between the vine's stem base and the bottom of the navigation rail. */
+    private static final int NAV_VINE_BOTTOM_MARGIN = 4;
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;
@@ -166,7 +169,7 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
         renderNav(graphics, font, mouseX, mouseY);
         renderDropdownOverlays(graphics, font, mouseX, mouseY, modal);
         renderFooter(graphics, font, mouseX, mouseY);
-        // The vine presses the footer separator, so it must land on top of the footer band.
+        // Drawn last so the vine lands on top of the rail chrome it decorates.
         renderVine(graphics);
     }
 
@@ -656,17 +659,34 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     }
 
     /**
-     * Decorative rose vine rooted on the panel chrome: its left edge presses the modal's left border
-     * and its stem base presses the footer separator, so it reads as growing out of that corner.
+     * Decorative rose vine sitting at the bottom of the navigation rail: horizontally centred inside
+     * the rail ({@link #NAV_WIDTH} - {@link #NAV_VINE_WIDTH} = 2px, 1px per side) and
+     * {@link #NAV_VINE_BOTTOM_MARGIN}px above the rail's bottom edge, which is the footer separator.
      *
-     * <p>Drawn after the footer (it overlaps the footer band) and deliberately without a scissor:
-     * the anchor sits 1px outside the modal rectangle, which a modal-sized scissor would clip away.
-     * The vine never receives mouse input, and the geometry is static, so nothing can leak.
+     * <p>The high resolution source texture ({@link #NAV_VINE_TEXTURE_WIDTH} x
+     * {@link #NAV_VINE_TEXTURE_HEIGHT}) is blitted down to {@link #NAV_VINE_WIDTH} x
+     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation.
+     *
+     * <p>Because the anchor lies entirely inside the rail, the draw is scissored to the rail below
+     * the tab strip - the decoration can never spill onto the content column. The vine never
+     * receives mouse input.
      */
     private void renderVine(GuiGraphics graphics) {
-        int vineLeft = navLeft() - NAV_VINE_ROOT_OVERLAP;
-        int vineTop = modal().footerTop() + NAV_VINE_ROOT_OVERLAP - NAV_VINE_HEIGHT;
-        graphics.blit(ROSE_VINE, vineLeft, vineTop, 0, 0, NAV_VINE_WIDTH, NAV_VINE_HEIGHT, NAV_VINE_WIDTH, NAV_VINE_HEIGHT);
+        int navLeft = navLeft();
+        int navRight = navRight();
+        int navTop = navTop();
+        int navBottom = navBottom();
+        int tabAreaBottom = navTop + NAV_PADDING_Y + 3 * (NAV_TAB_HEIGHT + NAV_TAB_GAP);
+        int vineLeft = navLeft + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
+        int vineTop = navBottom - NAV_VINE_BOTTOM_MARGIN - NAV_VINE_HEIGHT;
+        graphics.enableScissor(navLeft, Math.min(tabAreaBottom, navBottom), navRight, navBottom);
+        try {
+            graphics.blit(ROSE_VINE, vineLeft, vineTop, NAV_VINE_WIDTH, NAV_VINE_HEIGHT,
+                    0, 0, NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT,
+                    NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT);
+        } finally {
+            graphics.disableScissor();
+        }
     }
 
     private void renderScrollbar(GuiGraphics graphics, int viewportTop, int viewportBottom) {
