@@ -181,6 +181,7 @@
   "command.touhou_maid_affection.rescue.personal.set_on": "已开启你的残血救护个人开关。",
   "command.touhou_maid_affection.rescue.personal.set_off": "已关闭你的残血救护个人开关。",
   "command.touhou_maid_affection.rescue.clear.done": "已清空残血救护池，并将 %s 位女仆的「残血救护」羁绊重置为未激活。",
+  "command.touhou_maid_affection.bond.prune.done": "已清理羁绊数据（早于 %s 天未同步的女仆）：删除 %s 位，保留 %s 位。",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.done": "已清空 %s 条早安吻 AI 语音缓存。",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.maid.done": "已清空女仆 %s 的 %s 条早安吻 AI 缓存。",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.pool.done": "已清空女仆 %s 的 %s 池：%s 条。",

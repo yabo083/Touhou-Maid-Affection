@@ -42,6 +42,7 @@ public final class BondManager {
         } else {
             data.setMaidYsmProfile(maid.getUUID(), "", "", "");
         }
+        data.setMaidLastSeen(maid.getUUID(), System.currentTimeMillis());
     }
 
     public static boolean isBondUnlocked(ServerPlayer player, UUID maidUuid) {
@@ -61,10 +62,6 @@ public final class BondManager {
         return BondData.of(player).getUnlockedAbilityIds(maidUuid);
     }
 
-    public static List<String> getUnlockedMaidModelIdsForAbility(ServerPlayer player, String abilityId) {
-        return BondData.of(player).getUnlockedMaidModelIdsForAbility(abilityId);
-    }
-
     public static List<UUID> getUnlockedMaidIdsForAbility(ServerPlayer player, String abilityId) {
         return BondData.of(player).getUnlockedMaidIdsForAbility(abilityId);
     }
@@ -75,10 +72,6 @@ public final class BondManager {
 
     public static BondData.MaidProfileSnapshot findMaidProfileByModelId(ServerPlayer player, String modelId) {
         return BondData.of(player).findMaidProfileByModelId(modelId);
-    }
-
-    public static BondData.MaidProfileSnapshot findMaidProfileByRescueProviderId(ServerPlayer player, String providerId) {
-        return BondData.of(player).findMaidProfileByRescueProviderId(providerId);
     }
 
     public static String getMaidRescueAction(ServerPlayer player, UUID maidUuid) {

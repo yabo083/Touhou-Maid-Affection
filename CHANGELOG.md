@@ -19,9 +19,13 @@
 - 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。
 - 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。
 - 语音试听冷却从 5 秒降到 0.5 秒（100 → 10 tick）；被限流时给客户端一行 action bar 提示「试听过快，请稍候」，不再静默丢弃；非数据包（本地）试听请求不再占用限流额度。
-- 早安吻 AI 台词缓存改为按语种读取：`pollRandom` / `peekRandom` / `hasCachedLine` 与预热满度判定（`countMatching`、`addIfBelowTarget`）都按当前解析出的显示/配音语种过滤，改了显示或配音语种后会自动按新语种重新预热，旧语种条目保留但不再被选中，也不再阻塞重新预热（仍可手动 `clear_ai_cache`）。目标语种为空（`auto`）时不过滤，保持旧行为。
+- 早安吻 AI 台词缓存改为按语种读取：`pollRandom` / `peekRandom` 与预热满度判定（`countMatching`、`addIfBelowTarget`）都按当前解析出的显示/配音语种过滤，改了显示或配音语种后会自动按新语种重新预热，旧语种条目保留但不再被选中，也不再阻塞重新预热（仍可手动 `clear_ai_cache`）。目标语种为空（`auto`）时不过滤，保持旧行为。
 - `/tma morning_kiss status` 的语种行改为显示最终生效信息：全局语种（归一化后，未配置显示 `auto`）、AI 覆盖原始值，以及生效优先级说明。
 - 全局羁绊 UI 配色统一为「暖木底 + 玫瑰（交互面 / 装饰）+ 金（仅高亮文字）」：`BondGuiTokens` 换用新调色板（保留原常量名，新增开关 / 字段 / 滑块 / 导航等语义色常量），所有调用点自动跟随。设置面板同步按设计稿收口：300×188 模态框、46px 侧栏三 tab、胶囊开关、78×20 字段式下拉、88×13 滑块（数值金色居中）、分区作用域标签、侧栏藤蔓装饰（`rose_vine.png`，改用用户提供的渲染图，素材 132×165、按 44×55 绘制、导航轨内靠底部居中）、行内请求状态点与「完成 / 重载」footer。不影响功能与其它二级页布局尺寸（仍为 172×150）。
+- 羁绊数据改为**按女仆嵌套存储**：女仆粒度数据从「根上扁平键 `<base>_<女仆UUID>`」改为 `touhou_maid_affection.bond.maids.<女仆UUID>.<base>` 子树，玩家粒度键（早安吻选择）仍在根上；键名常量集中到 `BondKeys`。首次读取旧存档时自动执行**一次性迁移**（根上新增 `SchemaVersion`，先写后删、幂等、无法解析的键原样保留），旧存档无损升级，无需手动操作。反查（按能力找女仆、按模型 ID 找女仆、按救护 provider 找女仆、批量重置能力）改为遍历女仆子树，不再全键扫描。
+- 新增 `/tma bond prune [days]`（默认 90 天，权限等级 2）：清理执行者羁绊数据中 `LastSeen` 早于阈值的女仆子树（缺失 `LastSeen` 的历史数据视为过旧；`days <= 0` 只统计不删除），并回显删除/保留数量。`LastSeen` 在同步女仆档案时刷新；**不**在女仆死亡 / 卸载 / 换主人时自动删除数据（TLM 灵魂玩偶、椅子等会临时移除实体，自动删会丢数据），只能靠该命令显式清理。
+- `.maid` 迁移（MaidFileManager SPI）的附加数据对外格式**不变**：仍是「base 名 → 值」的 compound（即女仆子树本身），旧导出文件仍可导入，导入后刷新 `LastSeen`。
+- 删除若干零调用者死代码：`BondData/BondManager.getUnlockedMaidModelIdsForAbility`、`BondData/BondManager.findMaidProfileByRescueProviderId`、`MorningKissGeneratedDialogueService.hasCachedLine`（两个重载）、`MorningKissGeneratedDialogueCache.isEmpty`，以及已被 `BondKeys` 取代的 `compat/maidfm/MaidDataKeyCodec`。
 
 ### Notes
 - 权限：开关与语种属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。

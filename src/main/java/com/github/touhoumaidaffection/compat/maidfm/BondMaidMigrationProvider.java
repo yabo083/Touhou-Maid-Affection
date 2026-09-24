@@ -13,10 +13,13 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.UUID;
 
 /**
- * 把 TMA 的羁绊数据（{@link BondData}，存在主人玩家 persistentData 中、以女仆 UUID 为后缀）
- * 接入 MaidFileManager（女仆档案管理器）的迁移 SPI。
+ * 把 TMA 的羁绊数据（{@link BondData}，存在主人玩家 persistentData 的
+ * {@code touhou_maid_affection.bond.maids.<女仆UUID>} 子树中）接入
+ * MaidFileManager（女仆档案管理器）的迁移 SPI。
  *
  * <p>女仆实体自身的 NBT 由管理器负责导出/导入，本 provider 只处理挂在女仆身上的外部数据。
+ * 导出/导入的附加数据格式为「base 名 → 值」的 compound（即该女仆子树本身），与旧版一致，
+ * 因此旧导出文件仍可导入。
  *
  * <p>本类仅在 {@code maid_file_manager} 已加载时注册，且注册入口被软依赖守卫包裹，
  * 以避免管理器缺失时触发 SPI 类型的类加载。

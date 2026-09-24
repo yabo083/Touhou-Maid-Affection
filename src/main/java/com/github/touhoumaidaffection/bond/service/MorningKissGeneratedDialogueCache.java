@@ -225,10 +225,6 @@ final class MorningKissGeneratedDialogueCache {
         return queue == null ? 0 : queue.size();
     }
 
-    synchronized boolean isEmpty(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool) {
-        return size(maidUuid, pool) == 0;
-    }
-
     synchronized int clear(UUID maidUuid) {
         if (maidUuid == null) {
             return 0;

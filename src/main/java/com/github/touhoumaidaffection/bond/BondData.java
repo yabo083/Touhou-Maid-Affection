@@ -1,11 +1,11 @@
 package com.github.touhoumaidaffection.bond;
 
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
-import com.github.touhoumaidaffection.compat.maidfm.MaidDataKeyCodec;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
@@ -17,9 +17,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * 主人玩家的羁绊数据。
+ *
+ * <p>数据挂在玩家 persistentData 的 {@link BondKeys#ROOT} 下，女仆粒度数据嵌套在
+ * {@code maids.<女仆UUID>.<base>} 子 compound 中，玩家粒度数据（如早安吻选择）留在根上。
+ * 旧存档的扁平键（{@code <base>_<女仆UUID>}）由 {@link BondDataMigration} 在首次读取时
+ * 一次性迁移（见 {@link BondKeys#SCHEMA_VERSION_KEY}）。
+ */
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
 public class BondData {
-    private static final String ROOT_KEY = "touhou_maid_affection.bond";
     private static final int CURRENT_ABILITY_DATA_VERSION = 2;
 
     private final CompoundTag persistent;
@@ -32,21 +39,102 @@ public class BondData {
 
     public static BondData of(ServerPlayer player) {
         CompoundTag persistent = player.getPersistentData();
-        if (!persistent.contains(ROOT_KEY)) {
-            persistent.put(ROOT_KEY, new CompoundTag());
+        if (!persistent.contains(BondKeys.ROOT)) {
+            persistent.put(BondKeys.ROOT, new CompoundTag());
         }
-        return new BondData(persistent, persistent.getCompound(ROOT_KEY));
+        BondData data = new BondData(persistent, persistent.getCompound(BondKeys.ROOT));
+        data.migrateIfNeeded();
+        return data;
+    }
+
+    /**
+     * 首次读取时把旧扁平布局迁移到嵌套布局；已迁移（{@code SchemaVersion >= CURRENT_SCHEMA}）直接跳过。
+     */
+    private void migrateIfNeeded() {
+        if (root.getInt(BondKeys.SCHEMA_VERSION_KEY) >= BondKeys.CURRENT_SCHEMA) {
+            return;
+        }
+        BondDataMigration.migrate(new CompoundSink());
+        root.putInt(BondKeys.SCHEMA_VERSION_KEY, BondKeys.CURRENT_SCHEMA);
+        save();
+    }
+
+    /** 把 {@link BondDataMigration.Sink} 适配到根 compound。 */
+    private final class CompoundSink implements BondDataMigration.Sink<Tag> {
+        @Override
+        public Set<String> rootKeys() {
+            return root.getAllKeys();
+        }
+
+        @Override
+        public Tag value(String key) {
+            return root.get(key);
+        }
+
+        @Override
+        public void writeMaidValue(UUID maidUuid, String baseName, Tag value) {
+            maidTag(maidUuid, true).put(baseName, value.copy());
+        }
+
+        @Override
+        public void removeRootKey(String key) {
+            root.remove(key);
+        }
+    }
+
+    /** 取 {@code maids} 子 compound；{@code create} 为 false 且缺失时返回游离的空 compound。 */
+    private CompoundTag maidsRoot(boolean create) {
+        if (root.contains(BondKeys.MAIDS, Tag.TAG_COMPOUND)) {
+            return root.getCompound(BondKeys.MAIDS);
+        }
+        if (!create) {
+            return new CompoundTag();
+        }
+        CompoundTag maids = new CompoundTag();
+        root.put(BondKeys.MAIDS, maids);
+        return maids;
+    }
+
+    /** 取某女仆的子树；{@code create} 为 false 且缺失时返回游离的空 compound。 */
+    private CompoundTag maidTag(UUID maidUuid, boolean create) {
+        if (maidUuid == null) {
+            return new CompoundTag();
+        }
+        CompoundTag maids = maidsRoot(create);
+        String key = maidUuid.toString();
+        if (maids.contains(key, Tag.TAG_COMPOUND)) {
+            return maids.getCompound(key);
+        }
+        if (!create) {
+            return new CompoundTag();
+        }
+        CompoundTag tag = new CompoundTag();
+        maids.put(key, tag);
+        return tag;
+    }
+
+    /** 把 {@code maids} 下的键解析为女仆 UUID，非法键返回 {@code null}。 */
+    private static UUID parseMaidKey(String key) {
+        if (key == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(key);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     public int getBondLevel(UUID maidUuid) {
-        return root.getInt("BondLevel_" + maidUuid);
+        return maidTag(maidUuid, false).getInt(BondKeys.BOND_LEVEL);
     }
 
     public void setBondLevel(UUID maidUuid, int level) {
         int normalized = Math.max(0, level);
-        root.putInt("BondLevel_" + maidUuid, normalized);
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putInt(BondKeys.BOND_LEVEL, normalized);
         boolean unlocked = normalized >= BondConfig.DEFAULT_UNLOCK_LEVEL;
-        root.putBoolean("BondUnlocked_" + maidUuid, unlocked);
+        tag.putBoolean(BondKeys.BOND_UNLOCKED, unlocked);
         if (unlocked) {
             migrateAbilityDataIfNeeded(maidUuid);
         }
@@ -54,26 +142,27 @@ public class BondData {
     }
 
     public boolean isBondUnlocked(UUID maidUuid) {
-        return root.getBoolean("BondUnlocked_" + maidUuid);
+        return maidTag(maidUuid, false).getBoolean(BondKeys.BOND_UNLOCKED);
     }
 
     public boolean isAbilityUnlocked(UUID maidUuid, String abilityId) {
         migrateAbilityDataIfNeeded(maidUuid);
-        CompoundTag abilities = root.getCompound(getAbilitiesKey(maidUuid));
+        CompoundTag abilities = maidTag(maidUuid, false).getCompound(BondKeys.BOND_ABILITIES);
         return abilities.getBoolean(abilityId);
     }
 
     public void unlockAbility(UUID maidUuid, String abilityId) {
         migrateAbilityDataIfNeeded(maidUuid);
-        CompoundTag abilities = root.getCompound(getAbilitiesKey(maidUuid));
+        CompoundTag tag = maidTag(maidUuid, true);
+        CompoundTag abilities = tag.getCompound(BondKeys.BOND_ABILITIES);
         abilities.putBoolean(abilityId, true);
-        root.put(getAbilitiesKey(maidUuid), abilities);
+        tag.put(BondKeys.BOND_ABILITIES, abilities);
         save();
     }
 
     public List<String> getUnlockedAbilityIds(UUID maidUuid) {
         migrateAbilityDataIfNeeded(maidUuid);
-        CompoundTag abilities = root.getCompound(getAbilitiesKey(maidUuid));
+        CompoundTag abilities = maidTag(maidUuid, false).getCompound(BondKeys.BOND_ABILITIES);
         List<String> result = new ArrayList<>();
         BondAbilityManager.registerDefaults();
         BondAbilityManager.getAllAbilities().forEach(ability -> {
@@ -88,7 +177,7 @@ public class BondData {
         if (modelId == null || modelId.isBlank()) {
             return;
         }
-        root.putString("BondMaidModel_" + maidUuid, modelId);
+        maidTag(maidUuid, true).putString(BondKeys.MAID_MODEL, modelId);
         save();
     }
 
@@ -96,86 +185,87 @@ public class BondData {
         if (displayName == null || displayName.isBlank()) {
             return;
         }
-        root.putString("BondMaidDisplayName_" + maidUuid, displayName);
+        maidTag(maidUuid, true).putString(BondKeys.MAID_DISPLAY_NAME, displayName);
         save();
     }
 
     public String getMaidDisplayName(UUID maidUuid) {
-        return root.getString("BondMaidDisplayName_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_DISPLAY_NAME);
     }
 
     public void setMaidSoundPackId(UUID maidUuid, String soundPackId) {
-        root.putString("BondMaidSoundPack_" + maidUuid, soundPackId == null ? "" : soundPackId);
+        maidTag(maidUuid, true).putString(BondKeys.MAID_SOUND_PACK, soundPackId == null ? "" : soundPackId);
         save();
     }
 
     public String getMaidSoundPackId(UUID maidUuid) {
-        return root.getString("BondMaidSoundPack_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_SOUND_PACK);
     }
 
     public void setMaidYsmProfile(UUID maidUuid, String ysmModelId, String ysmTexture, String ysmDisplayName) {
-        root.putString("BondMaidYsmModelId_" + maidUuid, ysmModelId == null ? "" : ysmModelId);
-        root.putString("BondMaidYsmTexture_" + maidUuid, ysmTexture == null ? "" : ysmTexture);
-        root.putString("BondMaidYsmDisplayName_" + maidUuid, ysmDisplayName == null ? "" : ysmDisplayName);
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putString(BondKeys.MAID_YSM_MODEL_ID, ysmModelId == null ? "" : ysmModelId);
+        tag.putString(BondKeys.MAID_YSM_TEXTURE, ysmTexture == null ? "" : ysmTexture);
+        tag.putString(BondKeys.MAID_YSM_DISPLAY_NAME, ysmDisplayName == null ? "" : ysmDisplayName);
         save();
     }
 
     public void setMaidRescueAction(UUID maidUuid, String actionId) {
-        root.putString("BondMaidRescueAction_" + maidUuid, BondDataLimits.normalize(actionId));
+        maidTag(maidUuid, true).putString(BondKeys.MAID_RESCUE_ACTION, BondDataLimits.normalize(actionId));
         save();
     }
 
     public String getMaidRescueAction(UUID maidUuid) {
-        return root.getString("BondMaidRescueAction_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_RESCUE_ACTION);
     }
 
     public void setMaidRescueProviderId(UUID maidUuid, String providerId) {
         if (providerId == null || providerId.isBlank()) {
             return;
         }
-        String key = "BondMaidRescueProvider_" + maidUuid;
-        if (providerId.equals(root.getString(key))) {
+        CompoundTag tag = maidTag(maidUuid, true);
+        if (providerId.equals(tag.getString(BondKeys.MAID_RESCUE_PROVIDER))) {
             return;
         }
-        root.putString(key, providerId);
+        tag.putString(BondKeys.MAID_RESCUE_PROVIDER, providerId);
         save();
     }
 
     public String getMaidRescueProviderId(UUID maidUuid) {
-        return root.getString("BondMaidRescueProvider_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_RESCUE_PROVIDER);
     }
 
     public LapPillowPoseSnapshot getMaidLapPillowPose(UUID maidUuid) {
-        String prefix = "BondMaidLapPillow_";
-        String mode = root.getString(prefix + "Mode_" + maidUuid);
+        CompoundTag tag = maidTag(maidUuid, false);
+        String mode = tag.getString(BondKeys.LAP_PILLOW_MODE);
         if (mode.isBlank()) {
             return LapPillowPoseSnapshot.maidSitPlayerLieDefault();
         }
         return new LapPillowPoseSnapshot(
                 LapPillowMode.fromName(mode),
-                root.getDouble(prefix + "MaidOffsetX_" + maidUuid),
-                root.getDouble(prefix + "MaidOffsetY_" + maidUuid),
-                root.getDouble(prefix + "MaidOffsetZ_" + maidUuid),
-                readPlayerOffset(root, prefix + "PlayerOffsetX_" + maidUuid, prefix + "OffsetX_" + maidUuid),
-                readPlayerOffset(root, prefix + "PlayerOffsetY_" + maidUuid, prefix + "OffsetY_" + maidUuid),
-                readPlayerOffset(root, prefix + "PlayerOffsetZ_" + maidUuid, prefix + "OffsetZ_" + maidUuid),
-                root.getString(prefix + "MaidAction_" + maidUuid),
-                root.getString(prefix + "PlayerAction_" + maidUuid)
+                tag.getDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_X),
+                tag.getDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_Y),
+                tag.getDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_Z),
+                readPlayerOffset(tag, BondKeys.LAP_PILLOW_PLAYER_OFFSET_X, BondKeys.LAP_PILLOW_LEGACY_OFFSET_X),
+                readPlayerOffset(tag, BondKeys.LAP_PILLOW_PLAYER_OFFSET_Y, BondKeys.LAP_PILLOW_LEGACY_OFFSET_Y),
+                readPlayerOffset(tag, BondKeys.LAP_PILLOW_PLAYER_OFFSET_Z, BondKeys.LAP_PILLOW_LEGACY_OFFSET_Z),
+                tag.getString(BondKeys.LAP_PILLOW_MAID_ACTION),
+                tag.getString(BondKeys.LAP_PILLOW_PLAYER_ACTION)
         ).clamp();
     }
 
     public void setMaidLapPillowPose(UUID maidUuid, LapPillowPoseSnapshot pose) {
         LapPillowPoseSnapshot safe = pose == null ? LapPillowPoseSnapshot.maidSitPlayerLieDefault() : pose.clamp();
-        String prefix = "BondMaidLapPillow_";
-        root.putString(prefix + "Mode_" + maidUuid, safe.mode().serializedName());
-        root.putDouble(prefix + "MaidOffsetX_" + maidUuid, safe.maidOffsetX());
-        root.putDouble(prefix + "MaidOffsetY_" + maidUuid, safe.maidOffsetY());
-        root.putDouble(prefix + "MaidOffsetZ_" + maidUuid, safe.maidOffsetZ());
-        root.putDouble(prefix + "PlayerOffsetX_" + maidUuid, safe.playerOffsetX());
-        root.putDouble(prefix + "PlayerOffsetY_" + maidUuid, safe.playerOffsetY());
-        root.putDouble(prefix + "PlayerOffsetZ_" + maidUuid, safe.playerOffsetZ());
-        root.putString(prefix + "MaidAction_" + maidUuid, safe.maidActionId());
-        root.putString(prefix + "PlayerAction_" + maidUuid, safe.playerActionId());
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putString(BondKeys.LAP_PILLOW_MODE, safe.mode().serializedName());
+        tag.putDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_X, safe.maidOffsetX());
+        tag.putDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_Y, safe.maidOffsetY());
+        tag.putDouble(BondKeys.LAP_PILLOW_MAID_OFFSET_Z, safe.maidOffsetZ());
+        tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_X, safe.playerOffsetX());
+        tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_Y, safe.playerOffsetY());
+        tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_Z, safe.playerOffsetZ());
+        tag.putString(BondKeys.LAP_PILLOW_MAID_ACTION, safe.maidActionId());
+        tag.putString(BondKeys.LAP_PILLOW_PLAYER_ACTION, safe.playerActionId());
         save();
     }
 
@@ -187,53 +277,27 @@ public class BondData {
     }
 
     public String getMaidYsmModelId(UUID maidUuid) {
-        return root.getString("BondMaidYsmModelId_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_YSM_MODEL_ID);
     }
 
     public String getMaidYsmTexture(UUID maidUuid) {
-        return root.getString("BondMaidYsmTexture_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_YSM_TEXTURE);
     }
 
     public String getMaidYsmDisplayName(UUID maidUuid) {
-        return root.getString("BondMaidYsmDisplayName_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_YSM_DISPLAY_NAME);
     }
 
     public String getMaidModelId(UUID maidUuid) {
-        return root.getString("BondMaidModel_" + maidUuid);
-    }
-
-    public List<String> getUnlockedMaidModelIdsForAbility(String abilityId) {
-        List<String> result = new ArrayList<>();
-        for (String key : root.getAllKeys()) {
-            if (!key.startsWith("BondUnlocked_") || !root.getBoolean(key)) {
-                continue;
-            }
-            String uuidPart = key.substring("BondUnlocked_".length());
-            UUID maidUuid;
-            try {
-                maidUuid = UUID.fromString(uuidPart);
-            } catch (IllegalArgumentException ex) {
-                continue;
-            }
-            if (isAbilityUnlocked(maidUuid, abilityId)) {
-                String modelId = getMaidModelId(maidUuid);
-                result.add(modelId.isBlank() ? maidUuid.toString() : modelId);
-            }
-        }
-        return result;
+        return maidTag(maidUuid, false).getString(BondKeys.MAID_MODEL);
     }
 
     public List<UUID> getUnlockedMaidIdsForAbility(String abilityId) {
         List<UUID> result = new ArrayList<>();
-        for (String key : root.getAllKeys()) {
-            if (!key.startsWith("BondUnlocked_") || !root.getBoolean(key)) {
-                continue;
-            }
-            String uuidPart = key.substring("BondUnlocked_".length());
-            UUID maidUuid;
-            try {
-                maidUuid = UUID.fromString(uuidPart);
-            } catch (IllegalArgumentException ex) {
+        CompoundTag maids = maidsRoot(false);
+        for (String key : new ArrayList<>(maids.getAllKeys())) {
+            UUID maidUuid = parseMaidKey(key);
+            if (maidUuid == null || !maids.getCompound(key).getBoolean(BondKeys.BOND_UNLOCKED)) {
                 continue;
             }
             if (isAbilityUnlocked(maidUuid, abilityId)) {
@@ -252,27 +316,17 @@ public class BondData {
         if (modelId == null || modelId.isBlank()) {
             return null;
         }
-        for (String key : root.getAllKeys()) {
-            if (!key.startsWith("BondMaidModel_")) {
+        CompoundTag maids = maidsRoot(false);
+        for (String key : maids.getAllKeys()) {
+            if (!modelId.equals(maids.getCompound(key).getString(BondKeys.MAID_MODEL))) {
                 continue;
             }
-            String storedModelId = root.getString(key);
-            if (!modelId.equals(storedModelId)) {
-                continue;
-            }
-            String uuidPart = key.substring("BondMaidModel_".length());
-            try {
-                return UUID.fromString(uuidPart);
-            } catch (IllegalArgumentException ignored) {
-                // Ignore malformed legacy keys.
+            UUID maidUuid = parseMaidKey(key);
+            if (maidUuid != null) {
+                return maidUuid;
             }
         }
         return null;
-    }
-
-    public MaidProfileSnapshot findMaidProfileByRescueProviderId(String providerId) {
-        UUID maidUuid = findMaidUuidByRescueProviderId(providerId);
-        return maidUuid == null ? MaidProfileSnapshot.empty() : getMaidProfile(maidUuid);
     }
 
     public UUID findMaidUuidByRescueProviderId(String providerId) {
@@ -283,19 +337,15 @@ public class BondData {
         if (providerId == null || providerId.isBlank()) {
             return null;
         }
+        CompoundTag maids = maidsRoot(false);
         List<UUID> matches = new ArrayList<>();
-        for (String key : root.getAllKeys()) {
-            if (!key.startsWith("BondMaidRescueProvider_")) {
+        for (String key : maids.getAllKeys()) {
+            if (!providerId.equals(maids.getCompound(key).getString(BondKeys.MAID_RESCUE_PROVIDER))) {
                 continue;
             }
-            if (!providerId.equals(root.getString(key))) {
-                continue;
-            }
-            String uuidPart = key.substring("BondMaidRescueProvider_".length());
-            try {
-                matches.add(UUID.fromString(uuidPart));
-            } catch (IllegalArgumentException ignored) {
-                // Ignore malformed legacy keys.
+            UUID maidUuid = parseMaidKey(key);
+            if (maidUuid != null) {
+                matches.add(maidUuid);
             }
         }
         if (matches.isEmpty()) {
@@ -330,15 +380,15 @@ public class BondData {
         boolean dirty = false;
         for (UUID maidUuid : maidIds) {
             migrateAbilityDataIfNeeded(maidUuid);
-            String abilitiesKey = getAbilitiesKey(maidUuid);
-            CompoundTag abilities = root.getCompound(abilitiesKey);
+            CompoundTag tag = maidTag(maidUuid, true);
+            CompoundTag abilities = tag.getCompound(BondKeys.BOND_ABILITIES);
             boolean wasUnlocked = abilities.getBoolean(abilityId);
             if (wasUnlocked) {
                 resetCount++;
             }
             if (wasUnlocked || !abilities.contains(abilityId)) {
                 abilities.putBoolean(abilityId, false);
-                root.put(abilitiesKey, abilities);
+                tag.put(BondKeys.BOND_ABILITIES, abilities);
                 dirty = true;
             }
         }
@@ -350,23 +400,18 @@ public class BondData {
 
     private Set<UUID> collectKnownMaidIds() {
         LinkedHashSet<UUID> maidIds = new LinkedHashSet<>();
-        for (String key : root.getAllKeys()) {
-            addMaidIdFromKey(maidIds, key, "BondUnlocked_");
-            addMaidIdFromKey(maidIds, key, "BondAbilities_");
+        CompoundTag maids = maidsRoot(false);
+        for (String key : maids.getAllKeys()) {
+            CompoundTag tag = maids.getCompound(key);
+            if (!tag.contains(BondKeys.BOND_UNLOCKED) && !tag.contains(BondKeys.BOND_ABILITIES)) {
+                continue;
+            }
+            UUID maidUuid = parseMaidKey(key);
+            if (maidUuid != null) {
+                maidIds.add(maidUuid);
+            }
         }
         return maidIds;
-    }
-
-    private void addMaidIdFromKey(Set<UUID> output, String key, String prefix) {
-        if (key == null || !key.startsWith(prefix)) {
-            return;
-        }
-        String uuidPart = key.substring(prefix.length());
-        try {
-            output.add(UUID.fromString(uuidPart));
-        } catch (IllegalArgumentException ignored) {
-            // Ignore malformed legacy keys.
-        }
     }
 
     public MaidProfileSnapshot getMaidProfile(UUID maidUuid) {
@@ -382,39 +427,85 @@ public class BondData {
         );
     }
 
+    /** 该女仆最后一次与主人同步档案的时间（epoch millis）；缺失时返回 0。 */
+    public long getMaidLastSeen(UUID maidUuid) {
+        return maidTag(maidUuid, false).getLong(BondKeys.LAST_SEEN_KEY);
+    }
+
+    /** 刷新该女仆的最后在线时间。 */
+    public void setMaidLastSeen(UUID maidUuid, long epochMs) {
+        if (maidUuid == null) {
+            return;
+        }
+        long normalized = Math.max(0L, epochMs);
+        CompoundTag tag = maidTag(maidUuid, true);
+        if (tag.getLong(BondKeys.LAST_SEEN_KEY) == normalized) {
+            return;
+        }
+        tag.putLong(BondKeys.LAST_SEEN_KEY, normalized);
+        save();
+    }
+
+    /**
+     * 清理过旧的女仆子树：{@code LastSeen} 早于 {@code now - retentionDays} 天，
+     * 或缺失 {@code LastSeen} 的子树（视为历史遗留）。
+     *
+     * <p>{@code retentionDays <= 0} 时不删除任何数据。不会因女仆死亡/卸载/换主人而自动清理，
+     * 只由该显式入口触发。
+     *
+     * @return 删除数量与保留数量
+     */
+    public PruneResult pruneStaleMaids(long nowEpochMs, long retentionDays) {
+        CompoundTag maids = maidsRoot(false);
+        List<String> keys = new ArrayList<>(maids.getAllKeys());
+        int removed = 0;
+        for (String key : keys) {
+            long lastSeen = maids.getCompound(key).getLong(BondKeys.LAST_SEEN_KEY);
+            if (!BondRetention.isStale(lastSeen, nowEpochMs, retentionDays)) {
+                continue;
+            }
+            maids.remove(key);
+            removed++;
+        }
+        if (removed > 0) {
+            save();
+        }
+        return new PruneResult(removed, keys.size() - removed);
+    }
+
     public int getQueuedGiftCount(UUID maidUuid) {
-        return Math.max(0, root.getInt("RandomGiftQueue_" + maidUuid));
+        return Math.max(0, maidTag(maidUuid, false).getInt(BondKeys.RANDOM_GIFT_QUEUE));
     }
 
     public void setQueuedGiftCount(UUID maidUuid, int count) {
-        root.putInt("RandomGiftQueue_" + maidUuid, Math.max(0, count));
+        maidTag(maidUuid, true).putInt(BondKeys.RANDOM_GIFT_QUEUE, Math.max(0, count));
         save();
     }
 
     public long getLastGiftWallClockMs(UUID maidUuid) {
-        return root.getLong("RandomGiftLastWallClock_" + maidUuid);
+        return maidTag(maidUuid, false).getLong(BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK);
     }
 
     public void setLastGiftWallClockMs(UUID maidUuid, long timestampMs) {
-        root.putLong("RandomGiftLastWallClock_" + maidUuid, Math.max(0L, timestampMs));
+        maidTag(maidUuid, true).putLong(BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK, Math.max(0L, timestampMs));
         save();
     }
 
     public long getLastGiftDeliveryGameTime(UUID maidUuid) {
-        return root.getLong("RandomGiftLastDelivery_" + maidUuid);
+        return maidTag(maidUuid, false).getLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY);
     }
 
     public void setLastGiftDeliveryGameTime(UUID maidUuid, long gameTime) {
-        root.putLong("RandomGiftLastDelivery_" + maidUuid, Math.max(0L, gameTime));
+        maidTag(maidUuid, true).putLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY, Math.max(0L, gameTime));
         save();
     }
 
     public int getLastGiftIntervalMinutes(UUID maidUuid) {
-        return Math.max(0, root.getInt("RandomGiftLastIntervalMinutes_" + maidUuid));
+        return Math.max(0, maidTag(maidUuid, false).getInt(BondKeys.RANDOM_GIFT_LAST_INTERVAL_MINUTES));
     }
 
     public void setLastGiftIntervalMinutes(UUID maidUuid, int intervalMinutes) {
-        root.putInt("RandomGiftLastIntervalMinutes_" + maidUuid, Math.max(0, intervalMinutes));
+        maidTag(maidUuid, true).putInt(BondKeys.RANDOM_GIFT_LAST_INTERVAL_MINUTES, Math.max(0, intervalMinutes));
         save();
     }
 
@@ -423,107 +514,106 @@ public class BondData {
     }
 
     public void initializeRandomGiftState(UUID maidUuid, long nowMs, int intervalMinutes) {
-        String queueKey = "RandomGiftQueue_" + maidUuid;
-        String wallClockKey = "RandomGiftLastWallClock_" + maidUuid;
-        String deliveryKey = "RandomGiftLastDelivery_" + maidUuid;
-        String intervalKey = "RandomGiftLastIntervalMinutes_" + maidUuid;
-        if (!root.contains(queueKey)) {
-            root.putInt(queueKey, 0);
+        CompoundTag tag = maidTag(maidUuid, true);
+        if (!tag.contains(BondKeys.RANDOM_GIFT_QUEUE)) {
+            tag.putInt(BondKeys.RANDOM_GIFT_QUEUE, 0);
         }
-        if (!root.contains(wallClockKey)) {
-            root.putLong(wallClockKey, Math.max(0L, nowMs));
+        if (!tag.contains(BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK)) {
+            tag.putLong(BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK, Math.max(0L, nowMs));
         }
-        if (!root.contains(deliveryKey)) {
-            root.putLong(deliveryKey, 0L);
+        if (!tag.contains(BondKeys.RANDOM_GIFT_LAST_DELIVERY)) {
+            tag.putLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY, 0L);
         }
-        if (!root.contains(intervalKey)) {
-            root.putInt(intervalKey, Math.max(0, intervalMinutes));
+        if (!tag.contains(BondKeys.RANDOM_GIFT_LAST_INTERVAL_MINUTES)) {
+            tag.putInt(BondKeys.RANDOM_GIFT_LAST_INTERVAL_MINUTES, Math.max(0, intervalMinutes));
         }
         save();
     }
 
     public String getMorningKissLastSuccessfulWindowId(UUID maidUuid) {
-        return root.getString("MorningKissLastSuccessWindow_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MORNING_KISS_LAST_SUCCESS_WINDOW);
     }
 
     public void setMorningKissLastSuccessfulWindowId(UUID maidUuid, String windowId) {
-        root.putString("MorningKissLastSuccessWindow_" + maidUuid, windowId == null ? "" : windowId);
+        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_LAST_SUCCESS_WINDOW, windowId == null ? "" : windowId);
         save();
     }
 
     public String getMorningKissLastFailedWindowId(UUID maidUuid) {
-        return root.getString("MorningKissLastFailedWindow_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MORNING_KISS_LAST_FAILED_WINDOW);
     }
 
     public void setMorningKissLastFailedWindowId(UUID maidUuid, String windowId) {
-        root.putString("MorningKissLastFailedWindow_" + maidUuid, windowId == null ? "" : windowId);
+        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_LAST_FAILED_WINDOW, windowId == null ? "" : windowId);
         save();
     }
 
     public String getMorningKissScheduledWindowId(UUID maidUuid) {
-        return root.getString("MorningKissScheduledWindow_" + maidUuid);
+        return maidTag(maidUuid, false).getString(BondKeys.MORNING_KISS_SCHEDULED_WINDOW);
     }
 
     public void setMorningKissScheduledWindowId(UUID maidUuid, String windowId) {
-        root.putString("MorningKissScheduledWindow_" + maidUuid, windowId == null ? "" : windowId);
+        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_SCHEDULED_WINDOW, windowId == null ? "" : windowId);
         save();
     }
 
     public long getMorningKissScheduledAttemptTick(UUID maidUuid) {
-        return root.getLong("MorningKissScheduledAttemptTick_" + maidUuid);
+        return maidTag(maidUuid, false).getLong(BondKeys.MORNING_KISS_SCHEDULED_ATTEMPT_TICK);
     }
 
     public void setMorningKissScheduledAttemptTick(UUID maidUuid, long tick) {
-        root.putLong("MorningKissScheduledAttemptTick_" + maidUuid, Math.max(0L, tick));
+        maidTag(maidUuid, true).putLong(BondKeys.MORNING_KISS_SCHEDULED_ATTEMPT_TICK, Math.max(0L, tick));
         save();
     }
 
     public long getMorningKissLastAutoAttemptGameTime(UUID maidUuid) {
-        return root.getLong("MorningKissLastAutoAttemptGameTime_" + maidUuid);
+        return maidTag(maidUuid, false).getLong(BondKeys.MORNING_KISS_LAST_AUTO_ATTEMPT_GAME_TIME);
     }
 
     public void setMorningKissLastAutoAttemptGameTime(UUID maidUuid, long tick) {
-        root.putLong("MorningKissLastAutoAttemptGameTime_" + maidUuid, Math.max(0L, tick));
+        maidTag(maidUuid, true).putLong(BondKeys.MORNING_KISS_LAST_AUTO_ATTEMPT_GAME_TIME, Math.max(0L, tick));
         save();
     }
 
     public void clearMorningKissSchedule(UUID maidUuid) {
-        root.putString("MorningKissScheduledWindow_" + maidUuid, "");
-        root.putLong("MorningKissScheduledAttemptTick_" + maidUuid, 0L);
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putString(BondKeys.MORNING_KISS_SCHEDULED_WINDOW, "");
+        tag.putLong(BondKeys.MORNING_KISS_SCHEDULED_ATTEMPT_TICK, 0L);
         save();
     }
 
     public String getMorningKissSelectedWindowId() {
-        return root.getString("MorningKissSelectedWindowId");
+        return root.getString(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID);
     }
 
     public void setMorningKissSelectedWindowId(String windowId) {
-        root.putString("MorningKissSelectedWindowId", windowId == null ? "" : windowId);
+        root.putString(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID, windowId == null ? "" : windowId);
         save();
     }
 
     public String getMorningKissSelectedMaidId() {
-        return root.getString("MorningKissSelectedMaidId");
+        return root.getString(BondKeys.MORNING_KISS_SELECTED_MAID_ID);
     }
 
     public void setMorningKissSelectedMaidId(String maidId) {
-        root.putString("MorningKissSelectedMaidId", maidId == null ? "" : maidId);
+        root.putString(BondKeys.MORNING_KISS_SELECTED_MAID_ID, maidId == null ? "" : maidId);
         save();
     }
 
     public void clearMorningKissSelectedMaid() {
-        root.putString("MorningKissSelectedWindowId", "");
-        root.putString("MorningKissSelectedMaidId", "");
+        root.putString(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID, "");
+        root.putString(BondKeys.MORNING_KISS_SELECTED_MAID_ID, "");
         save();
     }
 
     public MorningKissVoiceSettings getMorningKissVoiceSettings(UUID maidUuid) {
+        CompoundTag tag = maidTag(maidUuid, false);
         return MorningKissVoiceSettings.of(
-                root.getString("MorningKissVoiceMode_" + maidUuid),
-                root.getString("MorningKissVoiceGroup_" + maidUuid),
-                root.getString("MorningKissVoiceClip_" + maidUuid),
-                root.getString("MorningKissVoicePack_" + maidUuid),
-                VoicePoolIds.decode(root.getString("MorningKissVoicePool_" + maidUuid))
+                tag.getString(BondKeys.MORNING_KISS_VOICE_MODE),
+                tag.getString(BondKeys.MORNING_KISS_VOICE_GROUP),
+                tag.getString(BondKeys.MORNING_KISS_VOICE_CLIP),
+                tag.getString(BondKeys.MORNING_KISS_VOICE_PACK),
+                VoicePoolIds.decode(tag.getString(BondKeys.MORNING_KISS_VOICE_POOL))
         );
     }
 
@@ -532,26 +622,28 @@ public class BondData {
         if (!VoicePoolIds.isPersistableSelection(safe.selectedVoiceIds())) {
             return;
         }
-        root.putString("MorningKissVoiceMode_" + maidUuid, safe.mode().serializedName());
-        root.putString("MorningKissVoiceGroup_" + maidUuid, safe.selectedGroup());
-        root.putString("MorningKissVoiceClip_" + maidUuid, safe.selectedClip());
-        root.putString("MorningKissVoicePack_" + maidUuid, safe.soundPackId());
-        root.putString("MorningKissVoicePool_" + maidUuid, VoicePoolIds.encode(safe.selectedVoiceIds()));
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putString(BondKeys.MORNING_KISS_VOICE_MODE, safe.mode().serializedName());
+        tag.putString(BondKeys.MORNING_KISS_VOICE_GROUP, safe.selectedGroup());
+        tag.putString(BondKeys.MORNING_KISS_VOICE_CLIP, safe.selectedClip());
+        tag.putString(BondKeys.MORNING_KISS_VOICE_PACK, safe.soundPackId());
+        tag.putString(BondKeys.MORNING_KISS_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
     }
 
     public EmergencyRescueVoiceSettings getEmergencyRescueVoiceSettings(UUID maidUuid) {
+        CompoundTag tag = maidTag(maidUuid, false);
         return EmergencyRescueVoiceSettings.of(
-                root.getString("EmergencyRescueVoiceSourceMode_" + maidUuid),
-                root.getString("EmergencyRescueVoiceTlmMode_" + maidUuid),
-                root.getString("EmergencyRescueVoiceTlmGroup_" + maidUuid),
-                root.getString("EmergencyRescueVoiceTlmClip_" + maidUuid),
-                root.getString("EmergencyRescueVoiceCustomMode_" + maidUuid),
-                root.getString("EmergencyRescueVoiceFixedFile_" + maidUuid),
-                root.contains("EmergencyRescueVoiceCommonFallback_" + maidUuid)
-                        ? root.getBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid)
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_SOURCE_MODE),
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_MODE),
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_GROUP),
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_CLIP),
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_CUSTOM_MODE),
+                tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_FIXED_FILE),
+                tag.contains(BondKeys.EMERGENCY_RESCUE_VOICE_COMMON_FALLBACK)
+                        ? tag.getBoolean(BondKeys.EMERGENCY_RESCUE_VOICE_COMMON_FALLBACK)
                         : com.github.touhoumaidaffection.ModConfig.BOND_EMERGENCY_RESCUE_COMMON_FALLBACK_DEFAULT.get(),
-                VoicePoolIds.decode(root.getString("EmergencyRescueVoicePool_" + maidUuid))
+                VoicePoolIds.decode(tag.getString(BondKeys.EMERGENCY_RESCUE_VOICE_POOL))
         );
     }
 
@@ -560,90 +652,72 @@ public class BondData {
         if (!VoicePoolIds.isPersistableSelection(safe.selectedVoiceIds())) {
             return;
         }
-        root.putString("EmergencyRescueVoiceSourceMode_" + maidUuid, safe.sourceMode().serializedName());
-        root.putString("EmergencyRescueVoiceTlmMode_" + maidUuid, safe.tlmPlayMode().serializedName());
-        root.putString("EmergencyRescueVoiceTlmGroup_" + maidUuid, safe.tlmSelectedGroup());
-        root.putString("EmergencyRescueVoiceTlmClip_" + maidUuid, safe.tlmSelectedClip());
-        root.putString("EmergencyRescueVoiceCustomMode_" + maidUuid, safe.customPlayMode().serializedName());
-        root.putString("EmergencyRescueVoiceFixedFile_" + maidUuid, safe.fixedFile());
-        root.putBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid, safe.useCommonFallback());
-        root.putString("EmergencyRescueVoicePool_" + maidUuid, VoicePoolIds.encode(safe.selectedVoiceIds()));
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_SOURCE_MODE, safe.sourceMode().serializedName());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_MODE, safe.tlmPlayMode().serializedName());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_GROUP, safe.tlmSelectedGroup());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_CLIP, safe.tlmSelectedClip());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_CUSTOM_MODE, safe.customPlayMode().serializedName());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_FIXED_FILE, safe.fixedFile());
+        tag.putBoolean(BondKeys.EMERGENCY_RESCUE_VOICE_COMMON_FALLBACK, safe.useCommonFallback());
+        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
-    }
-
-    private void migrateAbilityDataIfNeeded(UUID maidUuid) {
-        String abilitiesKey = getAbilitiesKey(maidUuid);
-        String versionKey = getAbilityVersionKey(maidUuid);
-        if (root.getInt(versionKey) >= CURRENT_ABILITY_DATA_VERSION && root.contains(abilitiesKey)) {
-            return;
-        }
-        CompoundTag abilities = new CompoundTag();
-        BondAbilityManager.registerDefaults();
-        BondAbilityManager.getAllAbilities().forEach(ability -> abilities.putBoolean(ability.getId(), false));
-        root.put(abilitiesKey, abilities);
-        root.putInt(versionKey, CURRENT_ABILITY_DATA_VERSION);
-        save();
-    }
-
-    private String getAbilitiesKey(UUID maidUuid) {
-        return "BondAbilities_" + maidUuid;
-    }
-
-    private String getAbilityVersionKey(UUID maidUuid) {
-        return "BondAbilityVersion_" + maidUuid;
-    }
-
-    private void save() {
-        persistent.put(ROOT_KEY, root);
     }
 
     /**
-     * 导出该女仆的羁绊数据：收集所有以 {@code _<maidUuid>} 结尾的键，
-     * 去掉 UUID 后缀得到 base 名后放入新 tag（不修改本对象）。
+     * 导出该女仆的羁绊数据：返回 {@code maids.<女仆UUID>} 子树的副本（base 名 → 值的 compound）。
+     * 不修改本对象，因此 {@code .maid} 附加数据的对外格式与旧版一致。
      *
-     * @return 不含任何该女仆键时返回空 tag，调用方自行判断是否导出
+     * @return 该女仆无任何数据时返回空 tag，调用方自行判断是否导出
      */
     public CompoundTag exportMaidData(UUID maidUuid) {
-        CompoundTag out = new CompoundTag();
         if (maidUuid == null) {
-            return out;
+            return new CompoundTag();
         }
-        for (String key : root.getAllKeys()) {
-            String base = MaidDataKeyCodec.baseName(key, maidUuid);
-            if (base == null) {
-                continue;
-            }
-            out.put(base, root.get(key).copy());
-        }
-        return out;
+        return maidTag(maidUuid, false).copy();
     }
 
     /**
-     * 导入迁移数据：把 base 键重新拼上当前女仆 UUID 后写回 BondData 子树。
-     *
-     * @param data 导出时的返回值；为空或 null 时不做任何修改
+     * 导入羁绊数据：整体替换 {@code maids.<女仆UUID>} 子树（{@code base 名 → 值}），
+     * 并刷新 {@code LastSeen}。空白数据直接跳过。
      */
     public void importMaidData(UUID maidUuid, CompoundTag data) {
         if (maidUuid == null || data == null || data.isEmpty()) {
             return;
         }
-        for (String base : data.getAllKeys()) {
-            String key = MaidDataKeyCodec.keyFor(base, maidUuid);
-            if (key == null) {
-                continue;
-            }
-            root.put(key, data.get(base).copy());
-        }
+        maidsRoot(true).put(maidUuid.toString(), data.copy());
+        maidTag(maidUuid, true).putLong(BondKeys.LAST_SEEN_KEY, System.currentTimeMillis());
         save();
+    }
+    private void migrateAbilityDataIfNeeded(UUID maidUuid) {
+        if (maidUuid == null) {
+            return;
+        }
+        CompoundTag tag = maidTag(maidUuid, false);
+        if (tag.getInt(BondKeys.BOND_ABILITY_VERSION) >= CURRENT_ABILITY_DATA_VERSION
+                && tag.contains(BondKeys.BOND_ABILITIES)) {
+            return;
+        }
+        CompoundTag abilities = new CompoundTag();
+        BondAbilityManager.registerDefaults();
+        BondAbilityManager.getAllAbilities().forEach(ability -> abilities.putBoolean(ability.getId(), false));
+        CompoundTag target = maidTag(maidUuid, true);
+        target.put(BondKeys.BOND_ABILITIES, abilities);
+        target.putInt(BondKeys.BOND_ABILITY_VERSION, CURRENT_ABILITY_DATA_VERSION);
+        save();
+    }
+
+    private void save() {
+        persistent.put(BondKeys.ROOT, root);
     }
 
     @SubscribeEvent
     public static void onPlayerClone(PlayerEvent.Clone event) {
         CompoundTag originalPersistent = event.getOriginal().getPersistentData();
-        if (!originalPersistent.contains(ROOT_KEY)) {
+        if (!originalPersistent.contains(BondKeys.ROOT)) {
             return;
         }
-        event.getEntity().getPersistentData().put(ROOT_KEY, originalPersistent.getCompound(ROOT_KEY).copy());
+        event.getEntity().getPersistentData().put(BondKeys.ROOT, originalPersistent.getCompound(BondKeys.ROOT).copy());
     }
 
     public record MaidProfileSnapshot(
@@ -659,5 +733,14 @@ public class BondData {
         private static MaidProfileSnapshot empty() {
             return new MaidProfileSnapshot("", "", "", "", "", "", "", EmergencyRescueVoiceSettings.DEFAULT);
         }
+    }
+
+    /**
+     * prune 结果。
+     *
+     * @param removed  被删除的女仆子树数量
+     * @param retained 保留下来的女仆子树数量
+     */
+    public record PruneResult(int removed, int retained) {
     }
 }

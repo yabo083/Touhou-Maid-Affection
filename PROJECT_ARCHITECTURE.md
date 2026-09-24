@@ -29,7 +29,7 @@
 
 ### 2.1 第三方兼容层
 
-- **MaidFileManager（车万女仆档案管理器）迁移 SPI**：`com/github/touhoumaidaffection/compat/maidfm/BondMaidMigrationProvider` 实现 `io.github.zgxhzhr.maidfm.spi.MaidMigrationProvider`，把 `BondData`（挂在主人玩家 persistentData 上、不在女仆实体 NBT 内）按女仆 UUID 导出/导入。纯逻辑键名转换抽到 `MaidDataKeyCodec`（`_<uuid>` 后缀的剥离与重建），便于单测。
+- **MaidFileManager（车万女仆档案管理器）迁移 SPI**：`com/github/touhoumaidaffection/compat/maidfm/BondMaidMigrationProvider` 实现 `io.github.zgxhzhr.maidfm.spi.MaidMigrationProvider`，把 `BondData`（挂在主人玩家 persistentData 上、不在女仆实体 NBT 内）按女仆 UUID 导出/导入。导出的是 `maids.<女仆UUID>` 子树副本、导入时整体写回并刷新 `LastSeen`，对外格式始终是「base 名 → 值」的 compound，与旧版扁平键时代一致（旧导出文件仍可导入）；base 名常量集中在纯逻辑类 `BondKeys`，便于单测。
 - SPI 两个接口源文件 vendored 到 `src/main/java/io/github/zgxhzhr/maidfm/spi/`（包名不变），**仅供编译期**：`build.gradle` 的 `jar` 任务用 `exclude 'io/github/zgxhzhr/**'` 把它们排除出产物，运行期只由管理器的 jar 提供这两个类。原因是重复同名类在不同加载器/类加载器下不保证被去重，若 TMA 自带一份，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。
 - 注册入口在 mod 构造器内、紧邻 `BondAbilityManager.registerDefaults()`，并用 `ModList.get().isLoaded("maid_file_manager")` 做软依赖守卫，避免管理器缺失时类加载期解析 SPI 类型抛 `NoClassDefFoundError`。
 - 不做迁移的部分：`world/generated_morning_kiss/<uuid>/` 的 AI 台词/TTS 缓存（可再生、有 `MAID_REVISIONS` 失效机制）、玩家粒度的 `MorningKissSelectedWindowId/MaidId`、玩家 Capability/Attachment 的每日救护次数。
@@ -44,6 +44,7 @@ src/main/java/com/github/touhoumaidaffection
 ├─ ai/mimo
 ├─ bond
 │  ├─ BondData.java / BondManager.java
+│  ├─ BondKeys.java / BondDataMigration.java / BondRetention.java
 │  ├─ VoicePoolIds.java / VoicePoolSelection.java
 │  ├─ ability
 │  ├─ lap
@@ -105,7 +106,13 @@ examples/TMA-Custom-Voice-Pack
 
 `BondData` 保存玩家维度、女仆粒度的长期档案：羁绊等级、解锁能力、语音选择、早安吻计划、礼物队列、膝枕姿态等。
 
-`BondManager` 是语义化门面，屏蔽底层 persistentData key。新增持久字段应集中在 `BondData` 或相邻子结构中，避免 handler、service 或 screen 直接拼 key。
+存储布局：数据挂在主人玩家 persistentData 的 `touhou_maid_affection.bond` 根 compound 下，**女仆粒度数据按女仆嵌套**在 `maids.<女仆UUID>.<base>` 子树里，**玩家粒度数据**（`MorningKissSelectedWindowId` / `MorningKissSelectedMaidId`）留在根上。所有 base 名常量集中在纯逻辑类 `BondKeys`，不再散落字面量。
+
+根上的 `SchemaVersion` 记录存储结构版本（当前 `2`）。`BondData.of(player)` 每次读取都会检查一次；版本缺失或 `< 2` 时由纯逻辑类 `BondDataMigration` 执行一次性迁移：遍历根上的键，凡能解析为 `<base>_<女仆UUID>` 的旧扁平键，**先**把值写入 `maids.<uuid>.<base>`、**成功后再**移除旧键（先写后删，中途失败不丢数据）；玩家粒度键与无法解析的键原样保留；迁移完成后写入 `SchemaVersion=2`，因此**幂等**且可安全重入。旧存档无损升级，不需要任何手动步骤。
+
+生命周期：`maids.<uuid>.LastSeen`（epoch millis）在 `BondManager.syncMaidProfile` 时刷新。**不会**在女仆死亡 / 卸载 / 换主人时自动删除数据（TLM 的灵魂玩偶、椅子等场景会出现临时移除，自动删除会丢数据）；残留数据由显式的 `/tma bond prune [days]`（默认 90 天，权限等级 2）清理：删除 `LastSeen` 早于阈值的女仆子树，缺失 `LastSeen` 的历史数据视为过旧一并删除；`days <= 0` 表示只统计不删除。阈值判定抽在纯逻辑类 `BondRetention` 中，便于单元测试。
+
+`BondManager` 是语义化门面，屏蔽底层 persistentData key。新增持久字段应集中在 `BondData` 或相邻子结构中，避免 handler、service 或 screen 直接拼 key；新增 base 名一律加到 `BondKeys`。
 
 `bond/ability` 描述能力名称、成本、解锁条件和二级行为入口。复杂流程应放入 `bond/service`、`bond/rescue`、`bond/lap` 或 `handler`。
 
@@ -269,7 +276,7 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 - `MorningKissService`：对话与语音策略已拆出，剩余复杂度集中在自动时间窗调度和进行中任务推进；后续如继续增长，应优先分离 scheduler 与 task runner。
 - `BondMaidContainerScreen` 与二级页：页面切换、tooltip、弹窗、动态语音池、试听动作都在此附近集中。
-- `BondData`：长期状态字段持续增多，应继续收敛 key 常量与子结构。
+- `BondData`：长期状态字段持续增多；key 常量已收敛到 `BondKeys`、存储已改为按女仆嵌套，后续新增字段继续走 `BondKeys` + 女仆子树，避免回到扁平键。
 - `ai/mimo`：依赖 TLM AI 旧接口与编辑器行为，后续 TLM 升级时需要优先回归。
 
 后续重构优先级：按增长情况继续把早安吻调度器与任务执行器分离；再把羁绊页拆成更独立的 page controller 与状态对象。

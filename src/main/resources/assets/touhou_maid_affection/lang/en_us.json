@@ -181,6 +181,7 @@
   "command.touhou_maid_affection.rescue.personal.set_on": "Your personal Emergency Rescue switch has been enabled.",
   "command.touhou_maid_affection.rescue.personal.set_off": "Your personal Emergency Rescue switch has been disabled.",
   "command.touhou_maid_affection.rescue.clear.done": "Emergency rescue pool cleared, and Emergency Heal was reset to locked for %s maids.",
+  "command.touhou_maid_affection.bond.prune.done": "Pruned bond data (maids not synced for more than %s days): removed %s, kept %s.",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.done": "Cleared %s cached Morning Kiss AI voice lines.",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.maid.done": "Cleared maid %s Morning Kiss AI cache: %s entries.",
   "command.touhou_maid_affection.morning_kiss.ai_cache.clear.pool.done": "Cleared maid %s pool %s: %s entries.",
