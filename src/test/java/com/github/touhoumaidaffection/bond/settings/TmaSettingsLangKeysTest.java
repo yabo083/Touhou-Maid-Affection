@@ -39,10 +39,6 @@ class TmaSettingsLangKeysTest {
     void everyEditableSettingHasALabelAndSubtitleInBothLanguages() {
         List<String> required = new ArrayList<>();
         for (String key : TmaSettingsKeys.keys()) {
-            if (TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.INT) {
-                // Numeric rows reuse the cache-policy labels of the status tab instead of key.*.
-                continue;
-            }
             required.add(TmaSettingsKeys.labelKey(key));
             required.add(TmaSettingsKeys.subKey(key));
         }
@@ -55,6 +51,9 @@ class TmaSettingsLangKeysTest {
                 "bond.settings.prompt.legend",
                 "bond.settings.prompt.reset",
                 "bond.settings.number.tip",
+                "bond.settings.section.cache_policy",
+                "bond.settings.status.on",
+                "bond.settings.status.off",
                 "bond.settings.status.section.switches",
                 "bond.settings.status.section.languages",
                 "bond.settings.status.section.cache_policy",
@@ -66,6 +65,8 @@ class TmaSettingsLangKeysTest {
                 "bond.settings.status.switch.fallback",
                 "bond.settings.status.language.display",
                 "bond.settings.status.language.voice",
+                "bond.settings.status.language.auto.display",
+                "bond.settings.status.language.auto.voice",
                 "bond.settings.status.cache_policy.target",
                 "bond.settings.status.cache_policy.scan",
                 "bond.settings.status.cache_policy.consume"
