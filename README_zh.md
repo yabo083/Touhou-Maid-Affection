@@ -39,7 +39,7 @@
 
 在控制设置中绑定准星亲吻按键，对准自己的女仆即可亲吻；公主抱状态也有专用亲吻入口。亲吻会提升好感、播放随机亲吻音效、生成爱心粒子，并触发短暂的贴近镜头。短时间连续亲吻可触发自定义增益「少女祈祷」。潜行空手右击入口已移除，以完整保留 TLM 的坐下/站起交互。
 
-声音音量可在 `config/touhou_maid_affection-common.toml` 中调整：`cooldown.kissSoundVolume` 控制亲吻音效，`morningKissBehavior.voiceVolume` 控制早安吻语音，`emergencyRescueBehavior.volume` 控制残血救护语音与兜底音效，`voicePreview.volume` 控制羁绊页语音试听。
+声音音量可在 `config/touhou_maid_affection-common.toml` 中调整：`cooldown.kissSoundVolume` 控制亲吻音效，`morningKissBehavior.voiceVolume` 控制早安吻语音，`emergencyRescueBehavior.volume` 控制残血救护语音与兜底音效，`voicePreview.volume` 控制羁绊页语音试听。四项取值范围均为 `0.0`–`1.0` 且只做衰减：`0.0` 静音、`1.0` 保持原有响度；需要更大音量请使用 Minecraft 或系统音量。
 
 安装 CarryOn 并公主抱女仆时，可以使用专门的公主抱亲吻按键。
 

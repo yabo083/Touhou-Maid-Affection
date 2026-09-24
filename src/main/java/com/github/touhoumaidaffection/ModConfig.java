@@ -175,8 +175,9 @@ public class ModConfig {
 
         KISS_SOUND_VOLUME = builder
                 .comment("Volume multiplier for the built-in kiss sound and configured kiss sound events",
-                        "0.0 mutes kiss sounds, 1.0 is the previous default, values above 1.0 boost volume")
-                .defineInRange("kissSoundVolume", 1.0, 0.0, 4.0);
+                        "0.0 mutes kiss sounds, 1.0 keeps the original loudness; this is attenuation only,",
+                        "use Minecraft or system volume for louder playback")
+                .defineInRange("kissSoundVolume", 1.0, 0.0, 1.0);
 
         builder.pop();
 
@@ -318,8 +319,9 @@ public class ModConfig {
 
         BOND_MORNING_KISS_VOICE_VOLUME = builder
                 .comment("Volume multiplier for Morning Kiss TLM, data-pack, and AI/TTS voices",
-                        "0.0 mutes Morning Kiss voices, 1.0 is the previous default, values above 1.0 boost volume")
-                .defineInRange("voiceVolume", 1.0, 0.0, 4.0);
+                        "0.0 mutes Morning Kiss voices, 1.0 keeps the original loudness; this is attenuation only,",
+                        "use Minecraft or system volume for louder playback")
+                .defineInRange("voiceVolume", 1.0, 0.0, 1.0);
 
         BOND_MORNING_KISS_APPLY_MAIDS_PRAYER = builder
                 .comment("Apply Maid's Prayer during Morning Kiss")
@@ -485,8 +487,9 @@ public class ModConfig {
 
         BOND_EMERGENCY_RESCUE_VOLUME = builder
                 .comment("Volume multiplier for Emergency Rescue data-pack voices, TLM voices, and fallback sound events",
-                        "0.0 mutes Emergency Rescue sounds, 1.0 is the previous default, values above 1.0 boost volume")
-                .defineInRange("volume", 1.0, 0.0, 4.0);
+                        "0.0 mutes Emergency Rescue sounds, 1.0 keeps the original loudness; this is attenuation only,",
+                        "use Minecraft or system volume for louder playback")
+                .defineInRange("volume", 1.0, 0.0, 1.0);
 
         BOND_EMERGENCY_RESCUE_VIEW_X_ROT_OFFSET = builder
                 .comment("Additional X-axis rotation offset for the rescue overlay maid shown in front of the player",
@@ -711,8 +714,10 @@ public class ModConfig {
 
         VOICE_PREVIEW_VOLUME = builder
                 .comment("Volume multiplier for voice previews in the bond configuration pages",
-                        "Built-in kiss sound previews use cooldown.kissSoundVolume instead")
-                .defineInRange("volume", 1.0, 0.0, 4.0);
+                        "Built-in kiss sound previews use cooldown.kissSoundVolume instead",
+                        "0.0 mutes previews, 1.0 keeps the original loudness; this is attenuation only,",
+                        "use Minecraft or system volume for louder playback")
+                .defineInRange("volume", 1.0, 0.0, 1.0);
 
         builder.pop();
 

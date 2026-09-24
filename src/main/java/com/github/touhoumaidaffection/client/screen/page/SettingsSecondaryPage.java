@@ -8,6 +8,7 @@ import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondSlider;
+import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -54,8 +55,6 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     // ---- Values ----
     private static final String LANGUAGE_AUTO = "auto";
     private static final List<String> COMMON_LANGUAGES = List.of("zh_cn", "en_us", "ja_jp", "zh_tw", "ko_kr");
-    private static final double VOLUME_MIN = 0.0D;
-    private static final double VOLUME_MAX = 4.0D;
     private static final double VOLUME_STEP = 0.05D;
 
     private static final List<String> TOGGLE_KEYS = TmaSettingsKeys.keys().stream()
@@ -281,8 +280,8 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
                     SLIDER_ROW_HEIGHT,
                     SLIDER_LABEL_WIDTH,
                     SLIDER_VALUE_WIDTH,
-                    VOLUME_MIN,
-                    VOLUME_MAX,
+                    SoundVolumeSettings.MIN_VOLUME,
+                    SoundVolumeSettings.MAX_VOLUME,
                     VOLUME_STEP,
                     setting.configValue().get()
             ), y));

@@ -39,7 +39,7 @@ Full release history lives in [CHANGELOG.md](CHANGELOG.md).
 
 Bind the targeted kiss action in Controls and aim at an owned maid to kiss her. Princess-carried maids also have a dedicated kiss action. Kisses grant favorability, play random kiss sounds, spawn heart particles, and use a short close-up camera effect. Repeated kisses can trigger the custom Maid's Prayer effect. Sneak-right-click kissing has been removed so TLM's sit/stand interaction remains untouched.
 
-Sound volumes can be tuned in `config/touhou_maid_affection-common.toml`: `cooldown.kissSoundVolume` controls kiss sound events, `morningKissBehavior.voiceVolume` controls Morning Kiss voices, `emergencyRescueBehavior.volume` controls Emergency Rescue voices and fallback sounds, and `voicePreview.volume` controls bond-page voice previews.
+Sound volumes can be tuned in `config/touhou_maid_affection-common.toml`: `cooldown.kissSoundVolume` controls kiss sound events, `morningKissBehavior.voiceVolume` controls Morning Kiss voices, `emergencyRescueBehavior.volume` controls Emergency Rescue voices and fallback sounds, and `voicePreview.volume` controls bond-page voice previews. All four range from `0.0` to `1.0` and only attenuate — `0.0` mutes and `1.0` keeps the original loudness; use Minecraft or system volume for louder playback.
 
 When CarryOn is installed, a dedicated keybind supports kissing a princess-carried maid.
 
