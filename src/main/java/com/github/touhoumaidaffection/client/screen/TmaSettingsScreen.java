@@ -661,9 +661,10 @@ public final class TmaSettingsScreen extends Screen {
                 literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
         y = addStatusHeader(y, "bond.settings.status.section.maids");
         for (TmaAiStatusWire.MaidStatus maid : status.maids()) {
+            int totalTarget = maid.target() * Math.max(1, maid.pools().size());
             statusRows.add(new StatusRow(StatusRow.Kind.MAID, y, STATUS_MAID_HEIGHT, null,
                     literal(maid.name().isEmpty() ? maid.maidUuid() : maid.name()),
-                    literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + maid.target()),
+                    literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + totalTarget),
                     maid.maidUuid()));
             y += STATUS_MAID_HEIGHT + STATUS_ROW_GAP;
         }
