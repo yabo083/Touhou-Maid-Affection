@@ -26,12 +26,8 @@ public final class BondAbilityPrimaryPage {
     private final int secondaryButtonGap;
     private final int panelX;
     private final int panelWidth;
-    private final int adapterButtonX;
-    private final int adapterButtonY;
     private final int settingsButtonX;
     private final int settingsButtonY;
-    private static final int ADAPTER_BUTTON_WIDTH = 44;
-    private static final int ADAPTER_BUTTON_HEIGHT = 12;
     private static final int SETTINGS_BUTTON_WIDTH = 44;
     private static final int SETTINGS_BUTTON_HEIGHT = 12;
 
@@ -56,8 +52,6 @@ public final class BondAbilityPrimaryPage {
         this.secondaryButtonGap = secondaryButtonGap;
         this.panelX = panelX;
         this.panelWidth = panelWidth;
-        this.adapterButtonX = panelX + panelWidth - ADAPTER_BUTTON_WIDTH - 2;
-        this.adapterButtonY = panelY - ADAPTER_BUTTON_HEIGHT - 3;
         this.settingsButtonX = panelX + 2;
         // Kept inside the bond page frame so the screen's click routing reaches this button.
         this.settingsButtonY = panelY - SETTINGS_BUTTON_HEIGHT;
@@ -73,7 +67,6 @@ public final class BondAbilityPrimaryPage {
         boolean unlocked = host.isBondUnlocked();
         int rowLeft = panelX + 2;
 
-        renderAdapterButton(graphics, font, mouseX, mouseY);
         renderSettingsButton(graphics, font, mouseX, mouseY);
 
         listPanel.renderViewport(graphics, () -> {
@@ -89,10 +82,6 @@ public final class BondAbilityPrimaryPage {
     public boolean mouseClicked(double mouseX, double mouseY) {
         if (host.getMaid() == null) {
             return false;
-        }
-        if (isAdapterButtonHovered(mouseX, mouseY) && host.isMimoAdapterAvailable()) {
-            host.openMimoAdapterSettings();
-            return true;
         }
         if (isSettingsButtonHovered(mouseX, mouseY)) {
             host.openSettingsPage();
@@ -143,14 +132,6 @@ public final class BondAbilityPrimaryPage {
     public List<Component> getTooltip(int mouseX, int mouseY) {
         if (host.getMaid() == null) {
             return List.of();
-        }
-        if (isAdapterButtonHovered(mouseX, mouseY)) {
-            return List.of(
-                    Component.translatable("bond.mimo_adapter.title"),
-                    Component.translatable(host.isMimoAdapterAvailable()
-                            ? "bond.mimo_adapter.tip"
-                            : "bond.mimo_adapter.disabled").withStyle(ChatFormatting.GRAY)
-            );
         }
         if (isSettingsButtonHovered(mouseX, mouseY)) {
             return List.of(
@@ -321,31 +302,6 @@ public final class BondAbilityPrimaryPage {
         int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
         int textY = y + Math.max(1, (height - font.lineHeight) / 2);
         graphics.drawCenteredString(font, label, x + width / 2, textY, color);
-    }
-
-    private void renderAdapterButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        boolean enabled = host.isMimoAdapterAvailable();
-        renderActionButton(
-                graphics,
-                font,
-                adapterButtonX,
-                adapterButtonY,
-                ADAPTER_BUTTON_WIDTH,
-                ADAPTER_BUTTON_HEIGHT,
-                Component.translatable("bond.mimo_adapter.button"),
-                enabled,
-                mouseX,
-                mouseY,
-                BondGuiTokens.COLOR_ACCENT,
-                false
-        );
-    }
-
-    private boolean isAdapterButtonHovered(double mouseX, double mouseY) {
-        return mouseX >= adapterButtonX
-                && mouseX < adapterButtonX + ADAPTER_BUTTON_WIDTH
-                && mouseY >= adapterButtonY
-                && mouseY < adapterButtonY + ADAPTER_BUTTON_HEIGHT;
     }
 
     private void renderSettingsButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {

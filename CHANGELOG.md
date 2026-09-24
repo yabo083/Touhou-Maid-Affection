@@ -34,6 +34,15 @@
 - `.maid` 迁移（MaidFileManager SPI）的附加数据对外格式**不变**：仍是「base 名 → 值」的 compound（即女仆子树本身），旧导出文件仍可导入，导入后刷新 `LastSeen`。
 - 删除若干零调用者死代码：`BondData/BondManager.getUnlockedMaidModelIdsForAbility`、`BondData/BondManager.findMaidProfileByRescueProviderId`、`MorningKissGeneratedDialogueService.hasCachedLine`（两个重载）、`MorningKissGeneratedDialogueCache.isEmpty`，以及已被 `BondKeys` 取代的 `compat/maidfm/MaidDataKeyCodec`。
 
+### Removed
+- 删除 TMA 自研的 AI 站点适配层：`com.github.touhoumaidaffection.ai.mimo` 整包（`TmaMimoAdapterExtension` provider 注册、`MimoLLMSite` / `MimoTTSSite` 站点类型与 serializer、`MimoTTSFormLayout` 站点表单、`MimoLLMClient` / `MimoTTSClient` / `MimoHttp` / `MimoProtocol` / `MimoCodecHelper` 协议实现、`BoundedHttpClient` / `BoundedHttpResponse` 有界响应工具）及其单元测试（`MimoProtocolTest` 7 例、`BoundedHttpResponseTest` 3 例）。
+- 删除仅供 MiMo 站点编辑器使用的 `mixin/client/LLMSiteEditorScreenMixin`（1.20.1 分支独有的窄 mixin，用于在 TLM 站点编辑器保存后保留 `tma_mimo_chat` 类型）及其在 `touhou_maid_affection.mixins.json` 中的注册。
+- 删除 `ModConfig` 的 `tmaMimoAdapter` 配置段：`enabled` / `apiKey` / `chatUrl` / `ttsUrl` / `maxCompletionTokens` / `ttsVoicePrompt` / `ttsAudioFormat` 七项。旧 toml 里残留的 `[tmaMimoAdapter]` 键不再被定义，配置系统会直接忽略，**无需手动清理，也没有迁移代码**。
+- 删除中英文文案中的 MiMo 站点名与入口文案（各 6 个键）。
+- 羁绊页顶部不再有任何 AI 入口：原右上角「TMA AI Hub」按钮整条删除（含字段、渲染、命中测试、tooltip、`BondPrimaryPageHost#openMimoAdapterSettings` / `isMimoAdapterAvailable` 及其实现与 TLM AI hub 跳转）。左上「设置」按钮保持不变；AI 相关配置今后由 TMA 自己的设置面板承担（后续批次实现）。
+- 早安吻的 LLM/TTS 本就完全走 `maid.getAiChatManager()` 里 TLM 自己的站点，删除适配层不影响任何功能；TMA 也不再提供全局音色提示词（音色由 TLM 站点配置决定，GPT-SoVITS 站点另有其原生 prompt 字段）。
+- 旧站点条目处理：TLM 读取 `config/touhou_little_maid/sites/{llm,tts}.json` 时，`api_type` 找不到对应 serializer 的条目只记一条 error 日志并跳过（**不抛异常、不崩溃**），随后 TLM 保存站点时把该条目从文件里清掉。**实测**：删掉适配层后启动服务器，日志出现 `Unknown LLM site type: tma_mimo_chat` 与 `Unknown TTS site type: tma_mimo_tts`，服务器正常完成启动，且 `tma_mimo_chat` / `tma_mimo_tts` 两个条目已从两个 json 中消失——玩家无需手动删旧站点条目。
+
 ### Notes
 - 权限：开关与语种属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。
 - 非法请求（未知 key、非法布尔、非法语种、超长值）整包拒绝，不会部分生效。

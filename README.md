@@ -80,11 +80,11 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 
 Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, and OGG voice files. Emergency Rescue datapacks define rescue OGG voice files and a fallback sound event. The voice-pool pages can preview selected voices before saving. See [早安吻相关配置说明.md](早安吻相关配置说明.md) and the ready-to-zip sample pack in [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack).
 
-### AI And MiMo
+### AI
 
 Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. `aiDialogueLanguage` controls display text while `aiDialogueVoiceLanguage` controls spoken TTS text. They are fully independent and accept arbitrary locale codes rather than a hard-coded Chinese/Japanese pair. When they differ, TMA translates the generated lines in one ordered batch before requesting TTS, supporting combinations such as Chinese/Japanese, English/Korean, French/German, or others. These settings live in `config/touhou_maid_affection-common.toml`. Changing the language no longer requires a manual cache clear: cache reads and target checks filter by the current languages, so the cache re-warms for the new language automatically (old-language entries are kept and can be cleared with `/tma morning_kiss clear_ai_cache`); only prompt changes need that command.
 
-TMA also registers MiMo-compatible chat and TTS site types for TLM's AI settings UI. The adapter supplies provider defaults only; user API keys and enabled site state remain managed by Touhou Little Maid.
+TMA does not register its own chat/TTS providers: every LLM and TTS request (including Morning Kiss) goes through Touhou Little Maid's own AI sites, so user API keys, models, voices, and enabled state stay managed by Touhou Little Maid. AI-related configuration will move into TMA's own settings panel in a later release.
 
 ### Compatibility
 

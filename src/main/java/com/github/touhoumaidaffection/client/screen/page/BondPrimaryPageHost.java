@@ -28,8 +28,6 @@ public interface BondPrimaryPageHost {
 
     void openEmergencyRescueActionPage();
 
-    void openMimoAdapterSettings();
-
     Component getStatusText(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary);
 
     boolean isMainButtonClickable(IBondAbility ability, boolean unlocked, boolean abilityUnlocked, boolean enoughPowerPoint, boolean canUnlockNow, boolean canUseSecondary);
@@ -45,8 +43,6 @@ public interface BondPrimaryPageHost {
     boolean isEmergencyHealAbility(IBondAbility ability);
 
     boolean isRescueActionConfigAvailable();
-
-    boolean isMimoAdapterAvailable();
 
     String getRescueActionModelId();
 

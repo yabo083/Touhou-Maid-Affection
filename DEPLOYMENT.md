@@ -60,6 +60,6 @@ Windows PowerShell:
 
 ## Compatibility Policy
 
-- 对 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 站点、MiMo 采用软兼容策略。
+- 对 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 站点采用软兼容策略。
 - 缺少可选依赖或远程服务失败时，应回退到基础交互，不应导致模组不可运行。
 - 发布前至少验证一次“仅安装必需依赖”的基础运行场景，确保亲吻、羁绊页和基础能力链路正常。

@@ -12,7 +12,7 @@
 - 羁绊系统承载长期关系状态，并解锁休闲膝枕、早安吻、残血救护、随机礼物等能力。
 - 服务端是权限、归属、距离、成本、冷却、日次数和任务推进的权威来源。
 - 客户端负责缓存、GUI、按键、音频播放、渲染桥接和视觉反馈。
-- 数据包、TLM 音包、TLM AI 站点、MiMo、YSM、CarryOn 都是可选增强；缺失或失败时应降级，不应阻断主流程。
+- 数据包、TLM 音包、TLM AI 站点、YSM、CarryOn 都是可选增强；缺失或失败时应降级，不应阻断主流程。
 
 ## 2. 技术栈与发布约束
 
@@ -42,7 +42,6 @@ src/main/java/com/github/touhoumaidaffection
 ├─ TouhouMaidAffection.java
 ├─ ModConfig.java
 ├─ ModCapabilities.java / ModEffects.java / ModEntityTypes.java / ModSounds.java
-├─ ai/mimo
 ├─ bond
 │  ├─ BondData.java / BondManager.java
 │  ├─ BondKeys.java / BondDataMigration.java / BondRetention.java
@@ -91,9 +90,9 @@ examples/TMA-Custom-Voice-Pack
 
 ## 4. 启动与注册层
 
-`TouhouMaidAffection.java` 是启动门面，负责配置注册、注册表、payload、事件监听、TLM AI 扩展和 tick 入口装配。它不应承载业务规则。
+`TouhouMaidAffection.java` 是启动门面，负责配置注册、注册表、payload、事件监听和 tick 入口装配。它不应承载业务规则。
 
-`ModConfig.java` 保存全局规则、默认阈值、亲吻冷却与右键入口开关、好感收益、亲吻音效/早安吻语音/残血救护/语音试听音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻 AI/TTS 运行时开关、提示词、显示语言与配音语言、扫描频率、缓存策略、MiMo 默认值与兼容项。它不保存玩家或女仆的运行结果。
+`ModConfig.java` 保存全局规则、默认阈值、亲吻冷却与右键入口开关、好感收益、亲吻音效/早安吻语音/残血救护/语音试听音量、随机礼物池策略、残血救护绝对/百分比阈值、早安吻 AI/TTS 运行时开关、提示词、显示语言与配音语言、扫描频率、缓存策略。它不保存玩家或女仆的运行结果。
 
 注册层的原则是“装配而非决策”：具体触发条件、资源解析、能力逻辑和错误回退应下放到 handler、service 或领域对象。
 
@@ -184,16 +183,14 @@ examples/TMA-Custom-Voice-Pack
 
 `TmaSettingsScreen` 是与女仆无关的全局设置面板，作为**独立 Screen** 从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage` 内部改为 `Minecraft#setScreen(new TmaSettingsScreen(this))`，不走 `BondSecondaryPageRegistry` 的能力页流程）：面板不再嵌在女仆 GUI 内，而是自带全屏压暗背景的独立窗口，关闭（footer「完成」/ESC/点击压暗区）时 `setScreen` 回来源界面。模态框比其它二级页宽且高（300×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航轨内一条装饰藤蔓（`textures/gui/rose_vine.png`，素材 132×165、按 44×55 绘制、水平居中于导航轨、茎根落在面板底边上且整株在面板内）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。白名单为 **7 个开关 + 2 个语种 = 9 项**：面板语种只暴露「文本语种」（`morning_kiss.display_language`）与「配音语种」（`morning_kiss.voice_language`）；AI 专用语种 `morningKissBehavior.aiDialogueLanguage` / `aiDialogueVoiceLanguage` 仍是有效的 toml 配置（AI 语言解析逻辑不变），但已不再出现在面板白名单里，需要时请手改 toml。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）；展开的下拉弹层不做面板内容区裁剪，而是夹在屏幕范围内——向下会溢出屏幕底部时翻到表头之上渲染，命中测试/高亮/点击与实际渲染位置一致，所有条目可达。
 
-## 11. AI / MiMo 适配层
+## 11. AI 集成
 
-`ai/mimo` 是 MiMo 协议适配层，通过 TLM 扩展入口注册 `tma_mimo_chat` 与 `tma_mimo_tts`：
+早安吻的 LLM/TTS 一律使用车万女仆自己的 AI 站点（TLM 原生支持类 OpenAI 站点）；TMA 不再注册自己的 provider，也不提供站点表单。语音音色由 TLM 站点配置决定（voice/model；GPT-SoVITS 站点另有其原生的 prompt 字段）：
 
-- LLM 侧复用 TLM OpenAI 站点编辑器的表单体验，但实际请求由 `MimoLLMClient` 发起。
-- `LLMSiteEditorScreenMixin` 只解决 TLM 编辑器保存后站点类型被普通 OpenAI 类型覆盖的问题，作用域必须保持窄。
-- TTS 侧实现 TLM 的 TTS 接口，解析 MiMo chat-completions 风格响应中的 base64 音频后交给 TLM/TMA 播放链路；从 `TTSConfig.language` 传入的语言必须写入请求体与 voice prompt，避免回落到 TLM 站点默认语种。
-- `BoundedHttpClient` / `BoundedHttpResponse` 在字节进入字符串缓冲前执行响应上限；TTS 还会在 Base64 解码前后复核音频大小，错误正文只传递有界摘要。
-- MiMo TTS 默认请求 MP3；远程响应会被格式校验，不能把不可播放格式塞进客户端队列。
-- API key、站点启用状态、站点保存仍由 TLM 管理；TMA 只提供站点类型、默认 URL、默认模型、格式和羁绊页跳转入口。
+- 早安吻的台词生成与 TTS 请求全部走 `maid.getAiChatManager()` 内 TLM 自己的站点选择，TMA 不介入协议层。
+- 羁绊页不再提供 AI 入口按钮：原右上角按钮已整条删除，AI 相关配置今后由 TMA 自己的设置面板承担（后续批次实现）。
+- API key、启用状态与站点保存全部由 TLM 管理（`config/touhou_little_maid/sites/*.json`）。
+- 旧版 TMA 注册过的 `tma_mimo_chat` / `tma_mimo_tts` 站点条目在 TLM 读取时因缺少对应 serializer 被跳过（仅记 error 日志），随后 TLM 保存站点时即被清除；无需玩家手动删除。
 
 TMA 不接管 TLM STT，也不把远程服务失败变成阻断错误。
 
@@ -280,6 +277,5 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `MorningKissService`：对话与语音策略已拆出，剩余复杂度集中在自动时间窗调度和进行中任务推进；后续如继续增长，应优先分离 scheduler 与 task runner。
 - `BondMaidContainerScreen` 与二级页：页面切换、tooltip、弹窗、动态语音池、试听动作都在此附近集中。
 - `BondData`：长期状态字段持续增多；key 常量已收敛到 `BondKeys`、存储已改为按女仆嵌套，后续新增字段继续走 `BondKeys` + 女仆子树，避免回到扁平键。
-- `ai/mimo`：依赖 TLM AI 旧接口与编辑器行为，后续 TLM 升级时需要优先回归。
 
 后续重构优先级：按增长情况继续把早安吻调度器与任务执行器分离；再把羁绊页拆成更独立的 page controller 与状态对象。
