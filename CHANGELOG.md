@@ -8,6 +8,21 @@
 - `Fixed`：缺陷修复
 - `Removed`：移除内容
 
+## [1.7.5.0] - 2026-09-24
+
+### Added
+- 新增游戏内「全局设置」面板：在羁绊页顶部左侧新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、AI 早安吻语种（显示语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–4.0 步进 0.05）。无需再手改 toml。
+- 新增服务端权威设置同步通道：`TmaSettingsRequestPayload`（C2S，空列表表示只读状态）与 `TmaSettingsStatePayload`（S2C，回推全部白名单键的当前值与 `canEdit`）。面板里的开关与语种由服务端校验、应用并回推，单人存档与多人服务器行为一致。
+- 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
+
+### Changed
+- 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。
+
+### Notes
+- 权限：开关与语种属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。
+- 非法请求（未知 key、非法布尔、非法语种、超长值）整包拒绝，不会部分生效。
+- 语种下拉框只提供 `auto` 与常见 locale，当前值若不在列表里会动态补上；`tlm` / `inherit` / `default` 仍是合法值（会作为当前值显示），但不在下拉候选中，需要时请改 toml。
+
 ## [1.7.4.0] - 2026-09-24
 
 ### Added

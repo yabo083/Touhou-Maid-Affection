@@ -15,6 +15,7 @@ import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.VoicePreviewRequestHandler;
+import com.github.touhoumaidaffection.handler.TmaSettingsRequestHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
@@ -31,6 +32,8 @@ import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.RescueActionConfigPayload;
 import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
+import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
+import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
 import net.neoforged.bus.api.IEventBus;
@@ -171,6 +174,16 @@ public class TouhouMaidAffection {
                 LapPillowAngleLockPayload.TYPE,
                 LapPillowAngleLockPayload.STREAM_CODEC,
                 LapPillowAngleLockHandler::handle
+        );
+        registrar.playToServer(
+                TmaSettingsRequestPayload.TYPE,
+                TmaSettingsRequestPayload.STREAM_CODEC,
+                TmaSettingsRequestHandler::handle
+        );
+        registrar.playToClient(
+                TmaSettingsStatePayload.TYPE,
+                TmaSettingsStatePayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleSettingsState
         );
     }
 }

@@ -64,6 +64,8 @@ Random Gift uses the curated `touhou_maid_affection:bond_random_gift_pool` item 
 
 The server remains authoritative for unlocks, costs, distance checks, cooldowns, and ability execution. The client UI is a display and configuration surface.
 
+Since `1.7.5.0` the bond page has a **Settings** button in the top-left corner: common settings can now be changed in game — feature switches (Morning Kiss, proactive Morning Kiss, AI dialogue, AI voice, Emergency Rescue, Random Gift, Maid's Prayer buff), the Morning Kiss display and voice languages, and four volume sliders. Switches and languages are server-authoritative, so on a dedicated server only operators may change them (everyone else is read-only); the volumes are client-side and apply as soon as you drag them.
+
 ### Custom Dialogue And Voices
 
 Version `1.7.2+` adds datapack-driven voice pools:

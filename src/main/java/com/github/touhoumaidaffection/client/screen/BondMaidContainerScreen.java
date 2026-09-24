@@ -21,6 +21,7 @@ import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPage;
 import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageHost;
 import com.github.touhoumaidaffection.client.screen.page.BondSecondaryPageRegistry;
 import com.github.touhoumaidaffection.client.screen.page.RescueActionSecondaryPage;
+import com.github.touhoumaidaffection.client.screen.page.SettingsSecondaryPage;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
@@ -291,6 +292,12 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
             closeSecondaryPage();
             secondaryPage = nextPage;
         }
+    }
+
+    @Override
+    public void openSettingsPage() {
+        closeSecondaryPage();
+        secondaryPage = new SettingsSecondaryPage(this);
     }
 
     @Override

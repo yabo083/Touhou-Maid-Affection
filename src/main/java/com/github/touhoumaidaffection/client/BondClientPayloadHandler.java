@@ -7,6 +7,7 @@ import com.github.touhoumaidaffection.network.BondStateSyncPayload;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
+import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -72,5 +73,9 @@ public final class BondClientPayloadHandler {
 
     public static void handleVoicePreviewDataPackPlay(VoicePreviewDataPackPlayPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> VoicePreviewPlayback.playDataPackVoice(payload));
+    }
+
+    public static void handleSettingsState(TmaSettingsStatePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> TmaSettingsClientState.applyState(payload));
     }
 }
