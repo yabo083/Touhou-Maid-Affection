@@ -1097,9 +1097,10 @@ public void renderBackground(GuiGraphics graphics) {
                 labelTop, resetLeft - STATUS_DOT_GAP - LABEL_CONTROL_GAP);
         int resetTop = labelTop + (PROMPT_LABEL_BLOCK - TEXT_BUTTON_HEIGHT) / 2;
         boolean resetHovered = within(mouseX, mouseY, resetLeft, resetWidth, resetTop, TEXT_BUTTON_HEIGHT);
-        // Safety net for the batching order documented in render(): while a dropdown list is open it
-        // covers this row, so the button is skipped entirely instead of relying on flush semantics.
-        if (!isAnyDropdownExpanded()) {
+        // Safety net for the batching order documented in render(): when an open list really covers
+        // this row the button is skipped instead of relying on flush semantics. Lists that do not
+        // reach this row (e.g. the first language dropdown) leave the button untouched.
+        if (!isCoveredByExpandedDropdown(resetLeft, resetTop, resetLeft + resetWidth, resetTop + TEXT_BUTTON_HEIGHT)) {
             drawTextButton(graphics, font, Component.translatable("bond.settings.prompt.reset"), resetLeft, resetTop,
                     resetWidth, resetHovered, TmaSettingsClientState.canEdit());
         }
@@ -1510,10 +1511,10 @@ public void renderBackground(GuiGraphics graphics) {
         );
     }
 
-    /** True while any language dropdown list is expanded (its overlay covers the prompt row). */
-    private boolean isAnyDropdownExpanded() {
+    /** True when an expanded language list actually covers the given rectangle. */
+    private boolean isCoveredByExpandedDropdown(int left, int top, int right, int bottom) {
         for (LanguageRow row : languages) {
-            if (row.dropdown.isExpanded()) {
+            if (row.dropdown.overlayCovers(left, top, right, bottom, row.options.size())) {
                 return true;
             }
         }
