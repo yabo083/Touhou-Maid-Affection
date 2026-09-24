@@ -22,6 +22,7 @@
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
 ### Fixed
+- 修复设置面板下拉弹层被下层控件文字穿透（「恢复默认」浮在展开的列表之上）：根因是 `GuiGraphics` 把填充与文字分入不同 render type 缓冲、同帧按创建顺序刷出（填充先、文字后），于是先画的文字会盖住后画的填充。修法：画弹层前 `graphics.flush()` 先把此前的填充+文字落地、弹层底色改为不透明，并在弹层矩形**确实覆盖**某控件时跳过绘制该控件（`BondDropdown#overlayCovers` 判定，未覆盖时控件照常显示）。
 - 修复「状态」tab「按女仆」行的池计数渲染成原始 key `bond.settings.status.pool.general`：lang 文件缺 `GENERAL` 池的键，现已补齐中英两语言；并新增回归测试 `TmaSettingsLangKeysTest`，逐一遍历 `DialoguePool` 的全部取值断言中英 lang 都存在 `bond.settings.status.pool.<小写枚举名>`，同时断言每个可编辑键的 `bond.settings.key.*` / `bond.settings.sub.*` 与状态页相关键存在（缺键时直接测试失败，而不是等到界面上露出原始 key）。
 - 修复「状态」tab 行内文本压到「清空」按钮下面的问题：只读值行与女仆行一律在「控件左边界 − 间距」处用 `clip(...)` 截断并补省略号（女仆行拆成名字列 + 右对齐的计数列），长值（`24 (18 / 6)`、`3 / 1 / 42`、`早 9 · 晚 9 · 通用 0 · 18/12`）不再与控件重叠。
 - 修复「语音」tab 占位符图例被截断（原可用宽度仅 218px，中英文案分别需 309px / 348px）：图例改为独占一整行、使用内容区整宽 270px，文案缩短为 `{maid} 女仆 · {player} 玩家 · {pool} 时段 · {time} 允许时段`（260px）与 `{maid} maid · {player} player · {pool} pool · {time} range`（261px），中英双语都完整显示；「恢复默认」按钮移到上方标签行右对齐。
@@ -62,6 +63,7 @@
 - 旧站点条目处理：TLM 读取 `config/touhou_little_maid/sites/{llm,tts}.json` 时，`api_type` 找不到对应 serializer 的条目只记一条 error 日志并跳过（**不抛异常、不崩溃**），随后 TLM 保存站点时把该条目从文件里清掉。**实测**：删掉适配层后启动服务器，日志出现 `Unknown LLM site type: tma_mimo_chat` 与 `Unknown TTS site type: tma_mimo_tts`，服务器正常完成启动，且 `tma_mimo_chat` / `tma_mimo_tts` 两个条目已从两个 json 中消失——玩家无需手动删旧站点条目。
 
 ### Notes
+- MaidFileManager **1.4.0 已正式发布**（GitHub Releases，fabric/forge/neoforge 四产物）：官方 SPI 与我们所 vendored 的版本**逐字节一致**，集成无需改动；官方把 `.maid` 格式版本从 5 升到 6，但迁移只作用于女仆实体 NBT，`extras`（我们的羁绊数据）不受影响，旧 v5 导出文件仍可导入。两实例已把自建 1.4.0 换成官方产物。
 - 权限：开关、语种与缓存策略属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。
 - 非法请求（未知 key、非法布尔、非法语种、超长值）整包拒绝，不会部分生效。
 - 语种下拉框只提供 `auto` 与常见 locale，当前值若不在列表里会动态补上；旧关键字 `tlm` / `inherit` / `default` 仍是合法值（服务端原样存储、语义等价 `auto`），但面板与状态页显示归一化后的 `auto`，不再作为候选条目出现。

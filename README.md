@@ -65,7 +65,7 @@ Random Gift uses the curated `touhou_maid_affection:bond_random_gift_pool` item 
 
 The server remains authoritative for unlocks, costs, distance checks, cooldowns, and ability execution. The client UI is a display and configuration surface.
 
-Since `1.7.5.0` the bond page has a **Settings** button in the top-left corner: common settings can now be changed in game — feature switches (Morning Kiss, proactive Morning Kiss, AI dialogue, AI voice, Emergency Rescue, Random Gift, Maid's Prayer buff), the Morning Kiss display and voice languages, and four volume sliders. Switches and languages are server-authoritative, so on a dedicated server only operators may change them (everyone else is read-only); the volumes are client-side and apply as soon as you drag them.
+Since `1.7.5.0` the bond page has a **Settings** button in its top-right corner (the slot the old AI Hub button used): the panel opens as a standalone window with four tabs — **Status** (read-only port of `/tma morning_kiss status` plus per-maid cache rows with a clear action), **Features** (feature switches plus the AI cache policy: per-pool target, scan interval, consume-on-use), **Voice** (text/voice language, the editable dialogue prompt) and **Volume** (four sliders). Switches and languages are server-authoritative, so on a dedicated server only operators may change them (everyone else is read-only); the volumes are client-side and apply as soon as you drag them.
 
 ### Custom Dialogue And Voices
 
@@ -84,7 +84,7 @@ Morning Kiss datapacks can define static dialogue pools, kiss sound behavior, an
 
 Morning Kiss can optionally use TLM AI sites to pre-generate dialogue and TTS audio. `displayLanguage` controls the text language (data-pack dialogue and generated dialogue) while `voiceLanguage` controls the spoken language (data-pack voices and generated TTS). Both accept an arbitrary locale code rather than a hard-coded Chinese/Japanese pair; `auto` follows the game language for text and the maid's Touhou Little Maid AI language settings for voice. When the two differ, TMA translates the generated lines in one ordered batch before requesting TTS, supporting combinations such as Chinese/Japanese, English/Korean, French/German, or others. These settings live in `config/touhou_maid_affection-common.toml`. Changing the language no longer requires a manual cache clear: cache reads and target checks filter by the current languages, so the cache re-warms for the new language automatically (old-language entries are kept and can be cleared with `/tma morning_kiss clear_ai_cache`); only prompt changes need that command.
 
-TMA does not register its own chat/TTS providers: every LLM and TTS request (including Morning Kiss) goes through Touhou Little Maid's own AI sites, so user API keys, models, voices, and enabled state stay managed by Touhou Little Maid. AI-related configuration will move into TMA's own settings panel in a later release.
+TMA does not register its own chat/TTS providers: every LLM and TTS request (including Morning Kiss) goes through Touhou Little Maid's own AI sites, so user API keys, models, voices, and enabled state stay managed by Touhou Little Maid. AI **sites** (URL, key, model, voice) stay in Touhou Little Maid's own AI settings — the Voice tab has a single button that opens it — while the Morning Kiss dialogue prompt is editable directly in TMA's panel.
 
 ### Compatibility
 
