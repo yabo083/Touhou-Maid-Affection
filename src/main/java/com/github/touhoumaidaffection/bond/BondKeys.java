@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.bond;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -96,6 +97,28 @@ public final class BondKeys {
     // ---- 玩家粒度键（始终留在根上，无 UUID 后缀）----
     public static final String MORNING_KISS_SELECTED_WINDOW_ID = "MorningKissSelectedWindowId";
     public static final String MORNING_KISS_SELECTED_MAID_ID = "MorningKissSelectedMaidId";
+
+    /**
+     * 运行态 / 调度键：会话或世界相关的绝对挂钟毫秒或游戏刻，以及本地记账。
+     *
+     * <p>这些值只在产生它的会话/存档里有意义：礼物计时（{@code RandomGiftLast*}）与早安吻窗口标记
+     * （{@code MorningKissScheduled*} / {@code MorningKissLast*Window} / {@code MorningKissLastAutoAttemptGameTime}）
+     * 都是「上次何时发生」的绝对时间，{@code LastSeen} 是本地 prune 记账（导入时会刷新）。
+     * 若随 {@code .maid} 迁到另一只女仆或另一个存档，会带上别处的会话时间戳，
+     * 导致新女仆的礼物计时或「今天是否已亲过」判定被污染。因此它们不参与迁移。
+     *
+     * <p>{@link #RANDOM_GIFT_QUEUE} 不在其中：那是待发礼物的耐久状态，属于画像，应当随女仆迁移。
+     */
+    public static final Set<String> RUNTIME_KEYS = Set.of(
+            RANDOM_GIFT_LAST_WALL_CLOCK,
+            RANDOM_GIFT_LAST_DELIVERY,
+            RANDOM_GIFT_LAST_INTERVAL_MINUTES,
+            MORNING_KISS_SCHEDULED_WINDOW,
+            MORNING_KISS_SCHEDULED_ATTEMPT_TICK,
+            MORNING_KISS_LAST_AUTO_ATTEMPT_GAME_TIME,
+            MORNING_KISS_LAST_SUCCESS_WINDOW,
+            MORNING_KISS_LAST_FAILED_WINDOW,
+            LAST_SEEN_KEY);
 
     private BondKeys() {
     }

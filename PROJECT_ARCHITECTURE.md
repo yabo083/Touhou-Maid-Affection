@@ -30,6 +30,7 @@
 ### 2.1 第三方兼容层
 
 - **MaidFileManager（车万女仆档案管理器）迁移 SPI**：`com/github/touhoumaidaffection/compat/maidfm/BondMaidMigrationProvider` 实现 `io.github.zgxhzhr.maidfm.spi.MaidMigrationProvider`，把 `BondData`（挂在主人玩家 persistentData 上、不在女仆实体 NBT 内）按女仆 UUID 导出/导入。导出的是 `maids.<女仆UUID>` 子树副本、导入时整体写回并刷新 `LastSeen`，对外格式始终是「base 名 → 值」的 compound，与旧版扁平键时代一致（旧导出文件仍可导入）；base 名常量集中在纯逻辑类 `BondKeys`，便于单测。
+- **迁移边界：画像随迁、运行态不随迁**：`exportMaidData` 取子树副本后剔除 `BondKeys.RUNTIME_KEYS`（见 6）与空字符串值；`importMaidData` 防御性再剔一遍（旧 `.maid` 文件里可能带着运行态键），然后**整体替换**目标子树（源里没有的键在目标上即为缺失，因此导入仍能清掉多余值）并刷新 `LastSeen`。理由：运行态键是会话/世界相关的绝对时间，随 `.maid` 迁到另一只女仆或另一个存档会带上别处的会话时间戳，导致新女仆的礼物计时或「今天是否已亲过」判定被污染。导入仍是整体替换语义，不是合并。
 - SPI 两个接口源文件 vendored 到 `src/main/java/io/github/zgxhzhr/maidfm/spi/`（包名不变），**仅供编译期**：`build.gradle` 的 `jar` 任务用 `exclude 'io/github/zgxhzhr/**'` 把它们排除出产物，运行期只由管理器的 jar 提供这两个类。原因是重复同名类在不同加载器/类加载器下不保证被去重，若 TMA 自带一份，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。
 - 注册入口在 mod 构造器内、紧邻 `BondAbilityManager.registerDefaults()`，并用 `ModList.get().isLoaded("maid_file_manager")` 做软依赖守卫，避免管理器缺失时类加载期解析 SPI 类型抛 `NoClassDefFoundError`。
 - 不做迁移的部分：`world/generated_morning_kiss/<uuid>/` 的 AI 台词/TTS 缓存（可再生、有 `MAID_REVISIONS` 失效机制）、玩家粒度的 `MorningKissSelectedWindowId/MaidId`、玩家 Capability/Attachment 的每日救护次数。
@@ -107,6 +108,8 @@ examples/TMA-Custom-Voice-Pack
 `BondData` 保存玩家维度、女仆粒度的长期档案：羁绊等级、解锁能力、语音选择、早安吻计划、礼物队列、膝枕姿态等。
 
 存储布局：数据挂在主人玩家 persistentData 的 `touhou_maid_affection.bond` 根 compound 下，**女仆粒度数据按女仆嵌套**在 `maids.<女仆UUID>.<base>` 子树里，**玩家粒度数据**（`MorningKissSelectedWindowId` / `MorningKissSelectedMaidId`）留在根上。所有 base 名常量集中在纯逻辑类 `BondKeys`，不再散落字面量。
+
+**画像 vs 运行态**：`BondKeys.RUNTIME_KEYS` 集中列出会话/世界相关的运行态与调度键——礼物计时（`RandomGiftLastWallClock` / `RandomGiftLastDelivery` / `RandomGiftLastIntervalMinutes`）、早安吻窗口标记（`MorningKissScheduledWindow` / `MorningKissScheduledAttemptTick` / `MorningKissLastAutoAttemptGameTime` / `MorningKissLastSuccessWindow` / `MorningKissLastFailedWindow`）与本地 prune 记账 `LastSeen`。它们都是「上次何时发生」的绝对挂钟毫秒或游戏刻，只在产生它的会话/存档里有意义，因此**不参与 `.maid` 迁移**（详见 2.1）。待发礼物队列 `RandomGiftQueue` 不在其中：那是耐久状态，属于画像，随女仆迁移。空字符串值也不落盘/不导出（这些键的 getter 缺省值本就是空串，不写入与写空串读取等价）。
 
 根上的 `SchemaVersion` 记录存储结构版本（当前 `2`）。`BondData.of(player)` 每次读取都会检查一次；版本缺失或 `< 2` 时由纯逻辑类 `BondDataMigration` 执行一次性迁移：遍历根上的键，凡能解析为 `<base>_<女仆UUID>` 的旧扁平键，**先**把值写入 `maids.<uuid>.<base>`、**成功后再**移除旧键（先写后删，中途失败不丢数据）；玩家粒度键与无法解析的键原样保留；迁移完成后写入 `SchemaVersion=2`，因此**幂等**且可安全重入。旧存档无损升级，不需要任何手动步骤。
 
