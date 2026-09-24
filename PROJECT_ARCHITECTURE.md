@@ -154,7 +154,7 @@ examples/TMA-Custom-Voice-Pack
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮行、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（34×24 RGBA）是纯装饰资源，只在设置面板侧栏底部绘制，不接收鼠标事件。
+`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（44×55 RGBA）是纯装饰资源，只在设置面板侧栏底部绘制，不接收鼠标事件。
 
 语音配置页是动态语音池页面：
 
@@ -172,7 +172,7 @@ examples/TMA-Custom-Voice-Pack
 
 `BondMaidGuiTabHandler` 运行时扫描可用 tab 位置，降低与 TLM 或其他扩展页签冲突。
 
-`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽（216×150，`BondGuiTokens.SETTINGS_MODAL_WIDTH`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部留白区绘制装饰藤蔓（`textures/gui/rose_vine.png`，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
+`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽且高（216×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部留白区绘制装饰藤蔓（`textures/gui/rose_vine.png`，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
 
 ## 11. AI / MiMo 适配层
 

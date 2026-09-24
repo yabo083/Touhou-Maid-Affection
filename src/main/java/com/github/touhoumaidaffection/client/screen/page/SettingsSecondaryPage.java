@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Global (maid independent) settings panel.
  *
- * <p>Layout follows the reviewed mockup: a 216x150 modal with a 46px navigation rail (features /
+ * <p>Layout follows the reviewed mockup: a 216x188 modal with a 46px navigation rail (features /
  * voice / volume) and one section per tab. Feature switches and languages are server-authoritative
  * and go through the settings channel, while the volume sliders are pure client preferences
  * written straight into the local config. Every control applies instantly; the rail bottom hosts a
@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SettingsSecondaryPage implements BondSecondaryPage {
     // ---- Modal geometry ----
     private static final int MODAL_WIDTH = BondGuiTokens.SETTINGS_MODAL_WIDTH;
-    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
+    private static final int MODAL_HEIGHT = BondGuiTokens.SETTINGS_MODAL_HEIGHT;
 
     // ---- Navigation rail ----
     private static final int NAV_WIDTH = 46;
@@ -48,8 +48,8 @@ public final class SettingsSecondaryPage implements BondSecondaryPage {
     private static final int NAV_TAB_TEXT_LEFT = 8;
     private static final int NAV_SELECTED_BAR_WIDTH = 2;
     private static final int NAV_HOVER_BG = 0x14FFFFFF;
-    private static final int NAV_VINE_WIDTH = 34;
-    private static final int NAV_VINE_HEIGHT = 24;
+    private static final int NAV_VINE_WIDTH = 44;
+    private static final int NAV_VINE_HEIGHT = 55;
     private static final int NAV_VINE_BOTTOM_MARGIN = 6;
 
     // ---- Content layout ----

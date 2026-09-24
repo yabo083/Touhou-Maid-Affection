@@ -34,6 +34,8 @@ public final class BondGuiTokens {
     public static final int SECONDARY_MODAL_HEIGHT = 150;
     /** Wider modal used by the settings panel so it can host the 46px navigation rail. */
     public static final int SETTINGS_MODAL_WIDTH = 216;
+    /** Taller modal used by the settings panel: the rail must fit three tabs plus the 44x55 vine. */
+    public static final int SETTINGS_MODAL_HEIGHT = 188;
 
     public static final int COLOR_BG_OVERLAY = 0xAA120D09;
     public static final int COLOR_BG_PANEL = 0xF52E241C;
