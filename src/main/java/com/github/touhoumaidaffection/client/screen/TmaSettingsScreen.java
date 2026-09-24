@@ -279,6 +279,10 @@ public void renderBackground(GuiGraphics graphics) {
 
         renderScrollbar(graphics, viewportTop, viewportBottom);
         renderNav(graphics, font, mouseX, mouseY);
+        // GuiGraphics batches fills and text into separate buffers that are flushed in creation
+        // order, so text drawn earlier would still float above a later fill. Commit everything
+        // before painting the overlay so an expanded list really covers the controls underneath.
+        graphics.flush();
         // Dropdown overlays are drawn after every other element and are clamped to the screen, never
         // to the panel content viewport, so an expanded list is always fully visible.
         renderDropdownOverlays(graphics, font, mouseX, mouseY);
