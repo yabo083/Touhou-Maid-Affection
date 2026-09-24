@@ -135,8 +135,26 @@ jobs:
           echo "jar_path=$JAR_PATH" >> "$GITHUB_OUTPUT"
           echo "Resolved jar: $JAR_PATH"
 
-      - name: Publish to CurseForge
+      - name: Check CurseForge existing file
+        id: cfcheck
+        shell: bash
         if: ${{ env.CURSEFORGE_TOKEN != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        run: |
+          JAR_NAME="$(basename '${{ steps.release_jar.outputs.jar_path }}')"
+          EXISTING="$(curl -sS -H "x-api-key: $CURSEFORGE_TOKEN" \
+            "https://api.curseforge.com/v1/mods/${{ vars.CURSEFORGE_PROJECT_ID }}/files?pageSize=50" \
+            | jq -r --arg n "$JAR_NAME" '.data[]? | select((.fileName // .displayName // .name) == $n) | .id' | head -n1)"
+          if [ -n "$EXISTING" ]; then
+            echo "CurseForge 已有 $JAR_NAME（id=$EXISTING），跳过上传"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to CurseForge
+        if: ${{ steps.cfcheck.outputs.skip != 'true' && env.CURSEFORGE_TOKEN != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           files: ${{ steps.release_jar.outputs.jar_path }}
