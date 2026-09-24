@@ -22,6 +22,9 @@ import java.util.UUID;
 
 @EventBusSubscriber(modid = com.github.touhoumaidaffection.TouhouMaidAffection.MOD_ID)
 public final class RescueCommand {
+    /** `/tma bond prune` 未指定天数时使用的默认保留天数。 */
+    private static final int DEFAULT_BOND_PRUNE_DAYS = 90;
+
     private RescueCommand() {
     }
 
@@ -46,6 +49,14 @@ public final class RescueCommand {
                         .then(Commands.literal("reset")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(context -> clearPoolAndResetUnlock(context.getSource()))))
+                .then(Commands.literal("bond")
+                        .then(Commands.literal("prune")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(context -> pruneBondData(context.getSource(), DEFAULT_BOND_PRUNE_DAYS))
+                                .then(Commands.argument("days", IntegerArgumentType.integer(0))
+                                        .executes(context -> pruneBondData(
+                                                context.getSource(),
+                                                IntegerArgumentType.getInteger(context, "days"))))))
                 .then(Commands.literal("morning_kiss")
                         .executes(context -> showMorningKissStatus(context.getSource()))
                         .then(Commands.literal("status")
@@ -174,6 +185,21 @@ public final class RescueCommand {
                 true
         );
         return resetCount;
+    }
+
+    /**
+     * `/tma bond prune [days]`：清理执行者自己的羁绊数据里过旧的女仆子树。
+     * {@code days <= 0} 表示不删除任何数据（只统计）。
+     */
+    private static int pruneBondData(CommandSourceStack source, int days) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        BondData.PruneResult result = BondData.of(player).pruneStaleMaids(System.currentTimeMillis(), days);
+        source.sendSuccess(
+                () -> Component.translatable("command.touhou_maid_affection.bond.prune.done",
+                        days, result.removed(), result.retained()),
+                true
+        );
+        return result.removed();
     }
 
     private static int clearMorningKissAiCache(CommandSourceStack source) {

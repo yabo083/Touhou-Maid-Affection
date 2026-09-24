@@ -119,12 +119,6 @@ public final class MorningKissGeneratedDialogueService {
         return CACHE.peekRandom(maidUuid, pool, random, targetTextLanguage, targetVoiceLanguage);
     }
 
-    static boolean hasCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
-                                 String targetTextLanguage, String targetVoiceLanguage) {
-        return CACHE.countMatching(maidUuid, pool, targetTextLanguage, targetVoiceLanguage) > 0
-                || CACHE.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, targetTextLanguage, targetVoiceLanguage) > 0;
-    }
-
     private static void scanPlayer(ServerPlayer player) {
         int scanDistance = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_SCAN_DISTANCE.get();
         List<EntityMaid> nearbyMaids = player.serverLevel().getEntitiesOfClass(
@@ -595,10 +589,6 @@ public final class MorningKissGeneratedDialogueService {
 
     static Optional<MorningKissGeneratedDialogueCache.Entry> pollCachedLine(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
         return pollCachedLine(maid.getUUID(), pool, random, resolveChatLanguage(maid), resolveVoiceTextLanguage(maid));
-    }
-
-    static boolean hasCachedLine(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool) {
-        return hasCachedLine(maid.getUUID(), pool, resolveChatLanguage(maid), resolveVoiceTextLanguage(maid));
     }
 
     public static int clearCache() {
