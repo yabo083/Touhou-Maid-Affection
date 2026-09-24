@@ -59,6 +59,7 @@ class TmaSettingsLangKeysTest {
                 "bond.settings.status.section.cache_policy",
                 "bond.settings.status.section.cache_stats",
                 "bond.settings.status.section.maids",
+                "bond.settings.status.maid.unknown",
                 "bond.settings.status.switch.morning_kiss",
                 "bond.settings.status.switch.ai_dialogue",
                 "bond.settings.status.switch.ai_tts",

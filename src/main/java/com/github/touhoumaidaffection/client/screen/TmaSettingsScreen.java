@@ -832,7 +832,8 @@ public final class TmaSettingsScreen extends Screen {
                 literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
         y = addStatusHeader(y, "bond.settings.status.section.maids");
         List<TmaAiStatusWire.MaidStatus> maids = status.maids();
-        List<String> maidLabels = TmaMaidLabels.displayLabels(maids);
+        List<String> maidLabels = TmaMaidLabels.displayLabels(maids,
+                Component.translatable("bond.settings.status.maid.unknown").getString());
         for (int index = 0; index < maids.size(); index++) {
             TmaAiStatusWire.MaidStatus maid = maids.get(index);
             int totalTarget = maid.target() * Math.max(1, maid.pools().size());
