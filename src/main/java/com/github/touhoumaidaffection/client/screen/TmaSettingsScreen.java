@@ -67,11 +67,11 @@ public final class TmaSettingsScreen extends Screen {
     private static final int NAV_SELECTED_BAR_WIDTH = 2;
     private static final int NAV_HOVER_BG = 0x14FFFFFF;
     /** On-screen size the vine is drawn at; the source texture is {@code NAV_VINE_TEXTURE_*}. */
-    private static final int NAV_VINE_WIDTH = 44;
-    private static final int NAV_VINE_HEIGHT = 55;
-    /** High resolution source texture (132x165), blitted down to {@link #NAV_VINE_WIDTH} x {@link #NAV_VINE_HEIGHT}. */
-    private static final int NAV_VINE_TEXTURE_WIDTH = 132;
-    private static final int NAV_VINE_TEXTURE_HEIGHT = 165;
+    private static final int NAV_VINE_WIDTH = 34;
+    private static final int NAV_VINE_HEIGHT = 76;
+    /** High resolution source texture (102x228), blitted down to {@link #NAV_VINE_WIDTH} x {@link #NAV_VINE_HEIGHT}. */
+    private static final int NAV_VINE_TEXTURE_WIDTH = 102;
+    private static final int NAV_VINE_TEXTURE_HEIGHT = 228;
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;

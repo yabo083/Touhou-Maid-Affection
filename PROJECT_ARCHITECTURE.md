@@ -163,7 +163,7 @@ examples/TMA-Custom-Voice-Pack
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮行、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（132×165 RGBA，高清原图裁剪，按 44×55 缩放绘制）是纯装饰资源，只在设置面板侧栏底部绘制（茎根落在面板底边上、整株在面板内），不接收鼠标事件。
+`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（102×228 RGBA，高清原图裁剪，按 34×76 缩放绘制）是纯装饰资源，只在设置面板侧栏底部绘制（茎根落在面板底边上、整株在面板内），不接收鼠标事件。
 
 语音配置页是动态语音池页面：
 
