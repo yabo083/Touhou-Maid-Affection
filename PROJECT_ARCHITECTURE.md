@@ -135,7 +135,7 @@ src/main/resources
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 
-`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽且高（216×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部留白区绘制装饰藤蔓（`textures/gui/rose_vine.png`，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
+`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽且高（216×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部以装饰藤蔓收口（`textures/gui/rose_vine.png`，左缘压住面板左边框 1px、茎根压住页脚分隔线 3px，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
 
 ### 4.8 TMA AI Hub / MiMo 适配层
 
