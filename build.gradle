@@ -135,7 +135,7 @@ modrinth {
     uploadFile = jar
     gameVersions = [project.minecraft_version]
     loaders = ['forge']
-    changelog = System.getenv('CHANGELOG') ?: "See https://github.com/yabo083/maid-affection/releases/tag/v${project.mod_version}-forge1.20.1"
+    changelog = System.getenv('CHANGELOG') ?: "See https://github.com/yabo083/Touhou-Maid-Affection/releases/tag/v${project.mod_version}-forge1.20.1"
     syncBodyFrom = rootProject.file('README.md').text
     dependencies {
         required.project 'touhou-little-maid'
