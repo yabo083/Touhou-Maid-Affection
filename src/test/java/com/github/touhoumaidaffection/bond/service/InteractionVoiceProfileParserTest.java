@@ -110,6 +110,30 @@ class InteractionVoiceProfileParserTest {
     }
 
     @Test
+    void shouldAcceptObjectFormVoiceFilesWithLanguageTags() {
+        JsonObject root = JsonParser.parseString("""
+                {
+                  "morning_kiss": {
+                    "voice_files": [
+                      "legacy.ogg",
+                      {"file": "jp.ogg", "language": "ja_jp", "text": "字幕", "text_language": "zh_cn"},
+                      {"language": "ja_jp"},
+                      "../escape.ogg",
+                      "wrong.wav"
+                    ]
+                  }
+                }
+                """).getAsJsonObject();
+
+        InteractionVoiceProfileParser.InteractionVoiceProfile profile =
+                InteractionVoiceProfileParser.merge(InteractionVoiceProfileParser.InteractionVoiceProfile.defaults(), root);
+        InteractionVoiceProfileParser.MaidContext maid = new InteractionVoiceProfileParser.MaidContext("", "", "", "", "");
+
+        assertEquals(List.of("legacy.ogg", "jp.ogg"),
+                profile.resolve(InteractionVoiceProfileParser.Feature.MORNING_KISS, maid).voiceFiles());
+    }
+
+    @Test
     void shouldRejectUnsafeVoiceFilePathsFromEveryFeature() {
         JsonObject root = JsonParser.parseString("""
                 {

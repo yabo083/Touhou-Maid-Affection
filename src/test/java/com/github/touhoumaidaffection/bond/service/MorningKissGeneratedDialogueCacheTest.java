@@ -246,25 +246,54 @@ class MorningKissGeneratedDialogueCacheTest {
 
     @Test
     void followsTlmChatLanguageForGeneratedTextWhenTmaLanguageIsDefault() {
-        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "en_us", "zh_cn"));
-        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("auto", "ja_jp", "zh_cn"));
-        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("default", "", "zh_cn"));
-        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "en_us", ""));
-        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("en_us", "zh_cn", "zh_cn"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "", "en_us", "zh_cn"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("auto", "", "ja_jp", "zh_cn"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("default", "", "", "zh_cn"));
+        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "", "en_us", ""));
+        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("en_us", "", "zh_cn", "zh_cn"));
     }
 
     @Test
     void resolvesVoiceLanguageIndependentlyFromDisplayTextLanguage() {
         assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
-                "inherit", "tlm", "en_us", "zh_cn"));
+                "inherit", "tlm", "", "", "en_us", "zh_cn"));
         assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
-                "inherit", "zh_cn", "ja_jp", "zh_cn"));
+                "inherit", "zh_cn", "", "", "ja_jp", "zh_cn"));
         assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
-                "tlm", "zh_cn", "ja_jp", "zh_cn"));
+                "tlm", "zh_cn", "", "", "ja_jp", "zh_cn"));
         assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
-                "ja_jp", "zh_cn", "zh_cn", "zh_cn"));
+                "ja_jp", "zh_cn", "", "", "zh_cn", "zh_cn"));
         assertEquals("ko_kr", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
-                "ko_kr", "en_us", "ja_jp", "zh_cn"));
+                "ko_kr", "en_us", "", "", "ja_jp", "zh_cn"));
+    }
+
+    @Test
+    void prioritisesAiLocaleThenGlobalLocaleThenTlmSemantics() {
+        // 全局显式 locale 优先于 tlm/inherit/auto 旧语义
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "zh_cn", "en_us", "ja_jp"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("auto", "zh_cn", "en_us", "ja_jp"));
+        // AI 专用显式 locale 优先于全局
+        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("en_us", "zh_cn", "ja_jp", "ja_jp"));
+        // 两者都未指定时沿用旧语义（TLM 聊天 → TLM TTS）
+        assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage("tlm", "auto", "en_us", "ja_jp"));
+
+        // 配音：AI 专用 > 全局配音 > 继承显示（AI 显示 → 全局显示）> TLM
+        assertEquals("ja_jp", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "ja_jp", "en_us", "zh_cn", "zh_cn", "ko_kr", "ko_kr"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "en_us", "zh_cn", "zh_cn", "ko_kr", "ko_kr"));
+        assertEquals("en_us", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "en_us", "auto", "zh_cn", "ko_kr", "ko_kr"));
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "tlm", "auto", "zh_cn", "ko_kr", "ko_kr"));
+        assertEquals("ko_kr", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "inherit", "tlm", "auto", "auto", "ko_kr", "en_us"));
+        // tlm 配音语义在全局配音显式时让位于全局
+        assertEquals("zh_cn", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "tlm", "en_us", "zh_cn", "auto", "ko_kr", "ko_kr"));
+        // 全局配音为 auto 且未继承时回到 TLM
+        assertEquals("ko_kr", MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
+                "tlm", "en_us", "auto", "auto", "ko_kr", "en_us"));
     }
 
     @Test

@@ -273,7 +273,8 @@ public final class MorningKissService {
             }
 
             if (!task.dialogueShown()) {
-                boolean aiDialogueDispatched = MorningKissDialogueService.show(player, maid, task.dialoguePool());
+                String pairedSubtitle = MorningKissVoiceService.pairedSubtitle(selectedVoice);
+                boolean aiDialogueDispatched = MorningKissDialogueService.show(player, maid, task.dialoguePool(), pairedSubtitle);
                 if (!aiDialogueDispatched) {
                     MorningKissVoiceService.play(player, maid, selectedVoice);
                 }

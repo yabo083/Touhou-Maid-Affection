@@ -536,12 +536,15 @@ public final class MorningKissGeneratedDialogueService {
             return MorningKissGeneratedDialogueLanguage.resolveGeneratedVoiceTextLanguage(
                     ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE.get(),
                     ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                    ModConfig.BOND_MORNING_KISS_VOICE_LANGUAGE.get(),
+                    ModConfig.BOND_MORNING_KISS_DISPLAY_LANGUAGE.get(),
                     tlmTtsLanguage,
                     tlmChatLanguage
             );
         }
         return MorningKissGeneratedDialogueLanguage.resolveGeneratedTextLanguage(
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
+                ModConfig.BOND_MORNING_KISS_DISPLAY_LANGUAGE.get(),
                 tlmTtsLanguage,
                 tlmChatLanguage
         );
