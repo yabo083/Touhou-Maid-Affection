@@ -33,8 +33,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * / volume) and one section per tab. Feature switches and languages are server-authoritative and go
  * through the settings channel, while the volume sliders are pure client preferences written
  * straight into the local config. Every control applies instantly; the rail bottom hosts a
- * decorative rose vine whose top is anchored to the footer "done" button and which may spill below
- * the panel's bottom edge. It never accepts mouse input.
+ * decorative rose vine whose stem base rests on the panel's bottom border (fully inside the panel,
+ * so it is never clipped by the physical bottom of the screen). It never accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
@@ -718,19 +718,25 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     /**
-     * Decorative rose vine anchored to the footer: its top edge is aligned with the footer "done"
-     * button ({@link FooterLayout#top()}) and it is horizontally centred inside the navigation rail
+     * Decorative rose vine anchored to the panel's bottom edge: its stem base rests on the bottom
+     * border and it is horizontally centred inside the navigation rail
      * ({@link #NAV_WIDTH} - {@link #NAV_VINE_WIDTH} = 2px, 1px per side).
+     *
+     * <p>Anchoring the top edge to the footer button instead would push the stem below the panel
+     * (the button's top edge is only {@code MODAL_FOOTER_HEIGHT - (MODAL_FOOTER_HEIGHT -
+     * FOOTER_BUTTON_HEIGHT) / 2} px above the bottom border, while the vine is
+     * {@link #NAV_VINE_HEIGHT} px tall), which reads as a decoration escaping the frame. Keeping the
+     * whole vine inside also means it can never be clipped by the physical bottom of the screen at
+     * small GUI heights.
      *
      * <p>The high resolution source texture ({@link #NAV_VINE_TEXTURE_WIDTH} x
      * {@link #NAV_VINE_TEXTURE_HEIGHT}) is blitted down to {@link #NAV_VINE_WIDTH} x
-     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation. It is
-     * intentionally not scissored: the decoration grows out of the panel's lower-left corner and may
-     * spill below the panel's bottom edge. The vine never receives mouse input.
+     * {@link #NAV_VINE_HEIGHT}, i.e. 1:1 at GUI scale 3, with no colour quantisation. The vine never
+     * receives mouse input.
      */
     private void renderVine(GuiGraphics graphics) {
         int vineLeft = navLeft() + (NAV_WIDTH - NAV_VINE_WIDTH) / 2;
-        int vineTop = footerLayout(font).top();
+        int vineTop = modal().bottom() - NAV_VINE_HEIGHT;
         graphics.blit(ROSE_VINE, vineLeft, vineTop, NAV_VINE_WIDTH, NAV_VINE_HEIGHT,
                 0, 0, NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT,
                 NAV_VINE_TEXTURE_WIDTH, NAV_VINE_TEXTURE_HEIGHT);
