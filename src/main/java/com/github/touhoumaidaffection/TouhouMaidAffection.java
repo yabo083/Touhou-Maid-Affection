@@ -37,6 +37,7 @@ import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
+import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
@@ -107,6 +108,7 @@ public class TouhouMaidAffection {
         id = registerMessage(id, MorningKissVoiceConfigPayload.class, MorningKissVoiceConfigPayload.STREAM_CODEC, MorningKissVoiceConfigHandler::handle);
         id = registerMessage(id, VoicePreviewRequestPayload.class, VoicePreviewRequestPayload.STREAM_CODEC, VoicePreviewRequestHandler::handle);
         id = registerMessage(id, VoicePreviewDataPackPlayPayload.class, VoicePreviewDataPackPlayPayload.STREAM_CODEC, BondClientPayloadHandler::handleVoicePreviewDataPackPlay);
+        id = registerMessage(id, VoicePreviewThrottledPayload.class, VoicePreviewThrottledPayload.STREAM_CODEC, BondClientPayloadHandler::handleVoicePreviewThrottled);
         id = registerMessage(id, MorningKissVoicePlayPayload.class, MorningKissVoicePlayPayload.STREAM_CODEC, BondClientPayloadHandler::handleMorningKissVoicePlay);
         id = registerMessage(id, MorningKissDataVoicePlayPayload.class, MorningKissDataVoicePlayPayload.STREAM_CODEC, BondClientPayloadHandler::handleMorningKissDataVoicePlay);
         id = registerMessage(id, LapPillowStartPayload.class, LapPillowStartPayload.STREAM_CODEC, LapPillowHandler::handleStart);

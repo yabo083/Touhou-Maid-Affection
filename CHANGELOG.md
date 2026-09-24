@@ -18,6 +18,9 @@
 ### Changed
 - 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。
 - 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。
+- 语音试听冷却从 5 秒降到 0.5 秒（100 → 10 tick）；被限流时给客户端一行 action bar 提示「试听过快，请稍候」，不再静默丢弃；非数据包（本地）试听请求不再占用限流额度。
+- 早安吻 AI 台词缓存改为按语种读取：`pollRandom` / `peekRandom` / `hasCachedLine` 与预热满度判定（`countMatching`、`addIfBelowTarget`）都按当前解析出的显示/配音语种过滤，改了显示或配音语种后会自动按新语种重新预热，旧语种条目保留但不再被选中，也不再阻塞重新预热（仍可手动 `clear_ai_cache`）。目标语种为空（`auto`）时不过滤，保持旧行为。
+- `/tma morning_kiss status` 的语种行改为显示最终生效信息：全局语种（归一化后，未配置显示 `auto`）、AI 覆盖原始值，以及生效优先级说明。
 
 ### Notes
 - 权限：开关与语种属于服务端权威设置，**只有 OP（权限等级 2）可以修改**；普通玩家能看、不能改，界面底部会显示「只读」提示，按钮 tooltip 提示需要管理员权限。每次成功修改都会在服务端日志打印 `[TMA Settings] player=... key=... old=... new=...`；越权或非法请求打印 WARN。

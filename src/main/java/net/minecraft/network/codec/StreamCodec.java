@@ -23,6 +23,11 @@ public interface StreamCodec<B, T> {
         };
     }
 
+    static <B, T> StreamCodec<B, T> unit(T unit) {
+        return of((buffer, value) -> {
+        }, buffer -> unit);
+    }
+
     static <B, T1, R> StreamCodec<B, R> composite(
             StreamCodec<B, T1> codec1,
             Function<R, T1> getter1,

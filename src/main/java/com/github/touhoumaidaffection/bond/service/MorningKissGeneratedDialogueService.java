@@ -92,34 +92,40 @@ public final class MorningKissGeneratedDialogueService {
         }
     }
 
-    static Optional<MorningKissGeneratedDialogueCache.Entry> pollCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
-        Optional<MorningKissGeneratedDialogueCache.Entry> entry = selectCachedLine(maidUuid, pool, random);
+    static Optional<MorningKissGeneratedDialogueCache.Entry> pollCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random,
+                                                                            String targetTextLanguage, String targetVoiceLanguage) {
+        Optional<MorningKissGeneratedDialogueCache.Entry> entry = selectCachedLine(maidUuid, pool, random, targetTextLanguage, targetVoiceLanguage);
         if (entry.isPresent()) {
             return entry;
         }
         if (pool != MorningKissScheduleRules.DialoguePool.GENERAL) {
-            return selectCachedLine(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, random);
+            return selectCachedLine(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, random, targetTextLanguage, targetVoiceLanguage);
         }
         return Optional.empty();
     }
 
     private static Optional<MorningKissGeneratedDialogueCache.Entry> selectCachedLine(UUID maidUuid,
                                                                                      MorningKissScheduleRules.DialoguePool pool,
-                                                                                     RandomSource random) {
+                                                                                     RandomSource random,
+                                                                                     String targetTextLanguage,
+                                                                                     String targetVoiceLanguage) {
         if (ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE.get()) {
             synchronized (CACHE_MUTATION_LOCK) {
-                Optional<MorningKissGeneratedDialogueCache.Entry> entry = CACHE.pollRandom(maidUuid, pool, random);
+                Optional<MorningKissGeneratedDialogueCache.Entry> entry =
+                        CACHE.pollRandom(maidUuid, pool, random, targetTextLanguage, targetVoiceLanguage);
                 if (entry.isPresent()) {
                     savePersistedCacheLocked();
                 }
                 return entry;
             }
         }
-        return CACHE.peekRandom(maidUuid, pool, random);
+        return CACHE.peekRandom(maidUuid, pool, random, targetTextLanguage, targetVoiceLanguage);
     }
 
-    static boolean hasCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool) {
-        return !CACHE.isEmpty(maidUuid, pool) || !CACHE.isEmpty(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL);
+    static boolean hasCachedLine(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+                                 String targetTextLanguage, String targetVoiceLanguage) {
+        return CACHE.countMatching(maidUuid, pool, targetTextLanguage, targetVoiceLanguage) > 0
+                || CACHE.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.GENERAL, targetTextLanguage, targetVoiceLanguage) > 0;
     }
 
     private static void scanPlayer(ServerPlayer player) {
@@ -151,9 +157,11 @@ public final class MorningKissGeneratedDialogueService {
             return true;
         }
         int target = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get();
-        return CACHE.size(maid.getUUID(), MorningKissScheduleRules.DialoguePool.MORNING) < target
-                || CACHE.size(maid.getUUID(), MorningKissScheduleRules.DialoguePool.EVENING) < target
-                || CACHE.size(maid.getUUID(), MorningKissScheduleRules.DialoguePool.GENERAL) < target;
+        String textLanguage = resolveChatLanguage(maid);
+        String voiceTextLanguage = resolveVoiceTextLanguage(maid);
+        return CACHE.countMatching(maid.getUUID(), MorningKissScheduleRules.DialoguePool.MORNING, textLanguage, voiceTextLanguage) < target
+                || CACHE.countMatching(maid.getUUID(), MorningKissScheduleRules.DialoguePool.EVENING, textLanguage, voiceTextLanguage) < target
+                || CACHE.countMatching(maid.getUUID(), MorningKissScheduleRules.DialoguePool.GENERAL, textLanguage, voiceTextLanguage) < target;
     }
 
     private static void warmCache(ServerPlayer player, EntityMaid maid) {
@@ -183,8 +191,10 @@ public final class MorningKissGeneratedDialogueService {
             return;
         }
         int target = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get();
+        String textLanguage = resolveChatLanguage(maid);
+        String voiceTextLanguage = resolveVoiceTextLanguage(maid);
         for (MorningKissScheduleRules.DialoguePool pool : MorningKissScheduleRules.DialoguePool.values()) {
-            if (CACHE.size(maid.getUUID(), pool) >= target) {
+            if (CACHE.countMatching(maid.getUUID(), pool, textLanguage, voiceTextLanguage) >= target) {
                 continue;
             }
             requestGeneration(player, maid, pool, client, key, pending, CACHE_REVISION.get(), maidRevision(maid.getUUID()));
@@ -238,7 +248,7 @@ public final class MorningKissGeneratedDialogueService {
                     return;
                 }
                 int target = ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get();
-                int currentSize = CACHE.size(maid.getUUID(), pool);
+                int currentSize = CACHE.countMatching(maid.getUUID(), pool, textLanguage, voiceTextLanguage);
                 lines = MorningKissGeneratedDialogueCache.limitToRemainingCapacity(lines, currentSize, target);
                 if (lines.isEmpty()) {
                     debug("Morning kiss AI dialogue warmup discarded for maid {} pool {}: cache already reached target {}.",
@@ -562,6 +572,20 @@ public final class MorningKissGeneratedDialogueService {
         return MorningKissGeneratedDialogueLanguage.normalizeLanguageCodeForTts(resolveVoiceTextLanguage(maid));
     }
 
+    /**
+     * 全局显示语种（经 {@link MorningKissLanguageSettings} 归一化）；未配置（{@code auto}）时返回空串。
+     */
+    public static String globalDisplayLanguage() {
+        return MorningKissLanguageSettings.displayLanguage();
+    }
+
+    /**
+     * 全局配音语种（经 {@link MorningKissLanguageSettings} 归一化）；未配置（{@code auto}）时返回空串。
+     */
+    public static String globalVoiceLanguage() {
+        return MorningKissLanguageSettings.voiceLanguage();
+    }
+
     private static String displayLanguage(String language) {
         return language == null || language.isBlank() ? "tlm/default" : language;
     }
@@ -573,11 +597,11 @@ public final class MorningKissGeneratedDialogueService {
     }
 
     static Optional<MorningKissGeneratedDialogueCache.Entry> pollCachedLine(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
-        return pollCachedLine(maid.getUUID(), pool, random);
+        return pollCachedLine(maid.getUUID(), pool, random, resolveChatLanguage(maid), resolveVoiceTextLanguage(maid));
     }
 
     static boolean hasCachedLine(EntityMaid maid, MorningKissScheduleRules.DialoguePool pool) {
-        return hasCachedLine(maid.getUUID(), pool);
+        return hasCachedLine(maid.getUUID(), pool, resolveChatLanguage(maid), resolveVoiceTextLanguage(maid));
     }
 
     public static int clearCache() {
