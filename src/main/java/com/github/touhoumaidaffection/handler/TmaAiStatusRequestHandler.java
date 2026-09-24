@@ -111,16 +111,19 @@ public final class TmaAiStatusRequestHandler {
         Map<UUID, MorningKissGeneratedDialogueService.MaidCacheStats> cacheByMaid = new LinkedHashMap<>();
         for (MorningKissGeneratedDialogueService.MaidCacheStats maid : stats.maids()) {
             cacheByMaid.put(maid.maidUuid(), maid);
-            ownedNames.putIfAbsent(maid.maidUuid(), maid.maidLabel());
         }
 
         int target = Math.max(1, ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_TARGET_PER_POOL.get());
         List<TmaAiStatusWire.MaidStatus> maids = new ArrayList<>();
         for (Map.Entry<UUID, String> owned : ownedNames.entrySet()) {
             MorningKissGeneratedDialogueService.MaidCacheStats cache = cacheByMaid.get(owned.getKey());
+            String name = owned.getValue();
+            if (name == null || name.isBlank()) {
+                name = cache == null ? "" : cache.maidLabel();
+            }
             maids.add(new TmaAiStatusWire.MaidStatus(
                     owned.getKey().toString(),
-                    owned.getValue() == null ? "" : owned.getValue(),
+                    name == null ? "" : name,
                     cache == null ? 0 : cache.totalEntries(),
                     target,
                     poolsOf(cache)
