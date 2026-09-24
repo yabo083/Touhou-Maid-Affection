@@ -2,6 +2,14 @@ package com.github.touhoumaidaffection.client.screen.component;
 
 import net.minecraft.client.gui.GuiGraphics;
 
+/**
+ * Shared visual tokens for every bond GUI surface.
+ *
+ * <p>Palette: warm wood surfaces with a rose interaction accent and gold reserved for highlighted
+ * text (values, current selection, scope tags). Only the values live here; call sites must always
+ * reference these constants instead of hard-coding an ARGB literal so a palette change stays a
+ * single-file edit.
+ */
 public final class BondGuiTokens {
     private BondGuiTokens() {
     }
@@ -24,47 +32,75 @@ public final class BondGuiTokens {
     public static final int BUTTON_HORIZONTAL_PADDING = 8;
     public static final int SECONDARY_MODAL_WIDTH = 172;
     public static final int SECONDARY_MODAL_HEIGHT = 150;
+    /** Wider modal used by the settings panel so it can host the 46px navigation rail. */
+    public static final int SETTINGS_MODAL_WIDTH = 216;
 
-    public static final int COLOR_BG_OVERLAY = 0xAA0F0A0D;
-    public static final int COLOR_BG_PANEL = 0xF5241C21;
-    public static final int COLOR_BG_ELEMENT = 0x99120C10;
-    public static final int COLOR_BG_ELEMENT_HOVER = 0xCC2B2127;
+    public static final int COLOR_BG_OVERLAY = 0xAA120D09;
+    public static final int COLOR_BG_PANEL = 0xF52E241C;
+    public static final int COLOR_BG_ELEMENT = 0x993A2E22;
+    public static final int COLOR_BG_ELEMENT_HOVER = 0xCC463829;
 
-    public static final int COLOR_TEXT_TITLE = 0xFFF5E6E8;
-    public static final int COLOR_TEXT_BODY = 0xFFD2C4C8;
-    public static final int COLOR_TEXT_HINT = 0xFFB29EA5;
+    public static final int COLOR_TEXT_TITLE = 0xFFF2E9DC;
+    public static final int COLOR_TEXT_BODY = 0xFFD6CAB8;
+    public static final int COLOR_TEXT_HINT = 0xFFA8917A;
     public static final int COLOR_TEXT_SELECTED = 0xFFE8C87E;
-    public static final int COLOR_TEXT_DISABLED = 0xFF5A4C52;
+    public static final int COLOR_TEXT_DISABLED = 0xFF6B5A47;
 
     public static final int COLOR_SUCCESS = 0xFF7BC96F;
     public static final int COLOR_WARNING = 0xFFE8C87E;
     public static final int COLOR_ERROR = 0xFFFF5555;
-    public static final int COLOR_ACCENT = 0xFF9E435D;
+    public static final int COLOR_ACCENT = 0xFFC05E77;
 
-    public static final int BORDER_OUTER = 0xFF110A0D;
-    public static final int BORDER_INNER = 0xFF45353D;
-    public static final int BORDER_INNER_HOVER = 0xFF5E4A54;
-    public static final int BORDER_INNER_DISABLED = 0xFF2F252A;
+    public static final int BORDER_OUTER = 0xFF120D09;
+    public static final int BORDER_INNER = 0xFF4A3B2C;
+    public static final int BORDER_INNER_HOVER = 0xFF6B563F;
+    public static final int BORDER_INNER_DISABLED = 0xFF33291F;
 
-    public static final int STATE_DEFAULT_BG = 0xAA241C21;
+    public static final int STATE_DEFAULT_BG = 0xAA3A2E22;
     public static final int STATE_DEFAULT_BORDER = BORDER_INNER;
-    public static final int STATE_HOVER_BG = 0xAA241C21;
+    public static final int STATE_HOVER_BG = COLOR_BG_ELEMENT_HOVER;
     public static final int STATE_HOVER_BORDER = BORDER_INNER_HOVER;
-    public static final int STATE_PRESSED_BG = 0xCC1D151A;
+    public static final int STATE_PRESSED_BG = 0xCC2A211A;
     public static final int STATE_PRESSED_BORDER = BORDER_INNER_HOVER;
-    public static final int STATE_SELECTED_BG = 0xAA452331;
-    public static final int STATE_SELECTED_BORDER = 0xFF9E435D;
-    public static final int STATE_DISABLED_BG = 0x882A2427;
-    public static final int STATE_DISABLED_BORDER = BORDER_INNER_DISABLED;
+    public static final int STATE_SELECTED_BG = 0x3DC05E77;
+    public static final int STATE_SELECTED_BORDER = 0xFFC05E77;
+    public static final int STATE_DISABLED_BG = 0xFF2C231A;
+    public static final int STATE_DISABLED_BORDER = 0xFF443528;
 
-    public static final int PRIMARY_BUTTON_BG = 0xDD9E435D;
-    public static final int PRIMARY_BUTTON_HOVER_BG = 0xDDB3536E;
+    public static final int PRIMARY_BUTTON_BG = 0xEBC05E77;
+    public static final int PRIMARY_BUTTON_HOVER_BG = 0xEBD4748D;
 
-    public static final int DIVIDER_COLOR = 0x4445353D;
+    public static final int DIVIDER_COLOR = 0x1AFFFFFF;
     public static final int HOVER_OVERLAY = 0x33FFFFFF;
-    public static final int SELECTED_ROW_GLOW = 0xAA452331;
-    public static final int SELECTED_ROW_STRIPE = 0xFFB86A84;
-    public static final int TITLE_PANEL_BG = 0x9932272E;
+    public static final int SELECTED_ROW_GLOW = 0x3DC05E77;
+    public static final int SELECTED_ROW_STRIPE = 0xFFC05E77;
+    public static final int TITLE_PANEL_BG = 0x00000000;
+
+    // ---- Semantic control colors (settings panel and later pages) ----
+    public static final int TOGGLE_TRACK = 0xFF3A2E22;
+    public static final int TOGGLE_TRACK_BORDER = 0xFF6B563F;
+    public static final int TOGGLE_KNOB = 0xFFA8917A;
+    public static final int TOGGLE_ON_TRACK = 0xFFC05E77;
+    public static final int TOGGLE_ON_BORDER = 0xFFDE8AA2;
+    public static final int TOGGLE_ON_KNOB = 0xFFFFF4F7;
+    public static final int TOGGLE_DISABLED_BG = 0xFF2C231A;
+    public static final int TOGGLE_DISABLED_BORDER = 0xFF443528;
+    public static final int TOGGLE_DISABLED_KNOB = 0xFF6B563F;
+
+    public static final int FIELD_BG = 0xFF3A2E22;
+    public static final int FIELD_HOVER = 0xFF463829;
+    public static final int FIELD_BORDER = 0xFF6B563F;
+    public static final int FIELD_BORDER_HOVER = 0xFF8A7050;
+
+    public static final int SLIDER_TRACK = 0xFF3A2E22;
+    public static final int SLIDER_FILL = 0xFFC05E77;
+    public static final int SLIDER_KNOB = 0xFFFFF4F7;
+
+    public static final int HIGHLIGHT_TEXT = 0xFFE8C87E;
+    public static final int TAG_SERVER = 0xFFE8C87E;
+    public static final int TAG_LOCAL = 0xFF9ECFA4;
+    public static final int NAV_SELECTED_TEXT = 0xFFF0B8C6;
+    public static final int NAV_SELECTED_BG = 0x3DC05E77;
 
     public static void drawFramedPanel(GuiGraphics graphics, int left, int top, int right, int bottom, int fillColor) {
         if (right <= left || bottom <= top) {
