@@ -21,6 +21,7 @@ public final class TmaSettingsKeys {
     public static final String MORNING_KISS_AUTO_ENABLED = "morning_kiss.auto_enabled";
     public static final String MORNING_KISS_AI_DIALOGUE_ENABLED = "morning_kiss.ai_dialogue_enabled";
     public static final String MORNING_KISS_AI_TTS_ENABLED = "morning_kiss.ai_tts_enabled";
+    public static final String MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED = "morning_kiss.immediate_fallback_enabled";
     public static final String EMERGENCY_RESCUE_ENABLED = "emergency_rescue.enabled";
     public static final String RANDOM_GIFT_ENABLED = "random_gift.enabled";
     public static final String MAID_PRAYER_BUFF_ENABLED = "maid_prayer_buff.enabled";
@@ -31,6 +32,20 @@ public final class TmaSettingsKeys {
 
     // Free text values (Morning Kiss prompt template)
     public static final String MORNING_KISS_TEXT_PROMPT = "morning_kiss.text_prompt";
+
+    // Integer values (AI dialogue cache policy); the bounds mirror the matching ModConfig
+    // defineInRange calls, so a value accepted here can never be clamped by the config system.
+    public static final String MORNING_KISS_CACHE_TARGET_PER_POOL = "morning_kiss.cache_target_per_pool";
+    public static final String MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS = "morning_kiss.cache_scan_interval_ticks";
+    public static final String MORNING_KISS_CACHE_CONSUME_ON_USE = "morning_kiss.cache_consume_on_use";
+
+    /** Bounds of {@link #MORNING_KISS_CACHE_TARGET_PER_POOL} ({@code aiDialogueCacheTargetPerPool}). */
+    public static final int CACHE_TARGET_PER_POOL_MIN = 1;
+    public static final int CACHE_TARGET_PER_POOL_MAX = 8;
+
+    /** Bounds of {@link #MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS} ({@code aiDialogueScanIntervalTicks}). */
+    public static final int CACHE_SCAN_INTERVAL_TICKS_MIN = 20;
+    public static final int CACHE_SCAN_INTERVAL_TICKS_MAX = 72000;
 
     public static final String LABEL_KEY_PREFIX = "bond.settings.key.";
     public static final String SUB_LABEL_KEY_PREFIX = "bond.settings.sub.";
@@ -55,7 +70,8 @@ public final class TmaSettingsKeys {
     public enum Type {
         BOOLEAN,
         LANGUAGE,
-        TEXT
+        TEXT,
+        INT
     }
 
     private static Map<String, Type> createWhitelist() {
@@ -64,12 +80,16 @@ public final class TmaSettingsKeys {
         keys.put(MORNING_KISS_AUTO_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_AI_DIALOGUE_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_AI_TTS_ENABLED, Type.BOOLEAN);
+        keys.put(MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED, Type.BOOLEAN);
         keys.put(EMERGENCY_RESCUE_ENABLED, Type.BOOLEAN);
         keys.put(RANDOM_GIFT_ENABLED, Type.BOOLEAN);
         keys.put(MAID_PRAYER_BUFF_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_DISPLAY_LANGUAGE, Type.LANGUAGE);
         keys.put(MORNING_KISS_VOICE_LANGUAGE, Type.LANGUAGE);
         keys.put(MORNING_KISS_TEXT_PROMPT, Type.TEXT);
+        keys.put(MORNING_KISS_CACHE_TARGET_PER_POOL, Type.INT);
+        keys.put(MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, Type.INT);
+        keys.put(MORNING_KISS_CACHE_CONSUME_ON_USE, Type.BOOLEAN);
         // Keep insertion order: the panel renders switches, then languages, then free text.
         return java.util.Collections.unmodifiableMap(keys);
     }
@@ -113,6 +133,51 @@ public final class TmaSettingsKeys {
             case BOOLEAN -> parseBoolean(rawValue).map(value -> value ? "true" : "false");
             case LANGUAGE -> normalizeLanguage(rawValue);
             case TEXT -> normalizeText(rawValue);
+            case INT -> normalizeInt(key, rawValue);
+        };
+    }
+
+    /**
+     * Validates an integer value against the bounds of that key.
+     *
+     * <p>Only a run of ASCII digits is accepted: signs, decimal points, exponents, blanks and empty
+     * strings are all rejected, and so is any value outside the configured range. The bounds mirror
+     * the {@code defineInRange} call of the matching {@code ModConfig} entry.
+     */
+    public static Optional<String> normalizeInt(String key, String rawValue) {
+        int[] bounds = intBounds(key);
+        if (bounds == null || rawValue == null) {
+            return Optional.empty();
+        }
+        String value = rawValue.trim();
+        if (value.isEmpty() || value.length() > 6) {
+            return Optional.empty();
+        }
+        for (int index = 0; index < value.length(); index++) {
+            char digit = value.charAt(index);
+            if (digit < '0' || digit > '9') {
+                return Optional.empty();
+            }
+        }
+        int parsed;
+        try {
+            parsed = Integer.parseInt(value);
+        } catch (NumberFormatException overflow) {
+            return Optional.empty();
+        }
+        return parsed >= bounds[0] && parsed <= bounds[1] ? Optional.of(Integer.toString(parsed)) : Optional.empty();
+    }
+
+    /** @return {@code {min, max}} of an {@link Type#INT} key, or {@code null} for any other key. */
+    public static int[] intBounds(String key) {
+        if (key == null) {
+            return null;
+        }
+        return switch (key) {
+            case MORNING_KISS_CACHE_TARGET_PER_POOL -> new int[]{CACHE_TARGET_PER_POOL_MIN, CACHE_TARGET_PER_POOL_MAX};
+            case MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS ->
+                    new int[]{CACHE_SCAN_INTERVAL_TICKS_MIN, CACHE_SCAN_INTERVAL_TICKS_MAX};
+            default -> null;
         };
     }
 

@@ -11,19 +11,27 @@
 ## [1.7.5.0] - 2026-09-24
 
 ### Added
-- 新增游戏内「全局设置」面板「语音」tab 的「台词提示词」多行编辑框：直接编辑早安吻 AI 台词模板（占位符 `{maid}` 女仆名 / `{player}` 玩家名 / `{pool}` 时段 / `{time}` 允许时段），带占位符图例与「恢复默认」按钮。这是服务端权威的新设置类型 `TEXT`（逻辑键 `morning_kiss.text_prompt`，上限 1024 字符，保存空值写回内置默认模板），沿用现有 OP2 + 审计日志的写入路径。字数计数画在编辑框**内部右下角**（次要文字色），占位符图例与「恢复默认」排成同一行（左说明 / 右按钮，长图例按可用宽度截断），「恢复默认」改用面板通用的文字按钮渲染（与「打开」「清空」同一个 `drawTextButton` 模板，无权限时置灰）。
-- 新增设置面板「状态」tab：移植 `/tma morning_kiss status` 与 `/tma morning_kiss cache` 的只读信息——开关（早安吻 / AI 台词 / AI 语音 / 立即兜底）、语种（两行说人话：`文本语种` → 值，`auto` 时显示 `auto（跟随游戏语言）`；`配音语种` → 值，`auto` 时显示 `auto（跟随女仆 AI 设置）`）、缓存策略（每池目标 / 扫描间隔 / 消费即用）、缓存统计（条目语音/纯文本、女仆数 / 在途 / 版本号）与按女仆列表（名字 + 各时段池条目数 + 总条目/目标 + 行内「清空」）。配套新增只读状态通道 `TmaAiStatusRequestPayload` / `TmaAiStatusPayload` 与清缓存操作包 `TmaAiCacheClearPayload`：状态只回该玩家名下的女仆，清缓存需 OP2 + 审计日志并复用 `/tma morning_kiss clear_ai_cache` 完全相同的服务方法。
+- 设置面板「状态」tab 的「开关」「语种」「缓存策略」三区改为**就地可编辑**（复用「功能」tab 的胶囊开关、语言下拉与同一套 pending 状态点，不新造视觉）：新增 4 个白名单键——`morning_kiss.immediate_fallback_enabled`（映射 `ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED`）、`morning_kiss.cache_target_per_pool`、`morning_kiss.cache_scan_interval_ticks`、`morning_kiss.cache_consume_on_use`（映射 `ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE`），白名单从 **10 项扩到 14 项**（9 开关 + 2 语种 + 1 文本 + 2 整数）。`TmaSettingsKeys` 新增取值类型 `Type.INT`：只接受纯数字，逐键按 `ModConfig` `defineInRange` 的上下界校验（每池目标条数 1..8、扫描间隔 20..72000 tick），非数字/越界一律拒绝，并沿用既有的整包拒绝语义。「缓存统计」与「按女仆」仍为只读 + 行内「清空」；OP2 权限、`[TMA Settings]` 审计日志与状态回推语义完全不变。
+- 新增紧凑数值输入控件 `BondNumberField`（单行原版 `EditBox`，关闭原版边框、复用面板字段式配色；只允许数字、失焦提交、提交前按范围夹取、右侧显示单位如 `1200t`）。范围跨度 20..72000 用滑块精度不可用，因此不做滑块。
+- 新增中英 lang 键：`bond.settings.status.pool.general`（通用 / Any）、`bond.settings.key.morning_kiss.immediate_fallback_enabled` 与 `bond.settings.sub.morning_kiss.immediate_fallback_enabled`、`bond.settings.key.morning_kiss.cache_consume_on_use` 与 `bond.settings.sub.morning_kiss.cache_consume_on_use`、`bond.settings.number.tip`。
+- 新增游戏内「全局设置」面板「语音」tab 的「台词提示词」多行编辑框：直接编辑早安吻 AI 台词模板（占位符 `{maid}` 女仆名 / `{player}` 玩家名 / `{pool}` 时段 / `{time}` 允许时段），带占位符图例与「恢复默认」按钮。这是服务端权威的新设置类型 `TEXT`（逻辑键 `morning_kiss.text_prompt`，上限 1024 字符，保存空值写回内置默认模板），沿用现有 OP2 + 审计日志的写入路径。字数计数画在编辑框**内部右下角**（次要文字色），占位符图例独占编辑框下方一整行、占满内容区整宽（完整显示、不再截断），「恢复默认」按钮移到编辑框上方标签行右对齐，「恢复默认」改用面板通用的文字按钮渲染（与「打开」「清空」同一个 `drawTextButton` 模板，无权限时置灰）。
+- 新增设置面板「状态」tab：移植 `/tma morning_kiss status` 与 `/tma morning_kiss cache` 的信息——开关（早安吻 / AI 台词 / AI 语音 / 立即兜底）、语种（`文本语种` / `配音语种`）、缓存策略（每池目标 / 扫描间隔 / 消费即用）三区**可就地编辑**（见本节首条），缓存统计（条目语音/纯文本、女仆数 / 在途 / 版本号）与按女仆列表（名字 + 各时段池条目数 + 总条目/目标 + 行内「清空」）为只读。配套新增只读状态通道 `TmaAiStatusRequestPayload` / `TmaAiStatusPayload` 与清缓存操作包 `TmaAiCacheClearPayload`：状态只回该玩家名下的女仆，清缓存需 OP2 + 审计日志并复用 `/tma morning_kiss clear_ai_cache` 完全相同的服务方法。
 - 新增设置面板「语音」tab 的「打开车万女仆的 AI 设置」按钮：跳转 TLM 原生 `AIChatSettingsHubScreen`（parent 传本面板，关闭后回到这里），是全局唯一的 AI 入口；TMA 不自建站点表单。
-- 新增游戏内「全局设置」面板：在羁绊页顶部右侧（原 TMA AI Hub 按钮的槽位）新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、语种（文本语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–1.0 步进 0.05）。无需再手改 toml。
+- 新增游戏内「全局设置」面板：在羁绊页顶部右侧（原 TMA AI Hub 按钮的槽位）新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 立即兜底 / 残血救护 / 随机礼物 / 少女祈祷 Buff / 消费即用）、语种（文本语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–1.0 步进 0.05）。无需再手改 toml。
 - 新增服务端权威设置同步通道：`TmaSettingsRequestPayload`（C2S，空列表表示只读状态）与 `TmaSettingsStatePayload`（S2C，回推全部白名单键的当前值与 `canEdit`）。面板里的开关与语种由服务端校验、应用并回推，单人存档与多人服务器行为一致。
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
 ### Fixed
+- 修复「状态」tab「按女仆」行的池计数渲染成原始 key `bond.settings.status.pool.general`：lang 文件缺 `GENERAL` 池的键，现已补齐中英两语言；并新增回归测试 `TmaSettingsLangKeysTest`，逐一遍历 `DialoguePool` 的全部取值断言中英 lang 都存在 `bond.settings.status.pool.<小写枚举名>`，同时断言每个可编辑键的 `bond.settings.key.*` / `bond.settings.sub.*` 与状态页相关键存在（缺键时直接测试失败，而不是等到界面上露出原始 key）。
+- 修复「状态」tab 行内文本压到「清空」按钮下面的问题：只读值行与女仆行一律在「控件左边界 − 间距」处用 `clip(...)` 截断并补省略号（女仆行拆成名字列 + 右对齐的计数列），长值（`24 (18 / 6)`、`3 / 1 / 42`、`早 9 · 晚 9 · 通用 0 · 18/12`）不再与控件重叠。
+- 修复「语音」tab 占位符图例被截断（原可用宽度仅 218px，中英文案分别需 309px / 348px）：图例改为独占一整行、使用内容区整宽 274px，文案缩短为 `{maid} 女仆 · {player} 玩家 · {pool} 时段 · {time} 允许时段`（260px）与 `{maid} maid · {player} player · {pool} pool · {time} range`（261px），中英双语都完整显示；「恢复默认」按钮移到上方标签行右对齐。
+- 修复「语音」tab 打开时顶部被裁掉、必须滚动才能看到语种两行的问题：该 tab 内容总高从 202px 收到 **166px ≤ 内容可视高 168px**，打开即完整显示语种两行 + 台词提示词区 + AI 站点区。
 - 修复设置面板语种下拉框最后一项被裁剪的问题：展开的弹层不再受面板内容区 scissor 约束，改为夹在屏幕范围内——向下会溢出屏幕底部时翻到表头之上渲染，命中测试/高亮/点击与实际渲染位置保持一致，所有候选条目可达。
 - `.maid` 迁移不再携带运行态/调度键：导出（`BondData.exportMaidData`）剔除 `BondKeys.RUNTIME_KEYS`——礼物计时（`RandomGiftLastWallClock` / `RandomGiftLastDelivery` / `RandomGiftLastIntervalMinutes`）、早安吻窗口标记（`MorningKissScheduledWindow` / `MorningKissScheduledAttemptTick` / `MorningKissLastAutoAttemptGameTime` / `MorningKissLastSuccessWindow` / `MorningKissLastFailedWindow`）与本地记账 `LastSeen`——导入时再防御性剔一遍。此前这些会话/世界相关的绝对时间会随 `.maid` 迁到新女仆/新存档，导致刚导入就被判定「今天已亲过」或礼物计时错乱。待发礼物队列 `RandomGiftQueue` 是耐久状态，仍然随迁；`extras` 对外形状与整体替换语义不变。
 - 空字符串不再落盘/导出：所有「getter 缺省值本就是空串」的字符串 setter（声音包、YSM 档案、救护动作、膝枕动作、早安吻计划/窗口标记、玩家粒度早安吻选择、早安吻与救护语音选择里的空字段）改为空串时移除键而非写入空值，避免无意义键堆积进存档与 `.maid`。
 
 ### Changed
+- 「语音」tab 布局收口以便**打开即完整可见、无需滚动**：`PROMPT_BOX_HEIGHT` 52→36、`ROW_GAP` 6→3、`SECTION_HEADER_HEIGHT` 15→12、`LANGUAGE_ROW_HEIGHT` / `DROPDOWN_HEADER_HEIGHT` 20→17，站点区不再留尾部间距；内容总高 166px ≤ 内容可视高 168px（230 模态高 − 24 标题 − 8 内容上留白 − 30 footer）。「功能」与「状态」tab 内容更高，仍按既有规则内部滚动（白名单扩容后「功能」tab 多出「立即兜底」「消费即用」两个开关，共 9 个）。
 - 设置面板尺寸 300×188 → 340×230，侧栏 tab 从 3 个（功能 / 语音 / 音量）扩到 4 个（新增「状态」）；内容超出可视区走内部滚动。配色 token、玫瑰藤蔓锚点（`modal().bottom() - NAV_VINE_HEIGHT`）、服务端权威语义与既有状态机不变。
 - 羁绊页「设置」按钮从左上空位移到面板右上角（原 TMA AI Hub 按钮的槽位）：尺寸 50×12，位置 `x = panelX + panelWidth - 50 - 2`、`y = panelY - 12 - 3`（即原 AI 按钮的 Y），文案仍是「设置」、居中绘制；命中测试与 tooltip 同步更新，左上空位不再有按钮。
 - 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。

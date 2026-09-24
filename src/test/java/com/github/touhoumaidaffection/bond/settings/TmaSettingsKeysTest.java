@@ -12,18 +12,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TmaSettingsKeysTest {
     @Test
-    void whitelistCoversEveryFeatureSwitchLanguageAndText() {
-        assertEquals(10, TmaSettingsKeys.keys().size());
+    void whitelistCoversEveryFeatureSwitchLanguageTextAndInteger() {
+        assertEquals(14, TmaSettingsKeys.keys().size());
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.enabled"));
         assertTrue(TmaSettingsKeys.isWhitelisted("maid_prayer_buff.enabled"));
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.display_language"));
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.voice_language"));
         assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
+        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED));
+        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL));
+        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS));
+        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE));
         assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_language"));
         assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_voice_language"));
         assertEquals(TmaSettingsKeys.Type.BOOLEAN, TmaSettingsKeys.typeOf("random_gift.enabled"));
         assertEquals(TmaSettingsKeys.Type.LANGUAGE, TmaSettingsKeys.typeOf("morning_kiss.display_language"));
         assertEquals(TmaSettingsKeys.Type.TEXT, TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
+        assertEquals(TmaSettingsKeys.Type.INT,
+                TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL));
+        assertEquals(TmaSettingsKeys.Type.INT,
+                TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS));
+    }
+
+    @Test
+    void integerKeysAcceptOnlyDigitsInsideTheirOwnRange() {
+        String target = TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL;
+        assertEquals(Optional.of("1"), TmaSettingsKeys.normalize(target, "1"));
+        assertEquals(Optional.of("8"), TmaSettingsKeys.normalize(target, " 8 "));
+        assertTrue(TmaSettingsKeys.normalize(target, "0").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "9").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "-1").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "+1").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "1.0").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "1e1").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, "").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(target, null).isEmpty());
+
+        String scan = TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS;
+        assertEquals(Optional.of("20"), TmaSettingsKeys.normalize(scan, "20"));
+        assertEquals(Optional.of("72000"), TmaSettingsKeys.normalize(scan, "72000"));
+        assertTrue(TmaSettingsKeys.normalize(scan, "19").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(scan, "72001").isEmpty());
+        assertTrue(TmaSettingsKeys.normalize(scan, "99999999999999999999").isEmpty());
+
+        assertEquals(TmaSettingsKeys.CACHE_TARGET_PER_POOL_MIN, TmaSettingsKeys.intBounds(target)[0]);
+        assertEquals(TmaSettingsKeys.CACHE_TARGET_PER_POOL_MAX, TmaSettingsKeys.intBounds(target)[1]);
+        assertEquals(TmaSettingsKeys.CACHE_SCAN_INTERVAL_TICKS_MIN, TmaSettingsKeys.intBounds(scan)[0]);
+        assertEquals(TmaSettingsKeys.CACHE_SCAN_INTERVAL_TICKS_MAX, TmaSettingsKeys.intBounds(scan)[1]);
+        assertNull(TmaSettingsKeys.intBounds(TmaSettingsKeys.MORNING_KISS_ENABLED));
+        assertNull(TmaSettingsKeys.intBounds(null));
+    }
+
+    @Test
+    void batchRejectsAnOutOfRangeInteger() {
+        assertTrue(TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL, "99")
+        )).isEmpty());
+        assertTrue(TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "19")
+        )).isEmpty());
+        assertEquals(Optional.of(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "1200")
+        )), TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "1200")
+        )));
     }
 
     @Test
