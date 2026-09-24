@@ -129,13 +129,13 @@ src/main/resources
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（34×24 RGBA）是纯装饰资源，只在设置面板侧栏底部绘制，不接收鼠标事件。
+`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（44×55 RGBA）是纯装饰资源，只在设置面板侧栏底部绘制，不接收鼠标事件。
 
 语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。早安吻与残血救护语音列表都支持试听：本地内置亲吻音效试听跟随亲吻音效音量，数据包/TLM 语音试听跟随语音试听音量。数据包语音通过服务端校验后把目标字节发送回客户端播放。TLM 音包试听同样读取原始音频字节，但使用专用 preview stream：以 `minecraft:music.menu` 作为稳定声音事件锚点，走 `PLAYERS` 音量分类，并关闭位置衰减，避免右键试听依赖 TLM 音包自身的 sound event 注册状态或玩家的环境音量设置。TLM 音包实际播放仍由功能流程创建跟随女仆或触发点的流式 SoundInstance，避免把 Opus/Vorbis 兼容性压到 `SoundBuffer` 旧链路上。所有内存 OGG/MP3 字节统一由 `InMemoryVoiceStream` 异步解码，跟随实体的语音统一复用 `TrackedEntityVoiceSoundInstance`，但各场景仍保留自己的声源分类、位置衰减和锚点策略。
 
 `BondMaidGuiTabHandler` 不固定占用 TLM 顶部 tab 位置，而是运行时扫描可用位置，降低与 TLM 或其他扩展页签冲突。
 
-`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽（216×150，`BondGuiTokens.SETTINGS_MODAL_WIDTH`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部留白区绘制装饰藤蔓（`textures/gui/rose_vine.png`，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
+`SettingsSecondaryPage` 是与女仆无关的全局设置面板，从羁绊页顶部左侧的「设置」按钮进入（`BondPrimaryPageHost#openSettingsPage`，不走 `BondSecondaryPageRegistry` 的能力页流程）。模态框比其它二级页宽且高（216×188，`BondGuiTokens.SETTINGS_MODAL_WIDTH` / `SETTINGS_MODAL_HEIGHT`）：左侧 46px 导航轨按「功能 / 语音 / 音量」三个 tab 切换单区内容，导航底部留白区绘制装饰藤蔓（`textures/gui/rose_vine.png`，不接受鼠标事件）。它复用 `BondModalPage` / `BondDropdown` / `BondGuiTokens`，并新增自绘 `BondSlider`（88×13，数值金色居中）与胶囊开关。开关与语种是**服务端权威**项，走 `TmaSettingsRequestPayload` / `TmaSettingsStatePayload`，点击即时发包；音量是纯客户端项，直接写 `ModConfig` 并 `SPEC.save()`。行内状态点不依赖任何协议扩展：客户端记录 `pending`（key→请求值），收到状态回推后逐个比对——相等即「已保存」（不画点），不等即「被拒绝」（红点约 3 秒后自动清除），超过 5 秒仍无回推按超时视为被拒绝；存在请求中/被拒项时 footer 的「完成」左侧出现纯文字「重载」（清本地标记并 `requestSync()`）。布局参数集中在页面顶部常量，内容区可滚动（下拉框与滑块通过 `setPosition` 跟随滚动偏移）。
 
 ### 4.8 TMA AI Hub / MiMo 适配层
 
