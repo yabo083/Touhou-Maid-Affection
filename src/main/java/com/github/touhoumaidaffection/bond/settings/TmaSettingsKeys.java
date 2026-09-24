@@ -32,6 +32,7 @@ public final class TmaSettingsKeys {
     public static final String MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE = "morning_kiss.ai_dialogue_voice_language";
 
     public static final String LABEL_KEY_PREFIX = "bond.settings.key.";
+    public static final String SUB_LABEL_KEY_PREFIX = "bond.settings.sub.";
 
     /** Maximum accepted length of a language value. */
     public static final int MAX_LANGUAGE_LENGTH = 32;
@@ -86,6 +87,11 @@ public final class TmaSettingsKeys {
     /** Translation key of the display label of a whitelisted logical key. */
     public static String labelKey(String key) {
         return LABEL_KEY_PREFIX + key;
+    }
+
+    /** Translation key of the secondary description line shown under {@link #labelKey(String)}. */
+    public static String subKey(String key) {
+        return SUB_LABEL_KEY_PREFIX + key;
     }
 
     /**
