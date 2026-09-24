@@ -36,7 +36,7 @@ class TmaSettingsWireTest {
     void statePayloadShapeRoundTripsEntriesAndPermissionFlag() {
         List<TmaSettingsWire.Entry> entries = List.of(
                 new TmaSettingsWire.Entry("maid_prayer_buff.enabled", "true"),
-                new TmaSettingsWire.Entry("morning_kiss.ai_dialogue_language", "tlm")
+                new TmaSettingsWire.Entry("morning_kiss.voice_language", "tlm")
         );
 
         MemoryBuffer buffer = new MemoryBuffer();

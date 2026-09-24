@@ -13,10 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TmaSettingsKeysTest {
     @Test
     void whitelistCoversEveryFeatureSwitchAndLanguage() {
-        assertEquals(11, TmaSettingsKeys.keys().size());
+        assertEquals(9, TmaSettingsKeys.keys().size());
         assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.enabled"));
         assertTrue(TmaSettingsKeys.isWhitelisted("maid_prayer_buff.enabled"));
-        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_voice_language"));
+        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.display_language"));
+        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.voice_language"));
+        assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_language"));
+        assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_voice_language"));
         assertEquals(TmaSettingsKeys.Type.BOOLEAN, TmaSettingsKeys.typeOf("random_gift.enabled"));
         assertEquals(TmaSettingsKeys.Type.LANGUAGE, TmaSettingsKeys.typeOf("morning_kiss.display_language"));
     }
