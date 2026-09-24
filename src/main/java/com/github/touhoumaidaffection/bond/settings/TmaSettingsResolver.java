@@ -35,8 +35,13 @@ public final class TmaSettingsResolver {
         if (configValue == null || normalizedValue == null) {
             return;
         }
-        if (TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.BOOLEAN) {
+TmaSettingsKeys.Type type = TmaSettingsKeys.typeOf(key);
+        if (type == TmaSettingsKeys.Type.BOOLEAN) {
             ((ForgeConfigSpec.ConfigValue<Boolean>) configValue).set(Boolean.parseBoolean(normalizedValue));
+        } else if (type == TmaSettingsKeys.Type.TEXT) {
+            ForgeConfigSpec.ConfigValue<String> stringValue = (ForgeConfigSpec.ConfigValue<String>) configValue;
+            // An empty value means "restore the built-in default template" rather than storing "".
+            stringValue.set(normalizedValue.isEmpty() ? stringValue.getDefault() : normalizedValue);
         } else {
             ((ForgeConfigSpec.ConfigValue<String>) configValue).set(normalizedValue);
         }
@@ -65,6 +70,7 @@ public final class TmaSettingsResolver {
             case TmaSettingsKeys.MAID_PRAYER_BUFF_ENABLED -> ModConfig.BUFF_ENABLED;
             case TmaSettingsKeys.MORNING_KISS_DISPLAY_LANGUAGE -> ModConfig.BOND_MORNING_KISS_DISPLAY_LANGUAGE;
             case TmaSettingsKeys.MORNING_KISS_VOICE_LANGUAGE -> ModConfig.BOND_MORNING_KISS_VOICE_LANGUAGE;
+            case TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT -> ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_PROMPT;
             default -> null;
         };
     }
