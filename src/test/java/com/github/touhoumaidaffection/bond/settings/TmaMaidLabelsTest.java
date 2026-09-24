@@ -41,14 +41,17 @@ class TmaMaidLabelsTest {
     }
 
     @Test
-    void blankNamesFallBackToUnknownWording() {
+    void blankNamesUseTheCallerSuppliedFallbackWording() {
         List<String> labels = TmaMaidLabels.displayLabels(List.of(
                 maid("a1b2c3d4-0000-0000-0000-000000000001", ""),
                 maid("9f8e7d6c-0000-0000-0000-000000000002", "   ")
-        ));
+        ), "Unknown maid");
 
-        assertEquals(List.of("未知女仆 #a1b2", "未知女仆 #9f8e"), labels);
+        assertEquals(List.of("Unknown maid #a1b2", "Unknown maid #9f8e"), labels);
+        // The one-arg overload keeps the default wording for callers that do not localize.
         assertEquals("未知女仆", TmaMaidLabels.UNKNOWN_NAME);
+        assertEquals(List.of("未知女仆 #a1b2"),
+                TmaMaidLabels.displayLabels(List.of(maid("a1b2c3d4-0000-0000-0000-000000000001", ""))));
     }
 
     @Test

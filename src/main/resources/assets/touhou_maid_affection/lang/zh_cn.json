@@ -123,6 +123,7 @@
   "bond.settings.status.pool.general": "通用",
   "bond.settings.status.clear": "清空",
   "bond.settings.status.clear.tip": "清空该女仆的全部缓存台词（需要管理员权限）",
+  "bond.settings.status.maid.unknown": "未知女仆",
   "bond.settings.key.morning_kiss.text_prompt": "台词提示词",
   "bond.settings.sub.morning_kiss.text_prompt": "AI 台词生成模板",
   "bond.settings.key.morning_kiss.cache_consume_on_use": "消费即用",

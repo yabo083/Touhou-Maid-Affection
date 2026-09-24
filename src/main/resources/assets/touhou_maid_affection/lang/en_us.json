@@ -123,6 +123,7 @@
   "bond.settings.status.pool.general": "Any",
   "bond.settings.status.clear": "Clear",
   "bond.settings.status.clear.tip": "Clear every cached line of this maid (requires operator permission)",
+  "bond.settings.status.maid.unknown": "Unknown maid",
   "bond.settings.key.morning_kiss.text_prompt": "Dialogue prompt",
   "bond.settings.sub.morning_kiss.text_prompt": "AI dialogue template",
   "bond.settings.key.morning_kiss.cache_consume_on_use": "Consume on use",
