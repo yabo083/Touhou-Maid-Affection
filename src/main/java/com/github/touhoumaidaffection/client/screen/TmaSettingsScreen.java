@@ -290,6 +290,9 @@ public void renderBackground(GuiGraphics graphics) {
 
         List<Component> tooltip = getTooltip(mouseX, mouseY);
         if (!tooltip.isEmpty()) {
+            // Same batching reason as above: commit the panel before the tooltip so its own
+            // background is not overdrawn by text that was queued earlier in the frame.
+            graphics.flush();
             graphics.renderComponentTooltip(font, tooltip, mouseX, mouseY);
         }
     }
@@ -1094,8 +1097,12 @@ public void renderBackground(GuiGraphics graphics) {
                 labelTop, resetLeft - STATUS_DOT_GAP - LABEL_CONTROL_GAP);
         int resetTop = labelTop + (PROMPT_LABEL_BLOCK - TEXT_BUTTON_HEIGHT) / 2;
         boolean resetHovered = within(mouseX, mouseY, resetLeft, resetWidth, resetTop, TEXT_BUTTON_HEIGHT);
-        drawTextButton(graphics, font, Component.translatable("bond.settings.prompt.reset"), resetLeft, resetTop,
-                resetWidth, resetHovered, TmaSettingsClientState.canEdit());
+        // Safety net for the batching order documented in render(): while a dropdown list is open it
+        // covers this row, so the button is skipped entirely instead of relying on flush semantics.
+        if (!isAnyDropdownExpanded()) {
+            drawTextButton(graphics, font, Component.translatable("bond.settings.prompt.reset"), resetLeft, resetTop,
+                    resetWidth, resetHovered, TmaSettingsClientState.canEdit());
+        }
         if (promptBox != null) {
             promptBox.render(graphics, mouseX, mouseY, 0.0F);
         }
@@ -1501,6 +1508,16 @@ public void renderBackground(GuiGraphics graphics) {
                 color,
                 false
         );
+    }
+
+    /** True while any language dropdown list is expanded (its overlay covers the prompt row). */
+    private boolean isAnyDropdownExpanded() {
+        for (LanguageRow row : languages) {
+            if (row.dropdown.isExpanded()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void renderDropdownOverlays(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
