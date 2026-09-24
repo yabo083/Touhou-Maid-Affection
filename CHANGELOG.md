@@ -11,11 +11,12 @@
 ## [1.7.5.0] - 2026-09-24
 
 ### Added
-- 新增游戏内「全局设置」面板：在羁绊页顶部左侧新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、AI 早安吻语种（显示语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–4.0 步进 0.05）。无需再手改 toml。
+- 新增游戏内「全局设置」面板：在羁绊页顶部左侧新增「设置」入口，面板与当前女仆无关，分三个区——功能开关（早安吻 / 女仆主动早安吻 / AI 台词 / AI 语音 / 残血救护 / 随机礼物 / 少女祈祷 Buff）、AI 早安吻语种（显示语种 / 配音语种下拉框）、音量（亲吻音效 / 早安吻语音 / 残血救护 / 语音试听，0.0–1.0 步进 0.05）。无需再手改 toml。
 - 新增服务端权威设置同步通道：`TmaSettingsRequestPayload`（C2S，空列表表示只读状态）与 `TmaSettingsStatePayload`（S2C，回推全部白名单键的当前值与 `canEdit`）。面板里的开关与语种由服务端校验、应用并回推，单人存档与多人服务器行为一致。
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
 ### Changed
+- 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。
 - 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。
 
 ### Notes
