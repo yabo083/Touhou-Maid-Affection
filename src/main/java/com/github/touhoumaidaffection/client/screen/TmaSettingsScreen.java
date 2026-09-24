@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.ai.settin
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.settings.TmaAiStatusWire;
+import com.github.touhoumaidaffection.bond.settings.TmaMaidLabels;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsKeys;
 import com.github.touhoumaidaffection.client.TmaAiStatusClientState;
 import com.github.touhoumaidaffection.client.TmaSettingsClientState;
@@ -830,10 +831,13 @@ public final class TmaSettingsScreen extends Screen {
         y = addStatusKv(y, tr("bond.settings.status.cache.runtime"),
                 literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
         y = addStatusHeader(y, "bond.settings.status.section.maids");
-        for (TmaAiStatusWire.MaidStatus maid : status.maids()) {
+        List<TmaAiStatusWire.MaidStatus> maids = status.maids();
+        List<String> maidLabels = TmaMaidLabels.displayLabels(maids);
+        for (int index = 0; index < maids.size(); index++) {
+            TmaAiStatusWire.MaidStatus maid = maids.get(index);
             int totalTarget = maid.target() * Math.max(1, maid.pools().size());
             statusRows.add(new StatusRow(StatusRow.Kind.MAID, y, STATUS_MAID_HEIGHT, null,
-                    literal(maid.name().isEmpty() ? maid.maidUuid() : maid.name()),
+                    literal(maidLabels.get(index)),
                     literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + totalTarget),
                     maid.maidUuid()));
             y += STATUS_MAID_HEIGHT + STATUS_ROW_GAP;
