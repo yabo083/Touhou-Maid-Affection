@@ -12,12 +12,12 @@ import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondNumberField;
+import com.github.touhoumaidaffection.client.screen.component.BondPromptBox;
 import com.github.touhoumaidaffection.client.screen.component.BondSlider;
 import com.github.touhoumaidaffection.util.SoundVolumeSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.MultiLineEditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -38,13 +38,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>It is deliberately not a {@code BondSecondaryPage}: it is entered from the maid GUI's
  * "settings" button via {@link net.minecraft.client.Minecraft#setScreen(Screen)} and closing it
  * (footer "done", ESC or a click on the dimmed area) restores the parent screen it was opened from.
- * Layout follows the reviewed mockup: a 340x230 modal with a 46px navigation rail (features / voice
- * / volume / status) and one section per tab. Feature switches, languages and the Morning Kiss
- * prompt template are server-authoritative and go through the settings channel, the status tab is
- * fed by the read-only AI status channel, while the volume sliders are pure client preferences
- * written straight into the local config. Every control applies instantly; the rail bottom hosts a
- * decorative rose vine whose stem base rests on the panel's bottom border (fully inside the panel,
- * so it is never clipped by the physical bottom of the screen). It never accepts mouse input.
+ * Layout follows the reviewed mockup: a 340x230 modal with a 46px navigation rail (status / features
+ * / voice / volume, status first and selected by default) and one section per tab. Feature switches,
+ * the cache policy and the languages are server-authoritative and go through the settings channel,
+ * the status tab is a read-only view fed by the AI status channel, while the volume sliders are pure
+ * client preferences written straight into the local config. Every control applies instantly; the
+ * rail bottom hosts a decorative rose vine whose stem base rests on the panel's bottom border
+ * (fully inside the panel, so it is never clipped by the physical bottom of the screen). It never
+ * accepts mouse input.
  *
  * <p>Per-row status dots are derived without any protocol change: a request recorded in
  * {@link #pending} is resolved when the next authoritative state push arrives - a matching value
@@ -73,10 +74,12 @@ public final class TmaSettingsScreen extends Screen {
 
     // ---- Content layout ----
     private static final int CONTENT_PADDING = 8;
-    private static final int SECTION_HEADER_HEIGHT = 12;
-    private static final int ROW_GAP = 3;
+    private static final int SECTION_HEADER_HEIGHT = 15;
+    private static final int ROW_GAP = 6;
     private static final int TOGGLE_ROW_HEIGHT = 18;
-    private static final int LANGUAGE_ROW_HEIGHT = 17;
+    /** Height of a cache-policy numeric row (label + subtitle, like a toggle row). */
+    private static final int NUMBER_ROW_HEIGHT = 18;
+    private static final int LANGUAGE_ROW_HEIGHT = 20;
     private static final int SLIDER_ROW_HEIGHT = 18;
     /** Number of tabs in the navigation rail. */
     private static final int TAB_COUNT = 4;
@@ -100,27 +103,27 @@ public final class TmaSettingsScreen extends Screen {
 
     // ---- Voice tab (prompt template + AI site) ----
     /**
-     * Height of the dialogue editor. The voice tab must fit inside the 168px content viewport
-     * without scrolling, so the editor is the element that absorbs the compression (see the layout
-     * arithmetic in {@link #buildRows()}).
+     * Height of the dialogue editor: {@code 9 * lines + 4}, i.e. exactly five text lines plus the
+     * widget's inner padding. Sizing it on that grid means the sixth line starts on the scissor
+     * border instead of being sliced in half, and
+     * {@link com.github.touhoumaidaffection.client.screen.component.BondPromptBox} keeps the scroll
+     * offset on the same grid while the text overflows.
      */
-    private static final int PROMPT_BOX_HEIGHT = 36;
+    private static final int PROMPT_BOX_HEIGHT = 49;
     private static final int PROMPT_LABEL_BLOCK = 18;
     /** Inner padding of the vanilla multi-line editor; the counter is inset by the same amount. */
     private static final int PROMPT_INNER_PADDING = 4;
     /** Height of the full-width placeholder legend row below the prompt box. */
-    private static final int PROMPT_ROW_HEIGHT = 12;
+    private static final int PROMPT_ROW_HEIGHT = 14;
     private static final int TEXT_BUTTON_HEIGHT = 14;
     private static final int SITE_ROW_HEIGHT = 18;
 
     // ---- Status tab ----
-    private static final int STATUS_KV_HEIGHT = 12;
+    private static final int STATUS_KV_HEIGHT = 13;
     private static final int STATUS_MAID_HEIGHT = 18;
-    private static final int STATUS_ROW_GAP = 2;
+    private static final int STATUS_ROW_GAP = 6;
     private static final int STATUS_CLEAR_BUTTON_WIDTH = 26;
-    /** Height of an editable status row (toggle / language / number). */
-    private static final int STATUS_EDIT_ROW_HEIGHT = 18;
-    /** Width of the compact number field, matching the language dropdown column. */
+    /** Width of a compact cache-policy number field, matching the language dropdown column. */
     private static final int NUMBER_FIELD_WIDTH = DROPDOWN_WIDTH;
     /** Space the maid name column keeps when the pool summary would otherwise swallow the row. */
     private static final int MIN_MAID_NAME_WIDTH = 60;
@@ -150,10 +153,21 @@ public final class TmaSettingsScreen extends Screen {
 
     private static final List<String> TOGGLE_KEYS = TmaSettingsKeys.keys().stream()
             .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.BOOLEAN)
+            // "Consume on use" belongs to the cache-policy section of the same tab, so it is
+            // rendered there and excluded here to keep exactly one control per key.
+            .filter(key -> !TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE.equals(key))
             .toList();
     private static final List<String> LANGUAGE_KEYS = TmaSettingsKeys.keys().stream()
             .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.LANGUAGE)
             .toList();
+    /** Integer cache-policy keys of the features tab, in whitelist order. */
+    private static final List<String> CACHE_NUMBER_KEYS = TmaSettingsKeys.keys().stream()
+            .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.INT)
+            .toList();
+    /** Unit suffix of each cache-policy integer field, e.g. {@code t} for the scan interval. */
+    private static final Map<String, String> CACHE_NUMBER_UNITS = Map.of(
+            TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL, "",
+            TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "t");
 
     /** Client-only volume preferences; they never travel over the settings channel. */
     private static final List<VolumeSetting> VOLUME_SETTINGS = List.of(
@@ -172,12 +186,10 @@ public final class TmaSettingsScreen extends Screen {
     private final List<SliderRow> sliders = new ArrayList<>();
     /** Status tab rows, rebuilt on every layout pass from the pushed status. */
     private final List<StatusRow> statusRows = new ArrayList<>();
-    /** y offsets (relative to the content top) of the language dropdowns while the status tab is active. */
-    private final Map<String, Integer> statusLanguageY = new HashMap<>();
-    /** Unit suffix of each numeric status row, e.g. {@code t} for the scan interval. */
-    private final Map<String, String> statusNumberUnits = new HashMap<>();
-    /** Compact integer editors of the status tab, keyed by the server key. */
-    private final Map<String, BondNumberField> statusNumberFields = new HashMap<>();
+    /** Cache-policy rows of the features tab, positioned once in {@link #buildRows()}. */
+    private final List<NumberRow> cacheNumberRows = new ArrayList<>();
+    /** Compact integer editors of the features tab, keyed by the server key. */
+    private final Map<String, BondNumberField> cacheNumberFields = new HashMap<>();
 
     /** Server keys with a request in flight: key -> requested value + send timestamp. */
     private final Map<String, PendingRequest> pending = new ConcurrentHashMap<>();
@@ -185,6 +197,7 @@ public final class TmaSettingsScreen extends Screen {
     private final Map<String, Long> rejectedUntil = new ConcurrentHashMap<>();
 
     private BondModalPage modal;
+    /** Index of the visible tab; 0 is the read-only status tab, which is selected by default. */
     private int activeTab;
     private int contentHeight;
     private int scrollOffset;
@@ -192,8 +205,14 @@ public final class TmaSettingsScreen extends Screen {
     private boolean volumesDirty;
     private boolean released;
 
+    // ---- Features tab state ----
+    /** The "consume on use" switch, rendered inside the cache-policy section of the features tab. */
+    private ToggleRow cacheConsumeRow;
+    private int cachePolicySectionY;
+    private int featuresContentHeight;
+
     // ---- Voice tab state ----
-    private MultiLineEditBox promptBox;
+    private BondPromptBox promptBox;
     private int voicePromptSectionY;
     private int voicePromptLabelY;
     private int voicePromptBoxY;
@@ -220,6 +239,8 @@ public final class TmaSettingsScreen extends Screen {
         modal = null;
         promptBox = null;
         layoutDirty = true;
+        // The status tab is selected by default, so its read-only feed has to be requested on open.
+        requestStatusIfNeeded();
     }
 
     @Override
@@ -312,10 +333,16 @@ public final class TmaSettingsScreen extends Screen {
     private void clickActiveTabRow(double mouseX, double mouseY) {
         switch (activeTab) {
             case 0 -> {
+                // The status tab is read-only; only the per-maid "clear" buttons accept clicks.
                 blurPrompt();
-                clickToggle(mouseX, mouseY);
+                blurNumberFields();
+                clickStatus(mouseX, mouseY);
             }
             case 1 -> {
+                blurPrompt();
+                clickFeatures(mouseX, mouseY);
+            }
+            case 2 -> {
                 if (!clickPromptBox(mouseX, mouseY)) {
                     blurPrompt();
                     if (!clickVoiceExtras(mouseX, mouseY)) {
@@ -323,26 +350,21 @@ public final class TmaSettingsScreen extends Screen {
                     }
                 }
             }
-            case 2 -> {
-                blurPrompt();
-                clickSlider(mouseX, mouseY);
-            }
             default -> {
                 blurPrompt();
-                blurNumberFields();
-                clickStatus(mouseX, mouseY);
+                clickSlider(mouseX, mouseY);
             }
         }
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (activeTab == 1 && promptBox != null && promptBox.isFocused()
+        if (activeTab == 2 && promptBox != null && promptBox.isFocused()
                 && promptBox.keyPressed(keyCode, scanCode, modifiers)) {
             clampPromptLength();
             return true;
         }
-        BondNumberField field = activeTab == 3 ? focusedNumberField() : null;
+        BondNumberField field = activeTab == 1 ? focusedNumberField() : null;
         if (field != null) {
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 field.blur();
@@ -357,12 +379,12 @@ public final class TmaSettingsScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (activeTab == 1 && promptBox != null && promptBox.isFocused()
+        if (activeTab == 2 && promptBox != null && promptBox.isFocused()
                 && promptBox.charTyped(codePoint, modifiers)) {
             clampPromptLength();
             return true;
         }
-        BondNumberField field = activeTab == 3 ? focusedNumberField() : null;
+        BondNumberField field = activeTab == 1 ? focusedNumberField() : null;
         if (field != null && field.charTyped(codePoint, modifiers)) {
             return true;
         }
@@ -414,6 +436,12 @@ public final class TmaSettingsScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         ensureLayout();
+        // A wheel event inside the dialogue editor scrolls the editor's own text and is consumed
+        // here, so the panel behind it never scrolls at the same time (the two never move together).
+        if (activeTab == 2 && promptBox != null && promptBox.isMouseOver(mouseX, mouseY)) {
+            promptBox.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+            return true;
+        }
         for (LanguageRow row : languages) {
             if (row.dropdown.mouseScrolled(mouseX, mouseY, scrollY, row.options.size())) {
                 return true;
@@ -475,15 +503,29 @@ public final class TmaSettingsScreen extends Screen {
         }
         switch (activeTab) {
             case 0 -> {
-                for (ToggleRow row : toggles) {
-                    if (containsToggle(row, mouseX, mouseY)) {
-                        return rowTooltip(row.key, Component.translatable(currentToggleValue(row.key)
-                                ? "bond.settings.toggle.tip.off"
-                                : "bond.settings.toggle.tip.on").withStyle(ChatFormatting.GRAY));
-                    }
+                // Read-only tab: the only interactive elements are the per-maid "clear" buttons.
+                if (statusClearHovered(mouseX, mouseY) != null) {
+                    return List.of(Component.translatable("bond.settings.status.clear.tip"));
                 }
             }
             case 1 -> {
+                for (ToggleRow row : toggles) {
+                    if (containsToggle(row, mouseX, mouseY)) {
+                        return toggleTooltip(row.key);
+                    }
+                }
+                if (cacheConsumeRow != null && containsToggle(cacheConsumeRow, mouseX, mouseY)) {
+                    return toggleTooltip(cacheConsumeRow.key);
+                }
+                for (NumberRow row : cacheNumberRows) {
+                    BondNumberField field = cacheNumberFields.get(row.key());
+                    if (field != null && field.contains(mouseX, mouseY)) {
+                        return rowTooltip(row.key(), Component.translatable(TmaSettingsKeys.labelKey(row.key())),
+                                Component.translatable("bond.settings.number.tip").withStyle(ChatFormatting.GRAY));
+                    }
+                }
+            }
+            case 2 -> {
                 for (LanguageRow row : languages) {
                     if (row.dropdown.contains(mouseX, mouseY, row.options.size())) {
                         return rowTooltip(row.key, Component.translatable("bond.settings.language.tip").withStyle(ChatFormatting.GRAY));
@@ -502,7 +544,7 @@ public final class TmaSettingsScreen extends Screen {
                     return List.of(Component.translatable("bond.settings.site.open.tip"));
                 }
             }
-            case 2 -> {
+            default -> {
                 for (SliderRow row : sliders) {
                     if (row.slider.contains(mouseX, mouseY)) {
                         return List.of(
@@ -512,17 +554,15 @@ public final class TmaSettingsScreen extends Screen {
                     }
                 }
             }
-            default -> {
-                if (statusClearHovered(mouseX, mouseY) != null) {
-                    return List.of(Component.translatable("bond.settings.status.clear.tip"));
-                }
-                List<Component> statusTooltip = statusRowTooltip(mouseX, mouseY);
-                if (!statusTooltip.isEmpty()) {
-                    return statusTooltip;
-                }
-            }
         }
         return List.of();
+    }
+
+    /** Tooltip of one of the editable feature switches (capsule toggle + pending marker). */
+    private List<Component> toggleTooltip(String key) {
+        return rowTooltip(key, Component.translatable(currentToggleValue(key)
+                ? "bond.settings.toggle.tip.off"
+                : "bond.settings.toggle.tip.on").withStyle(ChatFormatting.GRAY));
     }
 
     // ---- State wiring ----
@@ -540,7 +580,7 @@ public final class TmaSettingsScreen extends Screen {
 
     /** Asks for the AI status the first time the status tab becomes active (or after a failure). */
     private void requestStatusIfNeeded() {
-        if (activeTab != 3 || statusRequested) {
+        if (activeTab != 0 || statusRequested) {
             return;
         }
         statusRequested = true;
@@ -597,6 +637,25 @@ public final class TmaSettingsScreen extends Screen {
             toggles.add(new ToggleRow(key, y));
             y += TOGGLE_ROW_HEIGHT + ROW_GAP;
         }
+        // Features tab, cache-policy section: two integer fields plus the "consume on use" switch.
+        // "Consume on use" is deliberately not part of TOGGLE_KEYS, so it exists exactly once.
+        //
+        // Every tab now breathes with the widened spacing constants and simply scrolls when its
+        // content is taller than the viewport (MODAL_HEIGHT 230 - MODAL_TITLE_HEIGHT 24 -
+        // CONTENT_PADDING 8 - MODAL_FOOTER_HEIGHT 30 = 168px of visible content).
+        //   header 15 + 8 * (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)               = 207
+        // + cache header 15 + 2 * (NUMBER_ROW_HEIGHT 18 + ROW_GAP 6)         = 270
+        // + consume row (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)                   = 294
+        cachePolicySectionY = y;
+        y += SECTION_HEADER_HEIGHT;
+        for (String key : CACHE_NUMBER_KEYS) {
+            cacheNumberRows.add(new NumberRow(key, y));
+            y += NUMBER_ROW_HEIGHT + ROW_GAP;
+        }
+        cacheConsumeRow = new ToggleRow(TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE, y);
+        y += TOGGLE_ROW_HEIGHT + ROW_GAP;
+        featuresContentHeight = y;
+
         y = SECTION_HEADER_HEIGHT;
         for (String key : LANGUAGE_KEYS) {
             languages.add(new LanguageRow(key, new BondDropdown<>(
@@ -610,15 +669,12 @@ public final class TmaSettingsScreen extends Screen {
             y += LANGUAGE_ROW_HEIGHT + ROW_GAP;
         }
         // Voice tab: prompt template editor + "open TLM AI settings" jump button.
-        //
-        // The whole tab has to fit inside the content viewport without scrolling
-        // (MODAL_HEIGHT 230 - MODAL_TITLE_HEIGHT 24 - CONTENT_PADDING 8 - MODAL_FOOTER_HEIGHT 30 = 168):
-        //   languages header 12 + 2 * (LANGUAGE_ROW_HEIGHT 17 + ROW_GAP 3)   =  52
-        // + prompt header 12                                                   =  64
-        // + prompt label row (PROMPT_LABEL_BLOCK 18, hosts the "restore default" button) = 82
-        // + prompt box PROMPT_BOX_HEIGHT 36                                    = 118
-        // + ROW_GAP 3 + legend row PROMPT_ROW_HEIGHT 12 + ROW_GAP 3            = 136
-        // + site header 12 + site row SITE_ROW_HEIGHT 18                       = 166  <= 168
+        //   languages header 15 + 2 * (LANGUAGE_ROW_HEIGHT 20 + ROW_GAP 6)      =  67
+        // + prompt header 15                                                     =  82
+        // + prompt label row (PROMPT_LABEL_BLOCK 18, hosts the "restore default" button) = 100
+        // + prompt box PROMPT_BOX_HEIGHT 49                                      = 149
+        // + ROW_GAP 6 + legend row PROMPT_ROW_HEIGHT 14 + ROW_GAP 6              = 175
+        // + site header 15 + site row SITE_ROW_HEIGHT 18                         = 208
         // The legend row spans the full content width (no button on it), so the placeholder legend
         // is never truncated.
         voicePromptSectionY = y;
@@ -659,16 +715,15 @@ public final class TmaSettingsScreen extends Screen {
         }
         int contentRight = contentRight();
         int rowTop = contentTop() - scrollOffset;
-        // The status tab owns the row offsets of its own editable rows, so it has to be laid out
-        // before the shared language dropdowns are positioned.
+        // The status tab owns its own read-only rows, so it is laid out before the shared language
+        // dropdowns of the voice tab are positioned.
         buildStatusRows();
         for (LanguageRow row : languages) {
             row.options = buildLanguageOptions(row.key);
             row.selectedIndex = Math.max(0, row.options.indexOf(
                     TmaSettingsKeys.languageForDisplay(TmaSettingsClientState.getValue(row.key))));
             row.x = contentRight - DROPDOWN_WIDTH;
-            int rowOffset = activeTab == 3 ? statusLanguageY.getOrDefault(row.key, row.y) : row.y;
-            int dropdownTop = rowTop + rowOffset;
+            int dropdownTop = rowTop + row.y;
             row.dropdown.setPosition(row.x, dropdownTop);
             // Flip the expanded list above the header when it would spill past the bottom of the
             // screen, so every option stays reachable (scrolling is preserved either way).
@@ -687,30 +742,27 @@ public final class TmaSettingsScreen extends Screen {
             promptBox.setWidth(Math.max(20, contentRight - contentLeft()));
             syncPromptBox();
         }
-        ensureStatusNumberFields(rowTop);
+        ensureCacheNumberFields(rowTop);
         contentHeight = contentHeight(activeTab);
         layoutDirty = false;
     }
 
-    /** Creates and positions the compact integer editors of the status tab. */
-    private void ensureStatusNumberFields(int rowTop) {
-        for (StatusRow row : statusRows) {
-            if (row.kind() != StatusRow.Kind.INT) {
-                continue;
-            }
+    /** Creates and positions the compact integer editors of the features tab. */
+    private void ensureCacheNumberFields(int rowTop) {
+        for (NumberRow row : cacheNumberRows) {
             int[] bounds = TmaSettingsKeys.intBounds(row.key());
             if (bounds == null) {
                 continue;
             }
-            BondNumberField field = statusNumberFields.get(row.key());
+            BondNumberField field = cacheNumberFields.get(row.key());
             if (field == null) {
                 field = new BondNumberField(this.font, bounds[0], bounds[1],
-                        statusNumberUnits.getOrDefault(row.key(), ""), currentIntValue(row.key(), bounds[0]));
+                        CACHE_NUMBER_UNITS.getOrDefault(row.key(), ""), currentIntValue(row.key(), bounds[0]));
                 field.setResponder(value -> applyServerValue(row.key(), Integer.toString(value)));
-                statusNumberFields.put(row.key(), field);
+                cacheNumberFields.put(row.key(), field);
             }
             field.setBounds(contentRight() - NUMBER_FIELD_WIDTH,
-                    rowTop + row.y() + (STATUS_EDIT_ROW_HEIGHT - BondNumberField.HEIGHT) / 2,
+                    rowTop + row.y() + (NUMBER_ROW_HEIGHT - BondNumberField.HEIGHT) / 2,
                     NUMBER_FIELD_WIDTH);
             field.setValue(currentIntValue(row.key(), field.value()));
             field.setEditable(TmaSettingsClientState.canEdit());
@@ -739,40 +791,39 @@ public final class TmaSettingsScreen extends Screen {
 
     private int contentHeight(int tab) {
         return switch (tab) {
-            case 0 -> SECTION_HEADER_HEIGHT + toggles.size() * (TOGGLE_ROW_HEIGHT + ROW_GAP);
-            case 1 -> voiceContentHeight;
-            case 3 -> Math.max(STATUS_KV_HEIGHT, statusRows.isEmpty()
-                    ? STATUS_KV_HEIGHT + ROW_GAP
-                    : statusRows.get(statusRows.size() - 1).y() + statusRows.get(statusRows.size() - 1).height() + ROW_GAP);
+            case 0 -> Math.max(STATUS_KV_HEIGHT, statusRows.isEmpty()
+                    ? STATUS_KV_HEIGHT + STATUS_ROW_GAP
+                    : statusRows.get(statusRows.size() - 1).y() + statusRows.get(statusRows.size() - 1).height()
+                    + STATUS_ROW_GAP);
+            case 1 -> featuresContentHeight;
+            case 2 -> voiceContentHeight;
             default -> SECTION_HEADER_HEIGHT + sliders.size() * (SLIDER_ROW_HEIGHT + ROW_GAP);
         };
     }
 
     private void buildStatusRows() {
         statusRows.clear();
-        statusLanguageY.clear();
-        statusNumberUnits.clear();
         TmaAiStatusWire.Status status = TmaAiStatusClientState.get();
         if (status == null) {
             return;
         }
         int y = 0;
         y = addStatusHeader(y, "bond.settings.status.section.switches");
-        y = addStatusToggle(y, "bond.settings.status.switch.morning_kiss", TmaSettingsKeys.MORNING_KISS_ENABLED);
-        y = addStatusToggle(y, "bond.settings.status.switch.ai_dialogue", TmaSettingsKeys.MORNING_KISS_AI_DIALOGUE_ENABLED);
-        y = addStatusToggle(y, "bond.settings.status.switch.ai_tts", TmaSettingsKeys.MORNING_KISS_AI_TTS_ENABLED);
-        y = addStatusToggle(y, "bond.settings.status.switch.fallback",
-                TmaSettingsKeys.MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED);
+        y = addStatusKv(y, tr("bond.settings.status.switch.morning_kiss"), onOff(status.morningKissEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.ai_dialogue"), onOff(status.aiDialogueEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.ai_tts"), onOff(status.aiTtsEnabled()));
+        y = addStatusKv(y, tr("bond.settings.status.switch.fallback"), onOff(status.immediateFallbackEnabled()));
         y = addStatusHeader(y, "bond.settings.status.section.languages");
-        y = addStatusLanguage(y, "bond.settings.status.language.display", TmaSettingsKeys.MORNING_KISS_DISPLAY_LANGUAGE);
-        y = addStatusLanguage(y, "bond.settings.status.language.voice", TmaSettingsKeys.MORNING_KISS_VOICE_LANGUAGE);
+        y = addStatusKv(y, tr("bond.settings.status.language.display"),
+                languageValue(status.globalDisplayLanguage(), "bond.settings.status.language.auto.display"));
+        y = addStatusKv(y, tr("bond.settings.status.language.voice"),
+                languageValue(status.globalVoiceLanguage(), "bond.settings.status.language.auto.voice"));
         y = addStatusHeader(y, "bond.settings.status.section.cache_policy");
-        y = addStatusInt(y, "bond.settings.status.cache_policy.target",
-                TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL, "");
-        y = addStatusInt(y, "bond.settings.status.cache_policy.scan",
-                TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "t");
-        y = addStatusToggle(y, "bond.settings.status.cache_policy.consume",
-                TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE);
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.target"),
+                literal(String.valueOf(status.cacheTargetPerPool())));
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.scan"),
+                literal(status.scanIntervalTicks() + "t"));
+        y = addStatusKv(y, tr("bond.settings.status.cache_policy.consume"), onOff(status.consumeOnUse()));
         y = addStatusHeader(y, "bond.settings.status.section.cache_stats");
         y = addStatusKv(y, tr("bond.settings.status.cache.entries"),
                 literal(status.totalEntries() + " (" + status.voiceEntries() + " / " + status.textOnlyEntries() + ")"));
@@ -799,27 +850,15 @@ public final class TmaSettingsScreen extends Screen {
         return y + STATUS_KV_HEIGHT + STATUS_ROW_GAP;
     }
 
-    /** Editable switch row: the capsule toggle of the features tab, driven by the same server key. */
-    private int addStatusToggle(int y, String labelKey, String key) {
-        statusRows.add(new StatusRow(StatusRow.Kind.TOGGLE, y, STATUS_EDIT_ROW_HEIGHT, key,
-                Component.translatable(labelKey), null, null));
-        return y + STATUS_EDIT_ROW_HEIGHT + STATUS_ROW_GAP;
+    private static Component onOff(boolean on) {
+        return Component.translatable(on ? "bond.settings.status.on" : "bond.settings.status.off");
     }
 
-    /** Editable language row: reuses the voice tab's dropdowns, positioned through {@link #statusLanguageY}. */
-    private int addStatusLanguage(int y, String labelKey, String key) {
-        statusLanguageY.put(key, y);
-        statusRows.add(new StatusRow(StatusRow.Kind.LANGUAGE, y, STATUS_EDIT_ROW_HEIGHT, key,
-                Component.translatable(labelKey), null, null));
-        return y + STATUS_EDIT_ROW_HEIGHT + STATUS_ROW_GAP;
-    }
-
-    /** Editable numeric row: a compact integer field with an optional unit suffix. */
-    private int addStatusInt(int y, String labelKey, String key, String unit) {
-        statusNumberUnits.put(key, unit);
-        statusRows.add(new StatusRow(StatusRow.Kind.INT, y, STATUS_EDIT_ROW_HEIGHT, key,
-                Component.translatable(labelKey), null, null));
-        return y + STATUS_EDIT_ROW_HEIGHT + STATUS_ROW_GAP;
+    private static Component languageValue(String language, String autoKey) {
+        if (language == null || language.isBlank() || LANGUAGE_AUTO.equalsIgnoreCase(language.trim())) {
+            return Component.translatable(autoKey);
+        }
+        return Component.literal(language);
     }
 
     private static String poolSummary(TmaAiStatusWire.MaidStatus maid) {
@@ -847,7 +886,7 @@ public final class TmaSettingsScreen extends Screen {
         if (promptBox != null) {
             return;
         }
-        promptBox = new MultiLineEditBox(
+        promptBox = new BondPromptBox(
                 this.font,
                 contentLeft(),
                 0,
@@ -921,7 +960,7 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     private boolean clickPromptBox(double mouseX, double mouseY) {
-        if (promptBox == null || activeTab != 1) {
+        if (promptBox == null || activeTab != 2) {
             return false;
         }
         if (!promptBox.mouseClicked(mouseX, mouseY, 0)) {
@@ -987,13 +1026,15 @@ public final class TmaSettingsScreen extends Screen {
         }
         int rowTop = contentTop() - scrollOffset;
         switch (activeTab) {
-            case 0 -> {
+            case 0 -> renderStatusTab(graphics, font, rowTop, mouseX, mouseY);
+            case 1 -> {
                 renderSectionHeader(graphics, font, rowTop, "bond.settings.section.features", BondGuiTokens.TAG_SERVER);
                 for (ToggleRow row : toggles) {
                     renderToggleRow(graphics, font, row, rowTop + row.y, mouseX, mouseY);
                 }
+                renderCachePolicySection(graphics, font, rowTop, mouseX, mouseY);
             }
-            case 1 -> {
+            case 2 -> {
                 renderSectionHeader(graphics, font, rowTop, "bond.settings.section.languages", BondGuiTokens.TAG_SERVER);
                 for (LanguageRow row : languages) {
                     renderLanguageRow(graphics, font, row, rowTop + row.y, mouseX, mouseY);
@@ -1001,13 +1042,34 @@ public final class TmaSettingsScreen extends Screen {
                 renderPromptSection(graphics, font, rowTop, mouseX, mouseY);
                 renderSiteSection(graphics, font, rowTop, mouseX, mouseY);
             }
-            case 2 -> {
+            default -> {
                 renderSectionHeader(graphics, font, rowTop, "bond.settings.section.volumes", BondGuiTokens.TAG_LOCAL);
                 for (SliderRow row : sliders) {
                     renderSliderRow(graphics, font, row, rowTop + row.y, mouseX, mouseY);
                 }
             }
-            default -> renderStatusTab(graphics, font, rowTop, mouseX, mouseY);
+        }
+    }
+
+    /** Cache-policy section of the features tab: two integer fields plus the "consume on use" switch. */
+    private void renderCachePolicySection(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
+        renderSectionHeader(graphics, font, rowTop + cachePolicySectionY,
+                "bond.settings.section.cache_policy", BondGuiTokens.TAG_SERVER);
+        for (NumberRow row : cacheNumberRows) {
+            renderNumberRow(graphics, font, row, rowTop + row.y(), mouseX, mouseY);
+        }
+        if (cacheConsumeRow != null) {
+            renderToggleRow(graphics, font, cacheConsumeRow, rowTop + cacheConsumeRow.y, mouseX, mouseY);
+        }
+    }
+
+    /** One cache-policy numeric row: label + subtitle on the left, compact integer field on the right. */
+    private void renderNumberRow(GuiGraphics graphics, Font font, NumberRow row, int rowTop, int mouseX, int mouseY) {
+        BondNumberField field = cacheNumberFields.get(row.key());
+        int controlLeft = field == null ? contentRight() - NUMBER_FIELD_WIDTH : field.left();
+        drawRowLabels(graphics, font, row.key(), rowTop, controlLeft - LABEL_CONTROL_GAP);
+        if (field != null) {
+            field.render(graphics, mouseX, mouseY, TmaSettingsClientState.canEdit());
         }
     }
 
@@ -1078,66 +1140,8 @@ public final class TmaSettingsScreen extends Screen {
                 case HEADER -> renderSectionHeader(graphics, font, y, row.key(), BondGuiTokens.TAG_SERVER);
                 case KV -> drawKvRow(graphics, font, y, row.label(), row.value());
                 case MAID -> renderMaidRow(graphics, font, y, row, mouseX, mouseY);
-                case TOGGLE -> renderStatusToggle(graphics, font, row, y, mouseX, mouseY);
-                case LANGUAGE -> renderStatusLanguage(graphics, font, row, y, mouseX, mouseY);
-                case INT -> renderStatusInt(graphics, font, row, y, mouseX, mouseY);
             }
         }
-    }
-
-    /** Editable switch row: the same capsule toggle and pending dot as the features tab. */
-    private void renderStatusToggle(GuiGraphics graphics, Font font, StatusRow row, int rowTop, int mouseX, int mouseY) {
-        int controlLeft = contentRight() - TOGGLE_WIDTH;
-        drawStatusLabel(graphics, font, row, rowTop, controlLeft);
-        int controlTop = rowTop + (STATUS_EDIT_ROW_HEIGHT - TOGGLE_HEIGHT) / 2;
-        boolean enabled = TmaSettingsClientState.canEdit();
-        boolean hovered = mouseX >= controlLeft && mouseX < controlLeft + TOGGLE_WIDTH
-                && mouseY >= controlTop && mouseY < controlTop + TOGGLE_HEIGHT;
-        drawToggle(graphics, controlLeft, controlTop, currentToggleValue(row.key()), enabled, hovered);
-        drawStatusDot(graphics, controlLeft - STATUS_DOT_GAP - STATUS_DOT_SIZE,
-                rowTop + (STATUS_EDIT_ROW_HEIGHT - STATUS_DOT_SIZE) / 2, row.key());
-    }
-
-    /** Editable language row: reuses the voice tab dropdown instances (and their pending state). */
-    private void renderStatusLanguage(GuiGraphics graphics, Font font, StatusRow row, int rowTop, int mouseX, int mouseY) {
-        LanguageRow languageRow = languageRow(row.key());
-        if (languageRow == null) {
-            return;
-        }
-        drawStatusLabel(graphics, font, row, rowTop, languageRow.x);
-        drawDropdownHeader(graphics, font, languageRow, rowTop, mouseX, mouseY);
-        drawStatusDot(graphics, languageRow.x - STATUS_DOT_GAP - STATUS_DOT_SIZE,
-                rowTop + (STATUS_EDIT_ROW_HEIGHT - STATUS_DOT_SIZE) / 2, row.key());
-    }
-
-    /** Editable numeric row: compact integer field with its unit suffix and pending dot. */
-    private void renderStatusInt(GuiGraphics graphics, Font font, StatusRow row, int rowTop, int mouseX, int mouseY) {
-        BondNumberField field = statusNumberFields.get(row.key());
-        drawStatusLabel(graphics, font, row, rowTop,
-                field == null ? contentRight() - NUMBER_FIELD_WIDTH : field.left());
-        if (field == null) {
-            return;
-        }
-        field.render(graphics, mouseX, mouseY, TmaSettingsClientState.canEdit());
-        drawStatusDot(graphics, field.left() - STATUS_DOT_GAP - STATUS_DOT_SIZE,
-                rowTop + (STATUS_EDIT_ROW_HEIGHT - STATUS_DOT_SIZE) / 2, row.key());
-    }
-
-    /** Label of an editable status row, vertically centred and clipped left of its control column. */
-    private void drawStatusLabel(GuiGraphics graphics, Font font, StatusRow row, int rowTop, int controlLeft) {
-        int maxWidth = Math.max(0, controlLeft - STATUS_DOT_SIZE - STATUS_DOT_GAP - LABEL_CONTROL_GAP - contentLeft());
-        graphics.drawString(font, clip(font, row.label(), maxWidth),
-                contentLeft(), rowTop + (STATUS_EDIT_ROW_HEIGHT - font.lineHeight) / 2,
-                BondGuiTokens.COLOR_TEXT_BODY, false);
-    }
-
-    private LanguageRow languageRow(String key) {
-        for (LanguageRow row : languages) {
-            if (row.key.equals(key)) {
-                return row;
-            }
-        }
-        return null;
     }
 
     /**
@@ -1596,45 +1600,30 @@ public final class TmaSettingsScreen extends Screen {
         ));
     }
 
+    /** The status tab is read-only: only the per-maid "clear" buttons react to a click. */
     private void clickStatus(double mouseX, double mouseY) {
-        if (clickStatusToggle(mouseX, mouseY)) {
-            return;
-        }
-        if (clickStatusNumber(mouseX, mouseY)) {
-            return;
-        }
-        if (clickStatusClear(mouseX, mouseY)) {
-            return;
-        }
-        clickLanguage(mouseX, mouseY);
+        clickStatusClear(mouseX, mouseY);
     }
 
-    /** Toggles one of the editable switch rows (capsule toggle, same keys as the features tab). */
-    private boolean clickStatusToggle(double mouseX, double mouseY) {
-        int rowTop = contentTop() - scrollOffset;
-        for (StatusRow row : statusRows) {
-            if (row.kind() != StatusRow.Kind.TOGGLE
-                    || !containsStatusToggle(rowTop + row.y(), mouseX, mouseY)) {
-                continue;
-            }
+    /** Features tab: the cache-policy numeric fields, then every capsule switch. */
+    private void clickFeatures(double mouseX, double mouseY) {
+        if (clickCacheNumber(mouseX, mouseY)) {
+            return;
+        }
+        blurNumberFields();
+        if (cacheConsumeRow != null && containsToggle(cacheConsumeRow, mouseX, mouseY)) {
             if (TmaSettingsClientState.canEdit()) {
-                applyServerValue(row.key(), currentToggleValue(row.key()) ? "false" : "true");
+                applyServerValue(cacheConsumeRow.key,
+                        currentToggleValue(cacheConsumeRow.key) ? "false" : "true");
             }
-            return true;
+            return;
         }
-        return false;
-    }
-
-    private boolean containsStatusToggle(int rowTop, double mouseX, double mouseY) {
-        int controlLeft = contentRight() - TOGGLE_WIDTH;
-        int controlTop = rowTop + (STATUS_EDIT_ROW_HEIGHT - TOGGLE_HEIGHT) / 2;
-        return mouseX >= controlLeft && mouseX < contentRight()
-                && mouseY >= controlTop && mouseY < controlTop + TOGGLE_HEIGHT;
+        clickToggle(mouseX, mouseY);
     }
 
     /** Focuses the clicked numeric field (the value is committed when it loses focus again). */
-    private boolean clickStatusNumber(double mouseX, double mouseY) {
-        for (BondNumberField field : statusNumberFields.values()) {
+    private boolean clickCacheNumber(double mouseX, double mouseY) {
+        for (BondNumberField field : cacheNumberFields.values()) {
             if (field.mouseClicked(mouseX, mouseY, 0)) {
                 return true;
             }
@@ -1643,13 +1632,13 @@ public final class TmaSettingsScreen extends Screen {
     }
 
     private void blurNumberFields() {
-        for (BondNumberField field : statusNumberFields.values()) {
+        for (BondNumberField field : cacheNumberFields.values()) {
             field.blur();
         }
     }
 
     private BondNumberField focusedNumberField() {
-        for (BondNumberField field : statusNumberFields.values()) {
+        for (BondNumberField field : cacheNumberFields.values()) {
             if (field.isFocused()) {
                 return field;
             }
@@ -1794,40 +1783,6 @@ public final class TmaSettingsScreen extends Screen {
         return tooltip;
     }
 
-    /** Tooltip of an editable status row (switch / language / number), or an empty list. */
-    private List<Component> statusRowTooltip(int mouseX, int mouseY) {
-        int rowTop = contentTop() - scrollOffset;
-        for (StatusRow row : statusRows) {
-            int y = rowTop + row.y();
-            switch (row.kind()) {
-                case TOGGLE -> {
-                    if (containsStatusToggle(y, mouseX, mouseY)) {
-                        return rowTooltip(row.key(), row.label(), Component.translatable(currentToggleValue(row.key())
-                                ? "bond.settings.toggle.tip.off"
-                                : "bond.settings.toggle.tip.on").withStyle(ChatFormatting.GRAY));
-                    }
-                }
-                case LANGUAGE -> {
-                    LanguageRow languageRow = languageRow(row.key());
-                    if (languageRow != null && languageRow.dropdown.contains(mouseX, mouseY, languageRow.options.size())) {
-                        return rowTooltip(row.key(), row.label(),
-                                Component.translatable("bond.settings.language.tip").withStyle(ChatFormatting.GRAY));
-                    }
-                }
-                case INT -> {
-                    BondNumberField field = statusNumberFields.get(row.key());
-                    if (field != null && field.contains(mouseX, mouseY)) {
-                        return rowTooltip(row.key(), row.label(),
-                                Component.translatable("bond.settings.number.tip").withStyle(ChatFormatting.GRAY));
-                    }
-                }
-                default -> {
-                }
-            }
-        }
-        return List.of();
-    }
-
     private Component permissionTip() {
         return Component.translatable(TmaSettingsClientState.canEdit()
                 ? "bond.settings.permission.granted"
@@ -1838,10 +1793,10 @@ public final class TmaSettingsScreen extends Screen {
 
     private Component tabLabel(int index) {
         return Component.translatable(switch (index) {
-            case 0 -> "bond.settings.nav.features";
-            case 1 -> "bond.settings.nav.voice";
-            case 2 -> "bond.settings.nav.volume";
-            default -> "bond.settings.nav.status";
+            case 0 -> "bond.settings.nav.status";
+            case 1 -> "bond.settings.nav.features";
+            case 2 -> "bond.settings.nav.voice";
+            default -> "bond.settings.nav.volume";
         });
     }
 
@@ -1907,7 +1862,7 @@ public final class TmaSettingsScreen extends Screen {
 
     /** Left-side footer buttons: reload while changes are pending, refresh/clear on the status tab. */
     private List<FooterAction> footerActions() {
-        if (activeTab == 3) {
+        if (activeTab == 0) {
             List<FooterAction> actions = new ArrayList<>(2);
             actions.add(FooterAction.REFRESH);
             if (TmaAiStatusClientState.get() != null && TmaAiStatusClientState.get().canClear()) {
@@ -1954,19 +1909,21 @@ public final class TmaSettingsScreen extends Screen {
     /**
      * One rendered row of the status tab; {@code y} is relative to the top of the content area.
      *
-     * <p>{@code key} is the translation key of a {@link Kind#HEADER} row and the server-authoritative
-     * setting key of an editable row (toggle / language / number).
+     * <p>The status tab is read-only, so {@code key} is only used by a {@link Kind#HEADER} row (its
+     * translation key); {@code label} / {@code value} carry the text of a {@link Kind#KV} row and
+     * {@code maidUuid} identifies the {@link Kind#MAID} row a "clear" button belongs to.
      */
     private record StatusRow(Kind kind, int y, int height, String key, Component label, Component value,
                              String maidUuid) {
         private enum Kind {
             HEADER,
             KV,
-            MAID,
-            TOGGLE,
-            LANGUAGE,
-            INT
+            MAID
         }
+    }
+
+    /** One cache-policy numeric row of the features tab; {@code y} is relative to the content top. */
+    private record NumberRow(String key, int y) {
     }
 
     private static final class ToggleRow {
