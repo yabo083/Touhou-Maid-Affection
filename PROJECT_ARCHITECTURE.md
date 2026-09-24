@@ -27,6 +27,13 @@
 
 版本源是 `gradle.properties` 的 `mod_version`。Forge 1.20.1 分支发布 tag 使用 `v<mod_version>-forge1.20.1`，例如 `v1.7.2.1-forge1.20.1`。发版前必须同步 `mod_version`、`CHANGELOG.md`、README 双语门面、教程、示例数据包和本文档。
 
+### 2.1 第三方兼容层
+
+- **MaidFileManager（车万女仆档案管理器）迁移 SPI**：`com/github/touhoumaidaffection/compat/maidfm/BondMaidMigrationProvider` 实现 `io.github.zgxhzhr.maidfm.spi.MaidMigrationProvider`，把 `BondData`（挂在主人玩家 persistentData 上、不在女仆实体 NBT 内）按女仆 UUID 导出/导入。纯逻辑键名转换抽到 `MaidDataKeyCodec`（`_<uuid>` 后缀的剥离与重建），便于单测。
+- SPI 两个接口源文件 vendored 到 `src/main/java/io/github/zgxhzhr/maidfm/spi/`（包名不变），**仅供编译期**：`build.gradle` 的 `jar` 任务用 `exclude 'io/github/zgxhzhr/**'` 把它们排除出产物，运行期只由管理器的 jar 提供这两个类。原因是重复同名类在不同加载器/类加载器下不保证被去重，若 TMA 自带一份，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。
+- 注册入口在 mod 构造器内、紧邻 `BondAbilityManager.registerDefaults()`，并用 `ModList.get().isLoaded("maid_file_manager")` 做软依赖守卫，避免管理器缺失时类加载期解析 SPI 类型抛 `NoClassDefFoundError`。
+- 不做迁移的部分：`world/generated_morning_kiss/<uuid>/` 的 AI 台词/TTS 缓存（可再生、有 `MAID_REVISIONS` 失效机制）、玩家粒度的 `MorningKissSelectedWindowId/MaidId`、玩家 Capability/Attachment 的每日救护次数。
+
 ## 3. 目录拓扑
 
 ```text

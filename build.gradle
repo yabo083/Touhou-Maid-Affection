@@ -86,7 +86,12 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
+// MaidFileManager SPI 是编译期 shim：运行期由 maid_file_manager 的 jar 提供实现，
+// 绝不能让本 mod 的 jar 也带一份同名类（NeoForge 的 module classloader 不做跨 mod 去重）。
+// 这里排除整个 io.github.zgxhzhr 命名空间，连空的目录条目也不留在产物里。
 tasks.named('jar', Jar).configure {
+    exclude 'io/github/zgxhzhr/**'
+
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,

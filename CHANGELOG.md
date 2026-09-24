@@ -16,6 +16,7 @@
 - 新增 `morningKissBehavior.aiDialogueVoiceLanguage`，可将 AI 早安吻的显示文本与配音文本设为不同语言；例如 `aiDialogueLanguage=zh_cn`、`aiDialogueVoiceLanguage=ja_jp` 会显示中文台词，并先翻译为日文后请求 TTS。
 - 新增 `randomGiftBehavior.curatedPoolOnly`，默认只从 `touhou_maid_affection:bond_random_gift_pool` 物品标签抽取礼物；可通过 `bond_random_gift_blacklist` 继续追加黑名单。
 - 新增可选的残血救护最大生命百分比阈值配置；启用后按最大生命的 20% 触发，在原版 20 点生命下仍等于旧版 4 点阈值。为兼容旧服自定义配置，该模式默认关闭。
+- 接入 MaidFileManager（车万女仆档案管理器）迁移 SPI v1.4.0：把 TMA 挂在女仆身上但不在女仆实体 NBT 内的数据（`BondData`，实际存于主人玩家 persistentData）接入 `.maid` 文件的导出/导入流程；SPI 两个接口以编译期 shim 形式内置并从产物 jar 排除，运行期由管理器 jar 提供实现，注册带软依赖守卫。
 
 ### Changed
 - 休闲膝枕按键默认改为未绑定，仍可在 Minecraft 控制设置中自行绑定，避免默认占用常见的 `B` 键。

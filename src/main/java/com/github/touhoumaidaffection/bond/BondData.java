@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.bond;
 
 import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
+import com.github.touhoumaidaffection.compat.maidfm.MaidDataKeyCodec;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
@@ -594,6 +595,46 @@ public class BondData {
 
     private void save() {
         persistent.put(ROOT_KEY, root);
+    }
+
+    /**
+     * 导出该女仆的羁绊数据：收集所有以 {@code _<maidUuid>} 结尾的键，
+     * 去掉 UUID 后缀得到 base 名后放入新 tag（不修改本对象）。
+     *
+     * @return 不含任何该女仆键时返回空 tag，调用方自行判断是否导出
+     */
+    public CompoundTag exportMaidData(UUID maidUuid) {
+        CompoundTag out = new CompoundTag();
+        if (maidUuid == null) {
+            return out;
+        }
+        for (String key : root.getAllKeys()) {
+            String base = MaidDataKeyCodec.baseName(key, maidUuid);
+            if (base == null) {
+                continue;
+            }
+            out.put(base, root.get(key).copy());
+        }
+        return out;
+    }
+
+    /**
+     * 导入迁移数据：把 base 键重新拼上当前女仆 UUID 后写回 BondData 子树。
+     *
+     * @param data 导出时的返回值；为空或 null 时不做任何修改
+     */
+    public void importMaidData(UUID maidUuid, CompoundTag data) {
+        if (maidUuid == null || data == null || data.isEmpty()) {
+            return;
+        }
+        for (String base : data.getAllKeys()) {
+            String key = MaidDataKeyCodec.keyFor(base, maidUuid);
+            if (key == null) {
+                continue;
+            }
+            root.put(key, data.get(base).copy());
+        }
+        save();
     }
 
     @SubscribeEvent
