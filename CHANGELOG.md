@@ -15,6 +15,10 @@
 - 新增服务端权威设置同步通道：`TmaSettingsRequestPayload`（C2S，空列表表示只读状态）与 `TmaSettingsStatePayload`（S2C，回推全部白名单键的当前值与 `canEdit`）。面板里的开关与语种由服务端校验、应用并回推，单人存档与多人服务器行为一致。
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
+### Fixed
+- `.maid` 迁移不再携带运行态/调度键：导出（`BondData.exportMaidData`）剔除 `BondKeys.RUNTIME_KEYS`——礼物计时（`RandomGiftLastWallClock` / `RandomGiftLastDelivery` / `RandomGiftLastIntervalMinutes`）、早安吻窗口标记（`MorningKissScheduledWindow` / `MorningKissScheduledAttemptTick` / `MorningKissLastAutoAttemptGameTime` / `MorningKissLastSuccessWindow` / `MorningKissLastFailedWindow`）与本地记账 `LastSeen`——导入时再防御性剔一遍。此前这些会话/世界相关的绝对时间会随 `.maid` 迁到新女仆/新存档，导致刚导入就被判定「今天已亲过」或礼物计时错乱。待发礼物队列 `RandomGiftQueue` 是耐久状态，仍然随迁；`extras` 对外形状与整体替换语义不变。
+- 空字符串不再落盘/导出：所有「getter 缺省值本就是空串」的字符串 setter（声音包、YSM 档案、救护动作、膝枕动作、早安吻计划/窗口标记、玩家粒度早安吻选择、早安吻与救护语音选择里的空字段）改为空串时移除键而非写入空值，避免无意义键堆积进存档与 `.maid`。
+
 ### Changed
 - 音量上限从 `4.0` 收至 `1.0`：四项音量配置（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）与设置面板滑块现在**只做衰减**——`0.0` 静音、`1.0` 保持原有响度，不再放大。需要更大音量请使用 Minecraft 或系统音量。旧配置里大于 `1.0` 的值会被配置系统在加载时纠正为 `1.0`（Forge `defineInRange` 行为）。
 - 音量四项（`cooldown.kissSoundVolume`、`morningKissBehavior.voiceVolume`、`emergencyRescueBehavior.volume`、`voicePreview.volume`）是纯客户端配置，面板里拖动即写入本机配置并立即生效，不走网络。

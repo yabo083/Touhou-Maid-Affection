@@ -91,6 +91,8 @@ src/main/resources
 
 存储布局：数据挂在主人玩家 persistentData 的 `touhou_maid_affection.bond` 根 compound 下，**女仆粒度数据按女仆嵌套**在 `maids.<女仆UUID>.<base>` 子树里，**玩家粒度数据**（`MorningKissSelectedWindowId` / `MorningKissSelectedMaidId`）留在根上。所有 base 名常量集中在纯逻辑类 `BondKeys`，不再散落字面量。
 
+**画像 vs 运行态**：`BondKeys.RUNTIME_KEYS` 集中列出会话/世界相关的运行态与调度键——礼物计时（`RandomGiftLastWallClock` / `RandomGiftLastDelivery` / `RandomGiftLastIntervalMinutes`）、早安吻窗口标记（`MorningKissScheduledWindow` / `MorningKissScheduledAttemptTick` / `MorningKissLastAutoAttemptGameTime` / `MorningKissLastSuccessWindow` / `MorningKissLastFailedWindow`）与本地 prune 记账 `LastSeen`。它们都是「上次何时发生」的绝对挂钟毫秒或游戏刻，只在产生它的会话/存档里有意义，因此**不参与 `.maid` 迁移**（详见 4.9）。待发礼物队列 `RandomGiftQueue` 不在其中：那是耐久状态，属于画像，随女仆迁移。空字符串值也不落盘/不导出（这些键的 getter 缺省值本就是空串，不写入与写空串读取等价）。
+
 根上的 `SchemaVersion` 记录存储结构版本（当前 `2`）。`BondData.of(player)` 每次读取都会检查一次；版本缺失或 `< 2` 时由纯逻辑类 `BondDataMigration` 执行一次性迁移：遍历根上的键，凡能解析为 `<base>_<女仆UUID>` 的旧扁平键，**先**把值写入 `maids.<uuid>.<base>`、**成功后再**移除旧键（先写后删，中途失败不丢数据）；玩家粒度键与无法解析的键原样保留；迁移完成后写入 `SchemaVersion=2`，因此**幂等**且可安全重入。旧存档无损升级，不需要任何手动步骤。
 
 生命周期：`maids.<uuid>.LastSeen`（epoch millis）在 `BondManager.syncMaidProfile` 时刷新。**不会**在女仆死亡 / 卸载 / 换主人时自动删除数据（TLM 的灵魂玩偶、椅子等场景会出现临时移除，自动删除会丢数据）；残留数据由显式的 `/tma bond prune [days]`（默认 90 天，权限等级 2）清理：删除 `LastSeen` 早于阈值的女仆子树，缺失 `LastSeen` 的历史数据视为过旧一并删除；`days <= 0` 表示只统计不删除。阈值判定抽在纯逻辑类 `BondRetention` 中，便于单元测试。
@@ -161,6 +163,7 @@ src/main/resources
 `compat/maidfm` 是对 MaidFileManager（女仆档案管理器，modid `maid_file_manager`）迁移 SPI 的适配边界，为**软依赖**：未安装管理器时行为与之前完全一致。
 
 - **契约**：`BondMaidMigrationProvider` 实现管理器的 `MaidMigrationProvider`，把 TMA 唯一「挂在女仆身上但不在女仆实体 NBT 内」的数据——主人玩家 persistentData 中 `touhou_maid_affection.bond.maids.<女仆UUID>` 子树（即 `BondData` 的女仆粒度数据）——导出为 `.maid` 的 extras 段，导入时按新女仆 UUID 整体写回并刷新 `LastSeen`。extras 的对外格式始终是「base 名 → 值」的 compound，与旧版扁平键时代一致，因此**旧导出文件仍可导入**。女仆实体 NBT（含 ForgeData）由管理器自身负责，TMA 不重复导出。
+- **迁移边界：画像随迁、运行态不随迁**：`exportMaidData` 取子树副本后剔除 `BondKeys.RUNTIME_KEYS`（见 4.3）与空字符串值；`importMaidData` 防御性再剔一遍（旧 `.maid` 文件里可能带着运行态键），然后**整体替换**目标子树（源里没有的键在目标上即为缺失，因此导入仍能清掉多余值）并刷新 `LastSeen`。理由：运行态键是会话/世界相关的绝对时间，随 `.maid` 迁到另一只女仆或另一个存档会带上别处的会话时间戳，导致新女仆的礼物计时或「今天是否已亲过」判定被污染。导入仍是整体替换语义，不是合并。
 - **为什么 vendored**：SPI v1.4.0 未发布到 CurseForge/Modrinth，也没有 Maven 仓库，因此按上游文档认可的方式把 `io.github.zgxhzhr.maidfm.spi` 两个源文件复制进源码树，仅作编译期 shim。
 - **为什么必须从 jar 排除**：NeoForge 1.21.1 用 securejarhandler 的 module classloader（每个 mod 一个 module），跨 mod 的同名类**不保证**被去重；若 TMA 的 jar 也带一份同名 SPI，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。因此 `build.gradle` 的 `jar` 任务 exclude 掉整个 `io/github/zgxhzhr/**` 命名空间，运行期只有管理器提供这两个类。
 - **为什么注册要守卫**：`BondMaidMigrationProvider` 在类加载期会解析 SPI 类型，管理器缺失时会 `NoClassDefFoundError`；主类构造器用 `ModList.get().isLoaded("maid_file_manager")` 包裹 `register()`，未安装时该分支不执行，provider 类不会被解析。

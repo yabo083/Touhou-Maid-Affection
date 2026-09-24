@@ -5,6 +5,7 @@ import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -234,7 +235,7 @@ public class BondData {
     }
 
     public void setMaidSoundPackId(UUID maidUuid, String soundPackId) {
-        maidTag(maidUuid, true).putString(BondKeys.MAID_SOUND_PACK, soundPackId == null ? "" : soundPackId);
+        putStringOrRemove(maidTag(maidUuid, true), BondKeys.MAID_SOUND_PACK, soundPackId);
         save();
     }
 
@@ -244,14 +245,14 @@ public class BondData {
 
     public void setMaidYsmProfile(UUID maidUuid, String ysmModelId, String ysmTexture, String ysmDisplayName) {
         CompoundTag tag = maidTag(maidUuid, true);
-        tag.putString(BondKeys.MAID_YSM_MODEL_ID, ysmModelId == null ? "" : ysmModelId);
-        tag.putString(BondKeys.MAID_YSM_TEXTURE, ysmTexture == null ? "" : ysmTexture);
-        tag.putString(BondKeys.MAID_YSM_DISPLAY_NAME, ysmDisplayName == null ? "" : ysmDisplayName);
+        putStringOrRemove(tag, BondKeys.MAID_YSM_MODEL_ID, ysmModelId);
+        putStringOrRemove(tag, BondKeys.MAID_YSM_TEXTURE, ysmTexture);
+        putStringOrRemove(tag, BondKeys.MAID_YSM_DISPLAY_NAME, ysmDisplayName);
         save();
     }
 
     public void setMaidRescueAction(UUID maidUuid, String actionId) {
-        maidTag(maidUuid, true).putString(BondKeys.MAID_RESCUE_ACTION, BondDataLimits.normalize(actionId));
+        putStringOrRemove(maidTag(maidUuid, true), BondKeys.MAID_RESCUE_ACTION, BondDataLimits.normalize(actionId));
         save();
     }
 
@@ -304,8 +305,8 @@ public class BondData {
         tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_X, safe.playerOffsetX());
         tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_Y, safe.playerOffsetY());
         tag.putDouble(BondKeys.LAP_PILLOW_PLAYER_OFFSET_Z, safe.playerOffsetZ());
-        tag.putString(BondKeys.LAP_PILLOW_MAID_ACTION, safe.maidActionId());
-        tag.putString(BondKeys.LAP_PILLOW_PLAYER_ACTION, safe.playerActionId());
+        putStringOrRemove(tag, BondKeys.LAP_PILLOW_MAID_ACTION, safe.maidActionId());
+        putStringOrRemove(tag, BondKeys.LAP_PILLOW_PLAYER_ACTION, safe.playerActionId());
         save();
     }
 
@@ -575,7 +576,7 @@ public class BondData {
     }
 
     public void setMorningKissLastSuccessfulWindowId(UUID maidUuid, String windowId) {
-        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_LAST_SUCCESS_WINDOW, windowId == null ? "" : windowId);
+        putStringOrRemove(maidTag(maidUuid, true), BondKeys.MORNING_KISS_LAST_SUCCESS_WINDOW, windowId);
         save();
     }
 
@@ -584,7 +585,7 @@ public class BondData {
     }
 
     public void setMorningKissLastFailedWindowId(UUID maidUuid, String windowId) {
-        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_LAST_FAILED_WINDOW, windowId == null ? "" : windowId);
+        putStringOrRemove(maidTag(maidUuid, true), BondKeys.MORNING_KISS_LAST_FAILED_WINDOW, windowId);
         save();
     }
 
@@ -593,7 +594,7 @@ public class BondData {
     }
 
     public void setMorningKissScheduledWindowId(UUID maidUuid, String windowId) {
-        maidTag(maidUuid, true).putString(BondKeys.MORNING_KISS_SCHEDULED_WINDOW, windowId == null ? "" : windowId);
+        putStringOrRemove(maidTag(maidUuid, true), BondKeys.MORNING_KISS_SCHEDULED_WINDOW, windowId);
         save();
     }
 
@@ -617,7 +618,7 @@ public class BondData {
 
     public void clearMorningKissSchedule(UUID maidUuid) {
         CompoundTag tag = maidTag(maidUuid, true);
-        tag.putString(BondKeys.MORNING_KISS_SCHEDULED_WINDOW, "");
+        tag.remove(BondKeys.MORNING_KISS_SCHEDULED_WINDOW);
         tag.putLong(BondKeys.MORNING_KISS_SCHEDULED_ATTEMPT_TICK, 0L);
         save();
     }
@@ -627,7 +628,7 @@ public class BondData {
     }
 
     public void setMorningKissSelectedWindowId(String windowId) {
-        root.putString(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID, windowId == null ? "" : windowId);
+        putStringOrRemove(root, BondKeys.MORNING_KISS_SELECTED_WINDOW_ID, windowId);
         save();
     }
 
@@ -636,13 +637,13 @@ public class BondData {
     }
 
     public void setMorningKissSelectedMaidId(String maidId) {
-        root.putString(BondKeys.MORNING_KISS_SELECTED_MAID_ID, maidId == null ? "" : maidId);
+        putStringOrRemove(root, BondKeys.MORNING_KISS_SELECTED_MAID_ID, maidId);
         save();
     }
 
     public void clearMorningKissSelectedMaid() {
-        root.putString(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID, "");
-        root.putString(BondKeys.MORNING_KISS_SELECTED_MAID_ID, "");
+        root.remove(BondKeys.MORNING_KISS_SELECTED_WINDOW_ID);
+        root.remove(BondKeys.MORNING_KISS_SELECTED_MAID_ID);
         save();
     }
 
@@ -664,10 +665,10 @@ public class BondData {
         }
         CompoundTag tag = maidTag(maidUuid, true);
         tag.putString(BondKeys.MORNING_KISS_VOICE_MODE, safe.mode().serializedName());
-        tag.putString(BondKeys.MORNING_KISS_VOICE_GROUP, safe.selectedGroup());
-        tag.putString(BondKeys.MORNING_KISS_VOICE_CLIP, safe.selectedClip());
-        tag.putString(BondKeys.MORNING_KISS_VOICE_PACK, safe.soundPackId());
-        tag.putString(BondKeys.MORNING_KISS_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
+        putStringOrRemove(tag, BondKeys.MORNING_KISS_VOICE_GROUP, safe.selectedGroup());
+        putStringOrRemove(tag, BondKeys.MORNING_KISS_VOICE_CLIP, safe.selectedClip());
+        putStringOrRemove(tag, BondKeys.MORNING_KISS_VOICE_PACK, safe.soundPackId());
+        putStringOrRemove(tag, BondKeys.MORNING_KISS_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
     }
 
@@ -695,39 +696,83 @@ public class BondData {
         CompoundTag tag = maidTag(maidUuid, true);
         tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_SOURCE_MODE, safe.sourceMode().serializedName());
         tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_MODE, safe.tlmPlayMode().serializedName());
-        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_GROUP, safe.tlmSelectedGroup());
-        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_TLM_CLIP, safe.tlmSelectedClip());
+        putStringOrRemove(tag, BondKeys.EMERGENCY_RESCUE_VOICE_TLM_GROUP, safe.tlmSelectedGroup());
+        putStringOrRemove(tag, BondKeys.EMERGENCY_RESCUE_VOICE_TLM_CLIP, safe.tlmSelectedClip());
         tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_CUSTOM_MODE, safe.customPlayMode().serializedName());
-        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_FIXED_FILE, safe.fixedFile());
+        putStringOrRemove(tag, BondKeys.EMERGENCY_RESCUE_VOICE_FIXED_FILE, safe.fixedFile());
         tag.putBoolean(BondKeys.EMERGENCY_RESCUE_VOICE_COMMON_FALLBACK, safe.useCommonFallback());
-        tag.putString(BondKeys.EMERGENCY_RESCUE_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
+        putStringOrRemove(tag, BondKeys.EMERGENCY_RESCUE_VOICE_POOL, VoicePoolIds.encode(safe.selectedVoiceIds()));
         save();
     }
 
     /**
-     * 导出该女仆的羁绊数据：返回 {@code maids.<女仆UUID>} 子树的副本（base 名 → 值的 compound）。
-     * 不修改本对象，因此 {@code .maid} 附加数据的对外格式与旧版一致。
+     * 导出该女仆的羁绊数据：返回 {@code maids.<女仆UUID>} 子树的副本（base 名 → 值的 compound），
+     * 供 {@code .maid} 的 extras 段使用。对外形状与旧版一致，旧导出文件仍可导入。
      *
-     * @return 该女仆无任何数据时返回空 tag，调用方自行判断是否导出
+     * <p><b>随迁</b>：画像与耐久状态——羁绊等级/解锁、能力、模型与显示名、YSM 档案、救护动作与
+     * provider、膝枕姿态、早安吻与救护语音选择、待发礼物队列（{@link BondKeys#RANDOM_GIFT_QUEUE}）。
+     *
+     * <p><b>不随迁</b>：{@link BondKeys#RUNTIME_KEYS} 里的运行态/调度键（礼物计时、早安吻窗口标记、
+     * {@code LastSeen}）——它们是会话/世界相关的绝对时间，带到另一只女仆或另一个存档会污染
+     * 新女仆的礼物计时与「今天是否已亲过」判定。空字符串值同样不导出（读路径缺省即为空串）。
+     *
+     * <p>不修改本对象。
+     *
+     * @return 该女仆无任何可迁移数据时返回空 tag，调用方自行判断是否导出
      */
     public CompoundTag exportMaidData(UUID maidUuid) {
         if (maidUuid == null) {
             return new CompoundTag();
         }
-        return maidTag(maidUuid, false).copy();
+        CompoundTag exported = maidTag(maidUuid, false).copy();
+        stripNonMigratable(exported);
+        return exported;
     }
 
     /**
      * 导入羁绊数据：整体替换 {@code maids.<女仆UUID>} 子树（{@code base 名 → 值}），
-     * 并刷新 {@code LastSeen}。空白数据直接跳过。
+     * 并刷新 {@code LastSeen}。源里没有的键在目标上即为缺失（读路径默认空），因此导入仍会
+     * 清掉目标上多余的值。空白数据直接跳过。
+     *
+     * <p>防御性过滤：旧版 {@code .maid} 文件可能带着运行态/调度键（见 {@link BondKeys#RUNTIME_KEYS}）
+     * 与空字符串值，导入前一并剔除，避免把别处的会话时间戳写进本存档。
      */
     public void importMaidData(UUID maidUuid, CompoundTag data) {
         if (maidUuid == null || data == null || data.isEmpty()) {
             return;
         }
-        maidsRoot(true).put(maidUuid.toString(), data.copy());
+        CompoundTag imported = data.copy();
+        stripNonMigratable(imported);
+        maidsRoot(true).put(maidUuid.toString(), imported);
         maidTag(maidUuid, true).putLong(BondKeys.LAST_SEEN_KEY, System.currentTimeMillis());
         save();
+    }
+
+    /** 剔除运行态/调度键与空字符串值，得到可迁移的「画像」键集。 */
+    private static void stripNonMigratable(CompoundTag tag) {
+        for (String key : new ArrayList<>(tag.getAllKeys())) {
+            if (BondKeys.RUNTIME_KEYS.contains(key) || isEmptyString(tag.get(key))) {
+                tag.remove(key);
+            }
+        }
+    }
+
+    private static boolean isEmptyString(Tag value) {
+        return value instanceof StringTag stringTag && stringTag.getAsString().isEmpty();
+    }
+
+    /**
+     * 写入字符串值；空串（含 {@code null}）时改为移除键。
+     *
+     * <p>这些键的 getter 缺省值本就是空串，因此「不写入」与「写入空串」读取等价，
+     * 但前者不会把空值落盘、也不会随 {@code .maid} 导出。
+     */
+    private static void putStringOrRemove(CompoundTag tag, String key, String value) {
+        if (value == null || value.isEmpty()) {
+            tag.remove(key);
+            return;
+        }
+        tag.putString(key, value);
     }
 
     private void migrateAbilityDataIfNeeded(UUID maidUuid) {
