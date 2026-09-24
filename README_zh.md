@@ -89,6 +89,7 @@ TMA 还会向 TLM AI 设置页注册 AI Hub 聊天与 TTS 站点预设。当前�
 - Yes Steve Model：可选动作播放与动作列表扫描。
 - CarryOn：可选公主抱亲吻集成。
 - TLM GUI 与音包：存在时增强，不存在时静默回退。
+- MaidFileManager（女仆档案管理器）：可选软依赖，通过其 `.maid` 迁移 SPI 带走每名女仆的羁绊数据；未安装时静默不生效。
 
 ## 安装
 

@@ -71,6 +71,12 @@ public class TouhouMaidAffection {
 
         BondAbilityManager.registerDefaults();
 
+        // Soft dependency: MaidFileManager migration SPI. The guard keeps the provider class
+        // (which implements the SPI) from being resolved when the manager is absent.
+        if (net.neoforged.fml.ModList.get().isLoaded("maid_file_manager")) {
+            com.github.touhoumaidaffection.compat.maidfm.BondMaidMigrationProvider.register();
+        }
+
         LOGGER.info("Touhou Maid: Affection loaded! Now you can kiss your maid~");
     }
 

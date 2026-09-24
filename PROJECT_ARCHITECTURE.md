@@ -45,6 +45,7 @@ src/main/java/com/github/touhoumaidaffection
 │     ├─ component
 │     └─ page
 ├─ command
+├─ compat/maidfm
 ├─ effect
 ├─ handler
 ├─ inventory
@@ -145,6 +146,14 @@ src/main/resources
 ### 4.9 兼容层
 
 `ysm`、`mixin`、`ai/<provider>` 与小型 helper 是外部生态适配的边界。与 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 的适配逻辑应保持隔离，不能扩散成到处可见的条件分支。
+
+`compat/maidfm` 是对 MaidFileManager（女仆档案管理器，modid `maid_file_manager`）迁移 SPI 的适配边界，为**软依赖**：未安装管理器时行为与之前完全一致。
+
+- **契约**：`BondMaidMigrationProvider` 实现管理器的 `MaidMigrationProvider`，把 TMA 唯一「挂在女仆身上但不在女仆实体 NBT 内」的数据——主人玩家 persistentData 中 `touhou_maid_affection.bond` 子树里以 `_<女仆UUID>` 结尾的 `BondData` 键——导出为 `.maid` 的 extras 段，导入时按新女仆 UUID 重建。女仆实体 NBT（含 ForgeData）由管理器自身负责，TMA 不重复导出。键的匹配/剥离/重建逻辑抽成纯逻辑类 `MaidDataKeyCodec`，便于单元测试。
+- **为什么 vendored**：SPI v1.4.0 未发布到 CurseForge/Modrinth，也没有 Maven 仓库，因此按上游文档认可的方式把 `io.github.zgxhzhr.maidfm.spi` 两个源文件复制进源码树，仅作编译期 shim。
+- **为什么必须从 jar 排除**：NeoForge 1.21.1 用 securejarhandler 的 module classloader（每个 mod 一个 module），跨 mod 的同名类**不保证**被去重；若 TMA 的 jar 也带一份同名 SPI，可能出现「TMA 注册进自己的 registry、管理器读自己的 registry」的静默失联。因此 `build.gradle` 的 `jar` 任务 exclude 掉整个 `io/github/zgxhzhr/**` 命名空间，运行期只有管理器提供这两个类。
+- **为什么注册要守卫**：`BondMaidMigrationProvider` 在类加载期会解析 SPI 类型，管理器缺失时会 `NoClassDefFoundError`；主类构造器用 `ModList.get().isLoaded("maid_file_manager")` 包裹 `register()`，未安装时该分支不执行，provider 类不会被解析。
+- **不做 AI 缓存迁移**：`world/generated_morning_kiss/<uuid>/` 下的 AI 台词/TTS 语音是可再生缓存，已有 MAID_REVISIONS 失效机制，迁移到新存档反而可能携带过期内容；玩家粒度的 `MorningKissSelectedWindowId/MaidId` 与每日救护次数（`EmergencyRescueAttachment`，玩家 Capability）也不属于女仆粒度，因此一并排除。
 
 ## 5. 数据与配置边界
 

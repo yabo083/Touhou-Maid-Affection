@@ -4,6 +4,7 @@ import com.github.touhoumaidaffection.bond.ability.BondAbilityManager;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
+import com.github.touhoumaidaffection.compat.maidfm.MaidDataKeyCodec;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -567,6 +568,45 @@ public class BondData {
         root.putString("EmergencyRescueVoiceFixedFile_" + maidUuid, safe.fixedFile());
         root.putBoolean("EmergencyRescueVoiceCommonFallback_" + maidUuid, safe.useCommonFallback());
         root.putString("EmergencyRescueVoicePool_" + maidUuid, VoicePoolIds.encode(safe.selectedVoiceIds()));
+        save();
+    }
+
+    /**
+     * 导出该女仆的羁绊数据：收集所有以 {@code _<maidUuid>} 结尾的键，
+     * 去掉 UUID 后缀得到 base 名后放入新 tag（不修改本对象）。
+     *
+     * @return 不含任何该女仆键时返回空 tag，调用方自行判断是否导出
+     */
+    public CompoundTag exportMaidData(UUID maidUuid) {
+        CompoundTag out = new CompoundTag();
+        if (maidUuid == null) {
+            return out;
+        }
+        for (String key : root.getAllKeys()) {
+            String base = MaidDataKeyCodec.baseName(key, maidUuid);
+            if (base == null) {
+                continue;
+            }
+            out.put(base, root.get(key).copy());
+        }
+        return out;
+    }
+
+    /**
+     * 导入羁绊数据：把每个 base 键重建为 {@code <base>_<maidUuid>} 写入根 tag 并持久化。
+     * 空白 base 与空数据直接跳过。
+     */
+    public void importMaidData(UUID maidUuid, CompoundTag data) {
+        if (maidUuid == null || data == null || data.isEmpty()) {
+            return;
+        }
+        for (String base : data.getAllKeys()) {
+            String key = MaidDataKeyCodec.keyFor(base, maidUuid);
+            if (key == null) {
+                continue;
+            }
+            root.put(key, data.get(base).copy());
+        }
         save();
     }
 

@@ -89,6 +89,7 @@ TMA also registers AI Hub chat and TTS site presets for TLM's AI settings UI. Th
 - Yes Steve Model: optional action playback and action discovery.
 - CarryOn: optional princess-carry kiss integration.
 - TLM GUI and sound packs: soft integration where available, silent fallback where absent.
+- MaidFileManager (Maid File Manager): optional soft dependency; migrates per-maid bond data through its `.maid` migration SPI, silent no-op when absent.
 
 ## Installation
 
