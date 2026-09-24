@@ -162,13 +162,90 @@ class MorningKissGeneratedDialogueCacheTest {
         assertTrue(cache.addIfBelowTarget(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
                 new MorningKissGeneratedDialogueCache.Entry("中文", "中文", "zh.mp3", new byte[] {1},
                         "zh_cn", "zh", "灵梦"), 1));
+        // 同语种达到目标后继续追加会被拒绝。
         assertFalse(cache.addIfBelowTarget(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
-                new MorningKissGeneratedDialogueCache.Entry("English", "English", "en.mp3", new byte[] {1},
-                        "en_us", "en", "灵梦"), 1));
+                new MorningKissGeneratedDialogueCache.Entry("中文二", "中文二", "zh2.mp3", new byte[] {1},
+                        "zh_cn", "zh", "灵梦"), 1));
 
         assertEquals(1, cache.size(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING));
         assertEquals("中文", cache.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING)
                 .orElseThrow().text());
+    }
+
+    @Test
+    void allowsGeneratedEntriesForOtherLanguagesWhenPoolIsFullForOneLanguage() {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(8);
+        UUID maidUuid = UUID.randomUUID();
+
+        assertTrue(cache.addIfBelowTarget(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("中文", "中文", "zh.mp3", new byte[] {1},
+                        "zh_cn", "zh", "灵梦"), 1));
+        // 旧的异语种条目不应挡住新语种的重新预热。
+        assertTrue(cache.addIfBelowTarget(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("English", "English", "en.mp3", new byte[] {1},
+                        "en_us", "en", "灵梦"), 1));
+
+        assertEquals(2, cache.size(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING));
+        assertEquals(1, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING, "zh_cn", "zh"));
+        assertEquals(1, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING, "en_us", "en"));
+    }
+
+    @Test
+    void skipsEntriesWithMismatchedTextLanguageWhenPollingAndPeeking() {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(8);
+        UUID maidUuid = UUID.randomUUID();
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("日语", "日语", "", new byte[0], "ja_jp", ""));
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("中文", "中文", "", new byte[0], "zh_cn", ""));
+
+        assertEquals("日语", cache.peekRandomByIndex(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                bound -> 0, "ja_jp", "ja").orElseThrow().text());
+        // 队列里没有匹配条目：返回空且不消耗任何条目。
+        assertFalse(cache.peekRandomByIndex(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                bound -> 0, "ko_kr", "ko").isPresent());
+        assertEquals(2, cache.size(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING));
+
+        // poll 只移除匹配的条目，异语种条目保留。
+        assertEquals("中文", cache.pollRandomByIndex(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                bound -> 0, "zh_cn", "zh").orElseThrow().text());
+        assertEquals(1, cache.size(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING));
+        assertEquals("日语", cache.pollFirst(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING)
+                .orElseThrow().text());
+    }
+
+    @Test
+    void filtersVoiceEntriesByTtsNormalizedVoiceLanguage() {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(8);
+        UUID maidUuid = UUID.randomUUID();
+        byte[] voice = "OggSdata".getBytes(StandardCharsets.US_ASCII);
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("日语配音", "日语配音", "ja.ogg", voice, "ja_jp", "ja"));
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("英语配音", "英语配音", "en.ogg", voice, "en_us", "en"));
+
+        // 目标配音 ja 与条目存的 TTS 码 ja 相等，命中。
+        assertEquals("日语配音", cache.peekRandomByIndex(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                bound -> 0, "ja_jp", "ja").orElseThrow().text());
+        // 文本匹配但配音语种不匹配：跳过该条目，队列无其它匹配则返回空。
+        assertFalse(cache.peekRandomByIndex(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                bound -> 0, "en_us", "ja").isPresent());
+    }
+
+    @Test
+    void countsMatchingEntriesAndDisablesFilteringForBlankTarget() {
+        MorningKissGeneratedDialogueCache cache = new MorningKissGeneratedDialogueCache(8);
+        UUID maidUuid = UUID.randomUUID();
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("中文", "中文", "", new byte[0], "zh_cn", ""));
+        cache.add(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING,
+                new MorningKissGeneratedDialogueCache.Entry("英语", "英语", "", new byte[0], "en_us", ""));
+
+        assertEquals(1, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING, "zh_cn", "zh"));
+        assertEquals(0, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING, "ko_kr", "ko"));
+        // 目标语种为空（未配置 / auto）时不过滤，与旧行为一致。
+        assertEquals(2, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.MORNING, "", ""));
+        assertEquals(0, cache.countMatching(maidUuid, MorningKissScheduleRules.DialoguePool.EVENING, "zh_cn", "zh"));
     }
 
     @Test

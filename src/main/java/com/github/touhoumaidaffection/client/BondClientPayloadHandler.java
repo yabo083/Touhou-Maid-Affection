@@ -9,6 +9,8 @@ import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
+import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.LinkedHashSet;
@@ -73,6 +75,14 @@ public final class BondClientPayloadHandler {
 
     public static void handleVoicePreviewDataPackPlay(VoicePreviewDataPackPlayPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> VoicePreviewPlayback.playDataPackVoice(payload));
+    }
+
+    public static void handleVoicePreviewThrottled(VoicePreviewThrottledPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() != null) {
+                context.player().displayClientMessage(Component.translatable("bond.voice_preview.throttled"), true);
+            }
+        });
     }
 
     public static void handleSettingsState(TmaSettingsStatePayload payload, IPayloadContext context) {

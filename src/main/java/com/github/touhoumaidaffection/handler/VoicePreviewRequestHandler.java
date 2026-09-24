@@ -8,6 +8,7 @@ import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.bond.service.InteractionVoiceProfileData;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
+import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -19,7 +20,9 @@ import java.util.Optional;
 
 @EventBusSubscriber(modid = TouhouMaidAffection.MOD_ID)
 public final class VoicePreviewRequestHandler {
-    private static final VoicePreviewRateLimiter RATE_LIMITER = new VoicePreviewRateLimiter(100L);
+    /** 数据包语音试听冷却：0.5 秒（10 tick）。 */
+    static final long COOLDOWN_TICKS = 10L;
+    private static final VoicePreviewRateLimiter RATE_LIMITER = new VoicePreviewRateLimiter(COOLDOWN_TICKS);
 
     private VoicePreviewRequestHandler() {
     }
@@ -29,10 +32,12 @@ public final class VoicePreviewRequestHandler {
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            if (!RATE_LIMITER.tryAcquire(player.getUUID(), player.getServer().getTickCount())) {
+            // 非数据包（本地播放）请求不占用限流额度，直接放行给客户端自行处理。
+            if (!VoicePoolIds.isDataPack(payload.voiceId())) {
                 return;
             }
-            if (!VoicePoolIds.isDataPack(payload.voiceId())) {
+            if (!RATE_LIMITER.tryAcquire(player.getUUID(), player.getServer().getTickCount())) {
+                PacketDistributor.sendToPlayer(player, VoicePreviewThrottledPayload.INSTANCE);
                 return;
             }
             EntityMaid maid = MaidPayloadResolver.resolveOwnedMaid(player, payload.maidUuid());

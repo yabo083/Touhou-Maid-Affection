@@ -36,6 +36,7 @@ import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewRequestPayload;
+import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -154,6 +155,11 @@ public class TouhouMaidAffection {
                 VoicePreviewDataPackPlayPayload.TYPE,
                 VoicePreviewDataPackPlayPayload.STREAM_CODEC,
                 BondClientPayloadHandler::handleVoicePreviewDataPackPlay
+        );
+        registrar.playToClient(
+                VoicePreviewThrottledPayload.TYPE,
+                VoicePreviewThrottledPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleVoicePreviewThrottled
         );
         registrar.playToServer(
                 LapPillowStartPayload.TYPE,

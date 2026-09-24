@@ -266,9 +266,17 @@ public final class RescueCommand {
                         : "command.touhou_maid_affection.morning_kiss.status.fallback.off"
         ), false);
         source.sendSuccess(() -> Component.translatable(
-                "command.touhou_maid_affection.morning_kiss.status.language",
+                "command.touhou_maid_affection.morning_kiss.status.language.global",
+                languageOrDefault(MorningKissGeneratedDialogueService.globalDisplayLanguage()),
+                languageOrDefault(MorningKissGeneratedDialogueService.globalVoiceLanguage())
+        ), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.touhou_maid_affection.morning_kiss.status.language.ai",
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_LANGUAGE.get(),
                 ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_VOICE_LANGUAGE.get()
+        ), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.touhou_maid_affection.morning_kiss.status.language.priority"
         ), false);
         source.sendSuccess(() -> Component.translatable(
                 "command.touhou_maid_affection.morning_kiss.status.cache_policy",
@@ -379,5 +387,9 @@ public final class RescueCommand {
 
     private static String poolName(MorningKissScheduleRules.DialoguePool pool) {
         return pool.name().toLowerCase(Locale.ROOT);
+    }
+
+    private static String languageOrDefault(String normalized) {
+        return normalized == null || normalized.isBlank() ? "auto" : normalized;
     }
 }

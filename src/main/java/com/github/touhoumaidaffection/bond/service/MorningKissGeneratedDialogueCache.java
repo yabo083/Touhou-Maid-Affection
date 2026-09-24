@@ -117,53 +117,92 @@ final class MorningKissGeneratedDialogueCache {
         }
         int boundedTarget = Math.max(1, Math.min(maxLinesPerPool, targetSize));
         Deque<Entry> queue = entries.computeIfAbsent(new CacheKey(maidUuid, pool), key -> new ArrayDeque<>());
-        if (queue.size() >= boundedTarget) {
+        // 目标按「同语种」计数：旧的异语种条目不应挡住新语种的重新预热。
+        if (matchingEntries(queue, entry.textLanguage(), entry.voiceLanguage()).size() >= boundedTarget) {
             return false;
+        }
+        while (queue.size() >= maxLinesPerPool) {
+            queue.removeFirst();
         }
         queue.addLast(entry);
         return true;
     }
 
-    synchronized Optional<Entry> pollRandom(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
-        if (maidUuid == null || pool == null) {
-            return Optional.empty();
-        }
-        Deque<Entry> queue = entries.get(new CacheKey(maidUuid, pool));
-        if (queue == null || queue.isEmpty()) {
-            return Optional.empty();
-        }
-        int index = random.nextInt(queue.size());
-        int current = 0;
-        java.util.Iterator<Entry> iterator = queue.iterator();
-        while (iterator.hasNext()) {
-            Entry entry = iterator.next();
-            if (current++ == index) {
-                iterator.remove();
-                if (queue.isEmpty()) {
-                    entries.remove(new CacheKey(maidUuid, pool));
-                }
-                return Optional.of(entry);
-            }
-        }
-        return Optional.empty();
+    synchronized Optional<Entry> pollRandom(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random,
+                                            String targetTextLanguage, String targetVoiceLanguage) {
+        return pollRandomByIndex(maidUuid, pool, random::nextInt, targetTextLanguage, targetVoiceLanguage);
     }
 
-    synchronized Optional<Entry> peekRandom(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random) {
-        if (maidUuid == null || pool == null) {
+    synchronized Optional<Entry> pollRandomByIndex(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+                                                   java.util.function.IntUnaryOperator indexPicker,
+                                                   String targetTextLanguage, String targetVoiceLanguage) {
+        if (maidUuid == null || pool == null || indexPicker == null) {
             return Optional.empty();
         }
         Deque<Entry> queue = entries.get(new CacheKey(maidUuid, pool));
         if (queue == null || queue.isEmpty()) {
             return Optional.empty();
         }
-        int index = random.nextInt(queue.size());
-        int current = 0;
-        for (Entry entry : queue) {
-            if (current++ == index) {
-                return Optional.of(entry);
+        List<Entry> matching = matchingEntries(queue, targetTextLanguage, targetVoiceLanguage);
+        if (matching.isEmpty()) {
+            return Optional.empty();
+        }
+        Entry selected = matching.get(indexPicker.applyAsInt(matching.size()));
+        java.util.Iterator<Entry> iterator = queue.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next() == selected) {
+                iterator.remove();
+                break;
             }
         }
-        return Optional.empty();
+        if (queue.isEmpty()) {
+            entries.remove(new CacheKey(maidUuid, pool));
+        }
+        return Optional.of(selected);
+    }
+
+    synchronized Optional<Entry> peekRandom(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool, RandomSource random,
+                                            String targetTextLanguage, String targetVoiceLanguage) {
+        return peekRandomByIndex(maidUuid, pool, random::nextInt, targetTextLanguage, targetVoiceLanguage);
+    }
+
+    synchronized Optional<Entry> peekRandomByIndex(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+                                                   java.util.function.IntUnaryOperator indexPicker,
+                                                   String targetTextLanguage, String targetVoiceLanguage) {
+        if (maidUuid == null || pool == null || indexPicker == null) {
+            return Optional.empty();
+        }
+        Deque<Entry> queue = entries.get(new CacheKey(maidUuid, pool));
+        if (queue == null || queue.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Entry> matching = matchingEntries(queue, targetTextLanguage, targetVoiceLanguage);
+        if (matching.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(matching.get(indexPicker.applyAsInt(matching.size())));
+    }
+
+    synchronized int countMatching(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool,
+                                   String targetTextLanguage, String targetVoiceLanguage) {
+        if (maidUuid == null || pool == null) {
+            return 0;
+        }
+        Deque<Entry> queue = entries.get(new CacheKey(maidUuid, pool));
+        if (queue == null || queue.isEmpty()) {
+            return 0;
+        }
+        return matchingEntries(queue, targetTextLanguage, targetVoiceLanguage).size();
+    }
+
+    private static List<Entry> matchingEntries(Deque<Entry> queue, String targetTextLanguage, String targetVoiceLanguage) {
+        List<Entry> matching = new ArrayList<>();
+        for (Entry entry : queue) {
+            if (MorningKissCacheLanguageMatch.matches(entry, targetTextLanguage, targetVoiceLanguage)) {
+                matching.add(entry);
+            }
+        }
+        return matching;
     }
 
     synchronized Optional<Entry> pollFirst(UUID maidUuid, MorningKissScheduleRules.DialoguePool pool) {
