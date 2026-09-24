@@ -137,7 +137,7 @@ src/main/resources
 
 `BondMaidContainerScreen` 是羁绊页总屏幕；`screen/page` 承载一级/二级页控制；`screen/component` 提供按钮、滚动列表、弹窗、下拉框、语音池列表等复用组件。
 
-`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（132×165 RGBA，高清原图裁剪，按 44×55 缩放绘制）是纯装饰资源，只在设置面板侧栏底部绘制（茎根落在面板底边上、整株在面板内），不接收鼠标事件。
+`BondGuiTokens` 是所有羁绊 UI 的唯一配色与尺寸来源（业务代码不得硬编码 ARGB）：暖木色为面板/控件底，玫瑰色（`COLOR_ACCENT`、`*_ON_*`、`*_SELECTED_*`、`PRIMARY_BUTTON_*`）只作交互面与强调，金色（`HIGHLIGHT_TEXT`、`COLOR_TEXT_SELECTED`、`TAG_SERVER`）只作高亮文字与作用域标签。`textures/gui/rose_vine.png`（102×228 RGBA，高清原图裁剪，按 34×76 缩放绘制）是纯装饰资源，只在设置面板侧栏底部绘制（茎根落在面板底边上、整株在面板内），不接收鼠标事件。
 
 语音配置页现在是动态语音池页面：服务端同步数据包候选，客户端补充 TLM 音包候选。玩家保存的是每名女仆的池选择与播放模式，而不是全局固定文件名。早安吻与残血救护语音列表都支持试听：本地内置亲吻音效试听跟随亲吻音效音量，数据包/TLM 语音试听跟随语音试听音量。数据包语音通过服务端校验后把目标字节发送回客户端播放。TLM 音包试听同样读取原始音频字节，但使用专用 preview stream：以 `minecraft:music.menu` 作为稳定声音事件锚点，走 `PLAYERS` 音量分类，并关闭位置衰减，避免右键试听依赖 TLM 音包自身的 sound event 注册状态或玩家的环境音量设置。TLM 音包实际播放仍由功能流程创建跟随女仆或触发点的流式 SoundInstance，避免把 Opus/Vorbis 兼容性压到 `SoundBuffer` 旧链路上。所有内存 OGG/MP3 字节统一由 `InMemoryVoiceStream` 异步解码，跟随实体的语音统一复用 `TrackedEntityVoiceSoundInstance`，但各场景仍保留自己的声源分类、位置衰减和锚点策略。
 

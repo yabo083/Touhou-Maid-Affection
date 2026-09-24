@@ -8,7 +8,7 @@
 - `Fixed`：缺陷修复
 - `Removed`：移除内容
 
-## [1.7.5.0] - 2026-09-24
+## [1.7.5.0] - 2026-09-25
 
 ### Added
 - 设置面板「功能」tab 末尾新增「缓存策略」区（`bond.settings.section.cache_policy`）：`每池目标条数` / `扫描间隔` 两个整数（复用紧凑数值控件 `BondNumberField`）与 `消费即用` 胶囊开关，全部走既有服务端权威通道（OP2 + `[TMA Settings]` 审计 + 状态回推 + pending 状态点，不新造视觉）。为此新增 4 个白名单键——`morning_kiss.immediate_fallback_enabled`（映射 `ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_IMMEDIATE_FALLBACK_ENABLED`）、`morning_kiss.cache_target_per_pool`、`morning_kiss.cache_scan_interval_ticks`、`morning_kiss.cache_consume_on_use`（映射 `ModConfig.BOND_MORNING_KISS_AI_DIALOGUE_CACHE_CONSUME_ON_USE`），白名单从 **10 项扩到 14 项**（9 开关 + 2 语种 + 1 文本 + 2 整数）。`TmaSettingsKeys` 新增取值类型 `Type.INT`：只接受纯数字，逐键按 `ModConfig` `defineInRange` 的上下界校验（每池目标条数 1..8、扫描间隔 20..72000 tick），非数字/越界一律拒绝，并沿用既有的整包拒绝语义。`morning_kiss.cache_consume_on_use` 已从「功能」tab 的通用布尔列表里排除（`TOGGLE_KEYS` 过滤），「消费即用」在整个面板里**只出现一次**（就在缓存策略区内）。
@@ -22,6 +22,7 @@
 - 新增自绘滑块组件 `BondSlider`，供设置面板的音量项使用。
 
 ### Fixed
+- 装饰玫瑰素材重做：premultiplied 降采样 + 柔边 alpha（消除边缘色差颗粒），素材提到 102×228、按 34×76 绘制（原 61×135 物理像素太小，细节糊）。
 - 修复「状态」tab「按女仆」行的池计数渲染成原始 key `bond.settings.status.pool.general`：lang 文件缺 `GENERAL` 池的键，现已补齐中英两语言；并新增回归测试 `TmaSettingsLangKeysTest`，逐一遍历 `DialoguePool` 的全部取值断言中英 lang 都存在 `bond.settings.status.pool.<小写枚举名>`，同时断言每个可编辑键的 `bond.settings.key.*` / `bond.settings.sub.*` 与状态页相关键存在（缺键时直接测试失败，而不是等到界面上露出原始 key）。
 - 修复「状态」tab 行内文本压到「清空」按钮下面的问题：只读值行与女仆行一律在「控件左边界 − 间距」处用 `clip(...)` 截断并补省略号（女仆行拆成名字列 + 右对齐的计数列），长值（`24 (18 / 6)`、`3 / 1 / 42`、`早 9 · 晚 9 · 通用 0 · 18/12`）不再与控件重叠。
 - 修复「语音」tab 占位符图例被截断（原可用宽度仅 218px，中英文案分别需 309px / 348px）：图例改为独占一整行、使用内容区整宽 274px，文案缩短为 `{maid} 女仆 · {player} 玩家 · {pool} 时段 · {time} 允许时段`（260px）与 `{maid} maid · {player} player · {pool} pool · {time} range`（261px），中英双语都完整显示；「恢复默认」按钮移到上方标签行右对齐。
@@ -41,7 +42,7 @@
 - 早安吻 AI 台词缓存改为按语种读取：`pollRandom` / `peekRandom` 与预热满度判定（`countMatching`、`addIfBelowTarget`）都按当前解析出的显示/配音语种过滤，改了显示或配音语种后会自动按新语种重新预热，旧语种条目保留但不再被选中，也不再阻塞重新预热（仍可手动 `clear_ai_cache`）。目标语种为空（`auto`）时不过滤，保持旧行为。
 - `/tma morning_kiss status` 的语种行改为两行说人话：`文本语种：<值>`（未配置显示 `auto`）、`配音语种：<值>`（未配置显示 `auto`），删掉 AI 覆盖与生效优先级两行。
 - 早安吻语种语义统一为两个：**文本语种**（`displayLanguage`，内置数据包台词 + AI 生成台词用哪种语言显示；`auto` = 跟随游戏语言，内置台词按客户端语言渲染、未标记数据包台词通配、AI 台词沿用女仆的 TLM 聊天语言）与**配音语种**（`voiceLanguage`，数据包语音 + AI 合成语音用哪种语言；`auto` = 跟随女仆的 TLM AI 语言设置，数据包语音不按语言过滤、AI 合成沿用女仆的 TLM TTS 语言）。具体 locale（`zh_cn` / `ja_jp`…）固定该语言。旧关键字 `tlm` / `inherit` / `default` 继续接受，等价于 `auto`，但面板与状态页一律显示归一化后的 `auto`。
-- 全局羁绊 UI 配色统一为「暖木底 + 玫瑰（交互面 / 装饰）+ 金（仅高亮文字）」：`BondGuiTokens` 换用新调色板（保留原常量名，新增开关 / 字段 / 滑块 / 导航等语义色常量），所有调用点自动跟随。设置面板同步按设计稿收口：300×188 模态框、46px 侧栏三 tab、胶囊开关、78×20 字段式下拉、88×13 滑块（数值金色居中）、分区作用域标签、侧栏藤蔓装饰（`rose_vine.png`，素材 132×165、按 44×55 绘制，水平居中于导航轨、茎根落在面板底边上，整株在面板内）、行内请求状态点与「完成 / 重载」footer。不影响功能与其它二级页布局尺寸（仍为 172×150）。
+- 全局羁绊 UI 配色统一为「暖木底 + 玫瑰（交互面 / 装饰）+ 金（仅高亮文字）」：`BondGuiTokens` 换用新调色板（保留原常量名，新增开关 / 字段 / 滑块 / 导航等语义色常量），所有调用点自动跟随。设置面板同步按设计稿收口：300×188 模态框、46px 侧栏三 tab、胶囊开关、78×20 字段式下拉、88×13 滑块（数值金色居中）、分区作用域标签、侧栏藤蔓装饰（`rose_vine.png`，素材 102×228、按 34×76 绘制，水平居中于导航轨、茎根落在面板底边上，整株在面板内）、行内请求状态点与「完成 / 重载」footer。不影响功能与其它二级页布局尺寸（仍为 172×150）。
 - 设置面板从「女仆 GUI 内嵌二级页」改为**独立 Screen**（`TmaSettingsScreen`，删除 `SettingsSecondaryPage`）：在羁绊页「设置」按钮处用 `Minecraft#setScreen` 打开，自带全屏压暗背景，关闭（footer「完成」/ESC/点击压暗区）返回来源的女仆 GUI。面板尺寸/配色/控件与交互 token 不变，服务端权威语义、payload、状态机与音量直写零变更；除设置页外的其它二级页与 `BondSecondaryPage` 接口不受影响。
 - 设置面板语种从 4 项砍到 2 项：白名单变为 **7 开关 + 2 语种 = 9 项**，面板只保留「文本语种」（`display_language`）与「配音语种」（`voice_language`），两者统管内置数据包与 AI 两条链路。
 - 羁绊数据改为**按女仆嵌套存储**：女仆粒度数据从「根上扁平键 `<base>_<女仆UUID>`」改为 `touhou_maid_affection.bond.maids.<女仆UUID>.<base>` 子树，玩家粒度键（早安吻选择）仍在根上；键名常量集中到 `BondKeys`。首次读取旧存档时自动执行**一次性迁移**（根上新增 `SchemaVersion`，先写后删、幂等、无法解析的键原样保留），旧存档无损升级，无需手动操作。反查（按能力找女仆、按模型 ID 找女仆、按救护 provider 找女仆、批量重置能力）改为遍历女仆子树，不再全键扫描。
