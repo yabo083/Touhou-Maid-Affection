@@ -28,7 +28,7 @@
   "bond.action.call": "呼唤",
   "bond.action.voice": "语音",
   "bond.action.settings": "设置",
-  "bond.settings.title": "全局设置（与当前女仆无关）",
+  "bond.settings.title": "全局设置",
   "bond.settings.scope.global": "全局",
   "bond.settings.entry": "设置",
   "bond.settings.entry.tip": "打开全局设置面板，与当前女仆无关",

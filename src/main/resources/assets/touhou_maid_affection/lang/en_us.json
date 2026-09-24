@@ -28,7 +28,7 @@
   "bond.action.call": "Call",
   "bond.action.voice": "Voice",
   "bond.action.settings": "Settings",
-  "bond.settings.title": "Global Settings (all maids)",
+  "bond.settings.title": "Global Settings",
   "bond.settings.scope.global": "Global",
   "bond.settings.entry": "Settings",
   "bond.settings.entry.tip": "Open the global settings panel; it is not tied to the current maid",
