@@ -1,9 +1,7 @@
 {
   "mod.touhou_maid_affection.name": "Touhou Maid: Affection",
   "mod.touhou_maid_affection.description": "Kiss your maid! Adds affectionate interactions to Touhou Little Maid.",
-  "tips.touhou_maid_affection.kiss": "Sneak + empty-hand right-click to kiss; disable it in config and use kiss keys if it conflicts with sit/stand",
   "tips.touhou_maid_affection.kiss_carried": "When carrying a maid with a saddle, press the kiss key to kiss",
-  "tips.touhou_maid_affection.kiss_carryon": "CarryOn detected: Sneak + empty main hand + item in offhand right-click maid to kiss",
   "tips.touhou_maid_affection.offhand_tempt": "Holding temptation items (default: cake) in offhand also attracts maids",
   "key.categories.touhou_maid_affection": "Touhou Maid: Affection",
   "key.touhou_maid_affection.kiss_carried_maid": "Kiss Carried Maid",

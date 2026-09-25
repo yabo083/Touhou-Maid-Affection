@@ -160,7 +160,7 @@ src/main/resources
 
 ### 4.9 兼容层
 
-`ysm`、`mixin`、`compat/<mod>` 与小型 helper 是外部生态适配的边界。与 YSM、CarryOn、TLM GUI、TLM 音包、TLM AI 的适配逻辑应保持隔离，不能扩散成到处可见的条件分支。
+`ysm`、`mixin`、`compat/<mod>` 与小型 helper 是外部生态适配的边界。与 YSM、TLM GUI、TLM 音包、TLM AI 的适配逻辑应保持隔离，不能扩散成到处可见的条件分支。
 
 `compat/maidfm` 是对 MaidFileManager（女仆档案管理器，modid `maid_file_manager`）迁移 SPI 的适配边界，为**软依赖**：未安装管理器时行为与之前完全一致。
 
