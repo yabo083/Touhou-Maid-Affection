@@ -1,9 +1,7 @@
 {
   "mod.touhou_maid_affection.name": "女仆亲亲",
   "mod.touhou_maid_affection.description": "亲亲你的女仆！为车万女仆添加亲密互动功能。",
-  "tips.touhou_maid_affection.kiss": "潜行 + 空手右击女仆触发亲吻；若与坐下/站起冲突，可在配置关闭并使用亲吻按键",
-  "tips.touhou_maid_affection.kiss_carried": "主手持鞍公主抱女仆后，按亲吻按键可触发亲吻",
-  "tips.touhou_maid_affection.kiss_carryon": "检测到 CarryOn：潜行 + 主手空 + 副手持物 右击女仆触发亲吻",
+  "tips.touhou_maid_affection.kiss_carried": "主手持鞍抱起女仆后，按亲吻按键可触发亲吻",
   "tips.touhou_maid_affection.offhand_tempt": "副手持有诱惑物品（默认蛋糕）也能吸引女仆",
   "key.categories.touhou_maid_affection": "女仆亲亲",
   "key.touhou_maid_affection.kiss_carried_maid": "公主抱亲吻",
