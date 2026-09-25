@@ -165,5 +165,4 @@ jobs:
           version: ${{ github.ref_name }}
           version-type: release
           changelog: |
-            Automated release from GitHub tag `${{ github.ref_name }}`.
-            Commit: `${{ github.sha }}`
+            ${{ steps.changelog.outputs.body }}
