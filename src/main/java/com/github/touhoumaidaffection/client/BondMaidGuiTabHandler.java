@@ -9,11 +9,14 @@ import com.github.touhoumaidaffection.bond.BondConfig;
 import com.github.touhoumaidaffection.client.screen.BondMaidContainerScreen;
 import com.github.touhoumaidaffection.inventory.BondContainer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -63,6 +66,43 @@ public final class BondMaidGuiTabHandler {
                 unlocked
         );
         event.addButton(TAB_BUTTON_NAME, tabButton);
+    }
+
+    /**
+     * After the maid screen finishes init, every add-on tab (ours and other mods') is a live widget.
+     * Add-on tab listeners run in a non-deterministic order, so two mods can independently claim the
+     * same top-tab slot (issue #8: overlap with 史诗战斗/Epic Fight). Re-seat the bond tab into the first
+     * free slot only when it actually collides, leaving the common single-add-on layout untouched.
+     */
+    @SubscribeEvent
+    public static void onScreenInitPost(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof AbstractMaidContainerGui<?>)) {
+            return;
+        }
+        BondTabButton bondTab = null;
+        for (GuiEventListener child : event.getScreen().children()) {
+            if (child instanceof BondTabButton candidate) {
+                bondTab = candidate;
+                break;
+            }
+        }
+        if (bondTab == null) {
+            return;
+        }
+        int rowY = bondTab.getY();
+        List<Integer> occupied = new ArrayList<>();
+        int baseX = bondTab.getX();
+        for (GuiEventListener child : event.getScreen().children()) {
+            if (child == bondTab || !(child instanceof AbstractWidget widget) || widget.getY() != rowY) {
+                continue;
+            }
+            occupied.add(widget.getX());
+            baseX = Math.min(baseX, widget.getX());
+        }
+        if (!occupied.contains(bondTab.getX())) {
+            return;
+        }
+        bondTab.setX(BondTabLayout.firstFreeTopTabX(baseX, occupied.stream().mapToInt(Integer::intValue).toArray()));
     }
 
     private static void openBondTab(AbstractMaidContainerGui<?> gui, EntityMaid maid) {

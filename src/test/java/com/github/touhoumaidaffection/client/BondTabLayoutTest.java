@@ -19,4 +19,21 @@ class BondTabLayoutTest {
     void fallsBackToFirstExternalTabSlotWhenNoTopTabsAreObserved() {
         assertEquals(194, BondTabLayout.nextTopTabX(0, new int[]{}));
     }
+
+    @Test
+    void firstFreeSlotSkipsAConcurrentAddonTabSharingTheSlot() {
+        // Built-in tabs 94/119/144 plus another mod's tab at 169 (the slot the bond tab also picks
+        // when it runs before that mod). Re-seating must land on the first genuinely free slot.
+        assertEquals(194, BondTabLayout.firstFreeTopTabX(94, new int[]{94, 119, 144, 169}));
+    }
+
+    @Test
+    void firstFreeSlotFillsTheEarliestGap() {
+        assertEquals(119, BondTabLayout.firstFreeTopTabX(94, new int[]{94, 144, 169}));
+    }
+
+    @Test
+    void firstFreeSlotReturnsBaseWhenRowIsEmpty() {
+        assertEquals(94, BondTabLayout.firstFreeTopTabX(94, new int[]{}));
+    }
 }
