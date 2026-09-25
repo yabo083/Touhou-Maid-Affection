@@ -166,13 +166,16 @@ public final class LapPillowClientState {
 
     public static boolean shouldUseSleepPoseBridge(AbstractClientPlayer player) {
         Minecraft minecraft = Minecraft.getInstance();
+        // Identity, not UUID: a UUID match also selects fake AbstractClientPlayer copies that share the
+        // local player's profile (e.g. Tweakeroo's free-camera CameraEntity, Replay Mod cameras). Those
+        // copies have a null input; forcing onGround()/SLEEPING pose on them drives LocalPlayer.canAutoJump()
+        // into a null-input NPE (issue #7). The lie bridge is only ever meant for the real local player.
         return active
                 && !startPending
                 && sessionContextConfirmed
                 && pose.playerLying()
                 && !exitRequested
-                && minecraft.player != null
-                && player.getUUID().equals(minecraft.player.getUUID());
+                && player == minecraft.player;
     }
 
     public static Direction resolveSleepDirection(AbstractClientPlayer player) {

@@ -8,6 +8,12 @@
 - `Fixed`：缺陷修复
 - `Removed`：移除内容
 
+## [1.7.5.1] - 2026-09-25
+
+### Fixed
+- 修复与 Tweakeroo / Tweakerge 自由视角（“灵魂出窍”）在膝枕平躺态下同时使用时的客户端崩溃（issue #7，`LocalPlayer.canAutoJump` 对 null `input` 的 NPE）：Tweakeroo 的自由摄像机是一个复制了本地玩家 UUID、但 `input` 为 null 的假 `LocalPlayer`。膝枕平躺桥接此前以 **UUID 相等** 判定目标玩家，因而也命中了这个摄像机实体，强行让它 `onGround()` 返回 true；当玩家开启原版“自动跳跃”时，`canAutoJump()` 越过“在地面”判定继续走到 `hasEnoughImpulseToStartSprinting()` → `this.input.getMoveVector()`，对 null `input` 解引用即崩溃。改为 **实例相等**（`player == Minecraft.getInstance().player`），平躺桥接只作用于真正的本地玩家；Tweakeroo 摄像机、Replay Mod 摄像机等共享 UUID 的副本实体不再被误伤。
+- 修复与史诗战斗（Epic Fight）等同样往女仆界面顶部加页签的模组同装时，羁绊页签与对方页签重叠、点击无响应（issue #8）：附属页签的注册监听器执行顺序不确定，两个模组会各自把页签放到“内建页签之后的第一个槽位”而落到同一坐标。现在在界面 `init` 完成后（此时所有模组的页签都已是实际控件）复查一次，**仅当** 羁绊页签确实与顶部同排的其他控件重叠时，才把它移到该排第一个空槽（25px 网格）；单附属的常见布局保持不变。
+
 ## [1.7.5.0] - 2026-09-25
 
 ### Added
