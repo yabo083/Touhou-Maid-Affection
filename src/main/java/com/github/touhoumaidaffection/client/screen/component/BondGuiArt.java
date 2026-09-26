@@ -63,6 +63,13 @@ public final class BondGuiArt {
     private static final int BUTTON_TEXTURE_WIDTH = BUTTON_CELL;
     private static final int BUTTON_TEXTURE_HEIGHT = BUTTON_CELL * 5;
 
+    // ---- Ability-row star: the unlock lamp on the left of every skill row ----
+    // Icons in this mod are drawn at 1 texture pixel per logical pixel (like bond_tab_icon.png), so a
+    // 16x16 file covers 16x16 logical pixels; only the plates are baked at TEXTURE_SCALE.
+    private static final ResourceLocation BOND_STAR_LIT = texture("bond_star_lit.png");
+    private static final ResourceLocation BOND_STAR_DIM = texture("bond_star_dim.png");
+    private static final int STAR_SIZE = 16;
+
     /** Row of {@link #BOND_BUTTON} to draw; the order must match the atlas. */
     public enum BondButtonStyle {
         DEFAULT,
@@ -74,6 +81,18 @@ public final class BondGuiArt {
 
     private static ResourceLocation texture(String fileName) {
         return ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/" + fileName);
+    }
+
+    /**
+     * Paints the star at the left of an ability row: gold and glowing once the skill is unlocked, a
+     * dark unlit four-point shape while it is still locked. Drawn from code rather than baked into
+     * {@code bond_row.png} because the state changes per row; see {@link #STAR_SIZE}.
+     */
+    public static void drawRowStar(GuiGraphics graphics, int left, int top, boolean lit) {
+        beginTranslucentPass();
+        graphics.blit(lit ? BOND_STAR_LIT : BOND_STAR_DIM,
+                left, top, STAR_SIZE, STAR_SIZE,
+                0.0F, 0.0F, STAR_SIZE, STAR_SIZE, STAR_SIZE, STAR_SIZE);
     }
 
     /**

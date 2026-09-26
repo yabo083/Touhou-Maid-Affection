@@ -52,9 +52,10 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     private static final int ROW_START_Y = 9;
     private static final int ROW_HEIGHT = 24;
     private static final int ROW_SPACING = 24;
-    private static final int BTN_WIDTH = 46;
-    private static final int BTN_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
-    private static final int SECONDARY_BUTTON_WIDTH = 40;
+    private static final int BTN_WIDTH = 42;
+    /** Ability-row button height; deliberately shorter than {@link BondGuiTokens#CONTROL_HEIGHT}. */
+    private static final int BTN_HEIGHT = 16;
+    private static final int SECONDARY_BUTTON_WIDTH = 36;
     private static final int SECONDARY_BUTTON_GAP = BondGuiTokens.SPACING_SM;
 
     private final EntityMaid maid;

@@ -229,6 +229,8 @@ public final class BondAbilityPrimaryPage {
 
         BondAbilityRowLayout row = createLayout(y, x, hasSecondaryButton);
         BondGuiArt.drawRowPlate(graphics, row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom());
+        // unlock lamp: lit once the skill is unlocked, dim while it is locked
+        BondGuiArt.drawRowStar(graphics, row.rowLeft() + 2, row.rowTop() + 3, abilityUnlocked);
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
