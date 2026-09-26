@@ -283,24 +283,16 @@ public final class BondAbilityPrimaryPage {
     private void renderActionButton(GuiGraphics graphics, Font font, int x, int y, int width, int height, Component label,
                                     boolean enabled, int mouseX, int mouseY, int textColor, boolean primary) {
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
-        int border;
-        int background;
+        BondGuiArt.BondButtonStyle style;
         if (!enabled) {
-            border = BondGuiTokens.STATE_DISABLED_BORDER;
-            background = BondGuiTokens.STATE_DISABLED_BG;
+            style = BondGuiArt.BondButtonStyle.DISABLED;
+        } else if (primary) {
+            style = hovered ? BondGuiArt.BondButtonStyle.PRIMARY_HOVER : BondGuiArt.BondButtonStyle.PRIMARY;
         } else {
-            border = hovered ? BondGuiTokens.STATE_HOVER_BORDER : BondGuiTokens.STATE_DEFAULT_BORDER;
-            if (primary) {
-                background = hovered ? BondGuiTokens.PRIMARY_BUTTON_HOVER_BG : BondGuiTokens.PRIMARY_BUTTON_BG;
-            } else {
-                background = hovered ? BondGuiTokens.STATE_HOVER_BG : BondGuiTokens.STATE_DEFAULT_BG;
-            }
+            style = hovered ? BondGuiArt.BondButtonStyle.HOVER : BondGuiArt.BondButtonStyle.DEFAULT;
         }
 
-        BondGuiTokens.drawFramedPanelWithInnerBorder(graphics, x, y, x + width, y + height, background, border);
-        if (hovered && enabled) {
-            graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, BondGuiTokens.HOVER_OVERLAY);
-        }
+        BondGuiArt.drawButton(graphics, x, y, x + width, y + height, style);
         int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
         int textY = y + Math.max(1, (height - font.lineHeight) / 2);
         graphics.drawCenteredString(font, label, x + width / 2, textY, color);

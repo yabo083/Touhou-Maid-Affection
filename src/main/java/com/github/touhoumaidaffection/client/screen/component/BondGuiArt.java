@@ -18,12 +18,12 @@ import net.minecraft.resources.ResourceLocation;
  *
  * <p>The geometry is deliberately unchanged from the hand-drawn version: the page still occupies
  * the same 176x137 rect, the row plate the same 158x23 fill box and the modal frame keeps its
- * {@link BondGuiTokens#MODAL_TITLE_HEIGHT} title band. Buttons, dropdowns, sliders, toggles and all
- * text stay drawn by code; only the plates moved into artwork.
+ * {@link BondGuiTokens#MODAL_TITLE_HEIGHT} title band. Dropdowns, sliders, toggles and all text
+ * stay drawn by code; the button faces live in the atlas described by {@link BondButtonStyle}.
  *
- * <p>The shipped four PNGs are a placeholder drawn in classic vanilla GUI idiom (black outline,
- * light top/left bevel, dark bottom/right bevel, recessed content slots) and are meant to be
- * replaced with hand-drawn art.
+ * <p>The shipped PNGs are a placeholder drawn in classic vanilla GUI idiom (black outline, light
+ * top/left bevel, dark bottom/right bevel, recessed content slots) and are meant to be replaced
+ * with hand-drawn art.
  */
 public final class BondGuiArt {
     private BondGuiArt() {
@@ -56,8 +56,50 @@ public final class BondGuiArt {
     private static final int INSET_SLICE = 3 * TEXTURE_SCALE;
     private static final int INSET_TEXTURE_SIZE = INSET_SLICE * 2 + 2 * TEXTURE_SCALE;
 
+    // ---- Button atlas (nine-patch: one 8x8 logical cell per state, stacked vertically) ----
+    private static final ResourceLocation BOND_BUTTON = texture("bond_button.png");
+    private static final int BUTTON_SLICE = 3 * TEXTURE_SCALE;
+    private static final int BUTTON_CELL = 8 * TEXTURE_SCALE;
+    private static final int BUTTON_TEXTURE_WIDTH = BUTTON_CELL;
+    private static final int BUTTON_TEXTURE_HEIGHT = BUTTON_CELL * 5;
+
+    /** Row of {@link #BOND_BUTTON} to draw; the order must match the atlas. */
+    public enum BondButtonStyle {
+        DEFAULT,
+        HOVER,
+        PRIMARY,
+        PRIMARY_HOVER,
+        DISABLED
+    }
+
     private static ResourceLocation texture(String fileName) {
         return ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/" + fileName);
+    }
+
+    /**
+     * Paints a button face from {@link #BOND_BUTTON}, replacing the old
+     * {@code drawFramedPanelWithInnerBorder} + hover-overlay pair - the hover highlight is baked into
+     * the hover rows, so callers only pick a state. Nine-patched, so every button size used by the
+     * pages (the ability rows' 46x20 and 40x20 pair, the 17x13 header buttons, the footer buttons and
+     * the 50x12 settings entry) reuses one texture.
+     *
+     * <p>The cell's borders are three logical pixels per side, so a button must be at least 6x6
+     * logical pixels; anything smaller would drop its centre slice and lose the middle of the frame.
+     */
+    public static void drawButton(GuiGraphics graphics, int left, int top, int right, int bottom, BondButtonStyle style) {
+        int rowOffset = style.ordinal() * BUTTON_CELL;
+        for (BondNinePatch.Slice slice : BondNinePatch.slices(
+                left, top, right - left, bottom - top,
+                BUTTON_SLICE, BUTTON_SLICE, BUTTON_SLICE, BUTTON_SLICE,
+                BUTTON_CELL, BUTTON_CELL, TEXTURE_SCALE)) {
+            beginTranslucentPass();
+            graphics.blit(
+                    BOND_BUTTON,
+                    slice.x(), slice.y(), slice.width(), slice.height(),
+                    slice.u(), slice.v() + rowOffset, slice.uWidth(), slice.vHeight(),
+                    BUTTON_TEXTURE_WIDTH, BUTTON_TEXTURE_HEIGHT
+            );
+        }
     }
 
     /**
