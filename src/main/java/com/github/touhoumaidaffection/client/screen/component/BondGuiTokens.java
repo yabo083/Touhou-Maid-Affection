@@ -35,8 +35,10 @@ public final class BondGuiTokens {
 
     public static final int BUTTON_MIN_WIDTH = 40;
     public static final int BUTTON_HORIZONTAL_PADDING = 8;
-    public static final int SECONDARY_MODAL_WIDTH = 172;
-    public static final int SECONDARY_MODAL_HEIGHT = 150;
+    public static final int SECONDARY_MODAL_WIDTH = 168;
+    /** Kept at 140: the lap-pillow page puts a fixed 82 px pose panel under a 29 px header, so a
+     *  shorter modal would push that panel into the footer buttons. */
+    public static final int SECONDARY_MODAL_HEIGHT = 140;
     /** Wider modal used by the settings panel so it can host the 50px navigation rail and the content columns. */
     public static final int SETTINGS_MODAL_WIDTH = 340;
     /** Taller modal used by the settings panel: the rail must fit four tabs plus the footer. */

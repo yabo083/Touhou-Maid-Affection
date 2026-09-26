@@ -37,14 +37,14 @@ class BondNinePatchTest {
 
         // corners keep their authored size, the centre absorbs the rest
         assertEquals(new BondNinePatch.Slice(100, 50, 6, 22, 0, 0, 18, 66), result.get(0));
-        assertEquals(new BondNinePatch.Slice(106, 50, 160, 22, 18, 0, 6, 66), result.get(1));
-        assertEquals(new BondNinePatch.Slice(266, 50, 6, 22, 24, 0, 18, 66), result.get(2));
-        assertEquals(new BondNinePatch.Slice(100, 72, 6, 122, 0, 66, 18, 6), result.get(3));
-        assertEquals(new BondNinePatch.Slice(106, 72, 160, 122, 18, 66, 6, 6), result.get(4));
-        assertEquals(new BondNinePatch.Slice(266, 72, 6, 122, 24, 66, 18, 6), result.get(5));
-        assertEquals(new BondNinePatch.Slice(100, 194, 6, 6, 0, 72, 18, 18), result.get(6));
-        assertEquals(new BondNinePatch.Slice(106, 194, 160, 6, 18, 72, 6, 18), result.get(7));
-        assertEquals(new BondNinePatch.Slice(266, 194, 6, 6, 24, 72, 18, 18), result.get(8));
+        assertEquals(new BondNinePatch.Slice(106, 50, 156, 22, 18, 0, 6, 66), result.get(1));
+        assertEquals(new BondNinePatch.Slice(262, 50, 6, 22, 24, 0, 18, 66), result.get(2));
+        assertEquals(new BondNinePatch.Slice(100, 72, 6, 112, 0, 66, 18, 6), result.get(3));
+        assertEquals(new BondNinePatch.Slice(106, 72, 156, 112, 18, 66, 6, 6), result.get(4));
+        assertEquals(new BondNinePatch.Slice(262, 72, 6, 112, 24, 66, 18, 6), result.get(5));
+        assertEquals(new BondNinePatch.Slice(100, 184, 6, 6, 0, 72, 18, 18), result.get(6));
+        assertEquals(new BondNinePatch.Slice(106, 184, 156, 6, 18, 72, 6, 18), result.get(7));
+        assertEquals(new BondNinePatch.Slice(262, 184, 6, 6, 24, 72, 18, 18), result.get(8));
     }
 
     @Test
@@ -58,7 +58,7 @@ class BondNinePatchTest {
         assertEquals(width, result.get(2).x() + result.get(2).width() - 100);
         assertEquals(0, result.get(0).y() - 50);
         assertEquals(height, result.get(6).y() + result.get(6).height() - 50);
-        // the voice-page modal (166x132) must reuse the same corners as the split-page one (172x150)
+        // a smaller frame must reuse the same corners as the current modal size
         assertEquals(new BondNinePatch.Slice(100, 50, 6, 22, 0, 0, 18, 66), result.get(0));
         assertEquals(new BondNinePatch.Slice(260, 50, 6, 22, 24, 0, 18, 66), result.get(2));
         assertEquals(new BondNinePatch.Slice(106, 72, 154, 104, 18, 66, 6, 6), result.get(4));
