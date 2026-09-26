@@ -2,7 +2,9 @@ package com.github.touhoumaidaffection.client.screen.component;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
@@ -93,6 +95,36 @@ public final class BondGuiArt {
         graphics.blit(lit ? BOND_STAR_LIT : BOND_STAR_DIM,
                 left, top, STAR_SIZE, STAR_SIZE,
                 0.0F, 0.0F, STAR_SIZE, STAR_SIZE, STAR_SIZE, STAR_SIZE);
+    }
+
+    /** Largest first, so a label keeps its full size whenever it fits. */
+    private static final float[] LABEL_SCALES = {1.0F, 0.9F, 0.82F, 0.74F, 0.66F, 0.6F};
+
+    /**
+     * Draws a button label centred inside its button, scaled down in fixed steps until it fits the
+     * inner box. Minecraft's font has no smaller size and the bond buttons are deliberately small
+     * (42x16 for a status such as {@code 自动赠礼中}, 50x12 for the settings entry), so without this
+     * the text spills over the frame. Steps rather than an exact fit keep every button in a list at
+     * the same text size.
+     */
+    public static void drawFittedLabel(GuiGraphics graphics, Font font, Component label,
+                                       int x, int y, int width, int height, int color) {
+        int innerWidth = Math.max(1, width - 4);
+        int innerHeight = Math.max(1, height - 4);
+        float scale = LABEL_SCALES[LABEL_SCALES.length - 1];
+        for (float candidate : LABEL_SCALES) {
+            if (font.width(label) * candidate <= innerWidth && font.lineHeight * candidate <= innerHeight) {
+                scale = candidate;
+                break;
+            }
+        }
+        // last resort for a label no step can hold: cut it to the widened text budget
+        String text = font.plainSubstrByWidth(label.getString(), Math.max(1, (int) (innerWidth / scale)));
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + width / 2.0F, y + height / 2.0F, 0.0F);
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.drawCenteredString(font, text, 0, -font.lineHeight / 2, color);
+        graphics.pose().popPose();
     }
 
     /**

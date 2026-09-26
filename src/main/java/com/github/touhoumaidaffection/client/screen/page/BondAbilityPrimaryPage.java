@@ -296,8 +296,7 @@ public final class BondAbilityPrimaryPage {
 
         BondGuiArt.drawButton(graphics, x, y, x + width, y + height, style);
         int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
-        int textY = y + Math.max(1, (height - font.lineHeight) / 2);
-        graphics.drawCenteredString(font, label, x + width / 2, textY, color);
+        BondGuiArt.drawFittedLabel(graphics, font, label, x, y, width, height, color);
     }
 
     private void renderSettingsButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {

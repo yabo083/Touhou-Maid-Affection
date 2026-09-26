@@ -37,10 +37,7 @@ public final class BondButtonRow {
 
             // The hover highlight is baked into the hover rows of the atlas, so no overlay fill here.
             BondGuiArt.drawButton(graphics, x, y, x + button.width(), y + button.height(), buttonStyle(button, hovered));
-
-            int color = textColor(button);
-            int textY = y + Math.max(1, (button.height() - font.lineHeight) / 2);
-            graphics.drawCenteredString(font, button.label(), x + button.width() / 2, textY, color);
+            BondGuiArt.drawFittedLabel(graphics, font, button.label(), x, y, button.width(), button.height(), textColor(button));
         }
     }
 
