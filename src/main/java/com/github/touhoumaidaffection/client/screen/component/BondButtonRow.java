@@ -35,16 +35,9 @@ public final class BondButtonRow {
             int y = button.y();
             boolean hovered = contains(button, baseLeft, mouseX, mouseY);
 
-            int innerBorder = borderColor(button, hovered);
-            int background = backgroundColor(button, hovered);
-            BondGuiTokens.drawFramedPanelWithInnerBorder(graphics, x, y, x + button.width(), y + button.height(), background, innerBorder);
-            if (hovered && button.enabled()) {
-                graphics.fill(x + 2, y + 2, x + button.width() - 2, y + button.height() - 2, BondGuiTokens.HOVER_OVERLAY);
-            }
-
-            int color = textColor(button);
-            int textY = y + Math.max(1, (button.height() - font.lineHeight) / 2);
-            graphics.drawCenteredString(font, button.label(), x + button.width() / 2, textY, color);
+            // The hover highlight is baked into the hover rows of the atlas, so no overlay fill here.
+            BondGuiArt.drawButton(graphics, x, y, x + button.width(), y + button.height(), buttonStyle(button, hovered));
+            BondGuiArt.drawFittedLabel(graphics, font, button.label(), x, y, button.width(), button.height(), textColor(button));
         }
     }
 
@@ -62,21 +55,14 @@ public final class BondButtonRow {
         return mouseX >= x && mouseX < x + button.width() && mouseY >= button.y() && mouseY < button.y() + button.height();
     }
 
-    private static int backgroundColor(ButtonSpec button, boolean hovered) {
+    private static BondGuiArt.BondButtonStyle buttonStyle(ButtonSpec button, boolean hovered) {
         if (!button.enabled()) {
-            return BondGuiTokens.STATE_DISABLED_BG;
+            return BondGuiArt.BondButtonStyle.DISABLED;
         }
         if (button.primary()) {
-            return hovered ? BondGuiTokens.PRIMARY_BUTTON_HOVER_BG : BondGuiTokens.PRIMARY_BUTTON_BG;
+            return hovered ? BondGuiArt.BondButtonStyle.PRIMARY_HOVER : BondGuiArt.BondButtonStyle.PRIMARY;
         }
-        return hovered ? BondGuiTokens.STATE_HOVER_BG : BondGuiTokens.STATE_DEFAULT_BG;
-    }
-
-    private static int borderColor(ButtonSpec button, boolean hovered) {
-        if (!button.enabled()) {
-            return BondGuiTokens.STATE_DISABLED_BORDER;
-        }
-        return hovered ? BondGuiTokens.STATE_HOVER_BORDER : BondGuiTokens.STATE_DEFAULT_BORDER;
+        return hovered ? BondGuiArt.BondButtonStyle.HOVER : BondGuiArt.BondButtonStyle.DEFAULT;
     }
 
     private static int textColor(ButtonSpec button) {

@@ -24,7 +24,8 @@ public record BondAbilityRowLayout(
         int rowBottom = rowTop + rowHeight - 1;
         int mainButtonX = rowRight - mainButtonWidth - 4;
         int secondaryButtonX = hasSecondaryButton ? mainButtonX - buttonGap - secondaryButtonWidth : mainButtonX;
-        int textLeft = rowLeft + 4;
+        // the left 20 px belong to the unlock star drawn by BondGuiArt.drawRowStar
+        int textLeft = rowLeft + 20;
         int textRight = hasSecondaryButton ? secondaryButtonX - 6 : mainButtonX - 6;
         int buttonY = rowTop + Math.max(3, (rowHeight - buttonHeight) / 2);
         return new BondAbilityRowLayout(

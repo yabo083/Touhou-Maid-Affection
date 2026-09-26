@@ -27,7 +27,7 @@ public class BondScrollableList<T> {
     }
 
     public void render(GuiGraphics graphics, Font font, List<T> items, int mouseX, int mouseY, Renderer<T> renderer) {
-        BondGuiTokens.drawFramedPanel(graphics, left, top, right(), bottom(), BondGuiTokens.COLOR_BG_ELEMENT);
+        BondGuiArt.drawInsetPanel(graphics, left, top, right(), bottom());
         graphics.enableScissor(left + 2, top + 2, right() - 2, bottom() - 2);
         try {
             int max = Math.min(items.size(), scrollOffset + visibleRows());

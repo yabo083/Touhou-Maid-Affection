@@ -1,15 +1,16 @@
 package com.github.touhoumaidaffection.client.screen.page;
 
-import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
 import com.github.touhoumaidaffection.bond.VoicePoolSelection;
+import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.client.EmergencyRescueSoundPlayer;
 import com.github.touhoumaidaffection.client.RescueTlmVoiceIndex;
 import com.github.touhoumaidaffection.client.VoicePreviewPlayback;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondVoicePoolList;
@@ -17,6 +18,7 @@ import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -24,8 +26,10 @@ import java.util.List;
 import java.util.Set;
 
 public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPage {
-    private static final int MODAL_WIDTH = 166;
-    private static final int MODAL_HEIGHT = 132;
+    // Same modal rect as every other secondary page: the voice pages used to be 166x132 while the
+    // split pages were 172x150, so switching abilities visibly resized the window.
+    private static final int MODAL_WIDTH = BondGuiTokens.SECONDARY_MODAL_WIDTH;
+    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
     private static final int LIST_ROW_HEIGHT = 14;
     private static final int BUTTON_HEIGHT = 17;
     private static final int HEADER_BUTTON_HEIGHT = 13;
@@ -62,7 +66,7 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         int listTop = contentTop + 16;
         int listHeight = Math.max(LIST_ROW_HEIGHT * 4, buttonY - listTop - 3);
         if (voiceEntries.isEmpty()) {
-            BondGuiTokens.drawFramedPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
+            BondGuiArt.drawInsetPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight);
             graphics.drawCenteredString(font, Component.translatable("bond.voice_pool.no_entries"), contentLeft + contentWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
         } else {
             voiceList.render(graphics, font, voiceEntries, selectedIds, mouseX, mouseY);
@@ -74,7 +78,7 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 1 || BondKeyMappings.VOICE_PREVIEW.matchesMouse(button)) {
-            return previewHoveredVoice(mouseX, mouseY);
+            return true;
         }
         if (button != 0) {
             return true;
@@ -109,6 +113,14 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 1 || BondKeyMappings.VOICE_PREVIEW.matchesMouse(button)) {
+            return previewHoveredVoice(mouseX, mouseY, button);
+        }
+        return false;
     }
 
     @Override
@@ -267,26 +279,6 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         return voiceEntries.stream().map(BondVoicePoolList.Entry::id).toList();
     }
 
-    private boolean previewHoveredVoice(double mouseX, double mouseY) {
-        int optionIndex = voiceList.getHoveredIndex(mouseX, mouseY, voiceEntries.size());
-        if (optionIndex < 0 || optionIndex >= voiceEntries.size()) {
-            return true;
-        }
-        previewEntryId(voiceEntries.get(optionIndex).id());
-        return true;
-    }
-
-    private boolean previewEntryId(String id) {
-        return VoicePreviewPlayback.playEmergencyRescue(host.getMaid(), id);
-    }
-
-    private String firstSelectedOrFirstEntryId() {
-        if (!selectedIds.isEmpty()) {
-            return selectedIds.iterator().next();
-        }
-        return voiceEntries.isEmpty() ? "" : voiceEntries.get(0).id();
-    }
-
     private void toggleAll() {
         if (selectedIds.size() == voiceEntries.size() && !voiceEntries.isEmpty()) {
             selectedIds.clear();
@@ -300,6 +292,30 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         return selectedIds.size() == voiceEntries.size() && !voiceEntries.isEmpty()
                 ? Component.translatable("bond.voice_pool.select_none")
                 : Component.translatable("bond.voice_pool.select_all");
+    }
+
+    private boolean previewHoveredVoice(double mouseX, double mouseY, int button) {
+        int optionIndex = voiceList.getHoveredIndex(mouseX, mouseY, voiceEntries.size());
+        if (optionIndex < 0 || optionIndex >= voiceEntries.size()) {
+            TouhouMaidAffection.LOGGER.info("Emergency rescue voice preview skipped: button={}, mouse=({}, {}), hovered={}, entries={}",
+                    button, mouseX, mouseY, optionIndex, voiceEntries.size());
+            return true;
+        }
+        String id = voiceEntries.get(optionIndex).id();
+        TouhouMaidAffection.LOGGER.info("Emergency rescue voice preview requested: button={}, index={}, id={}", button, optionIndex, id);
+        previewEntryId(id);
+        return true;
+    }
+
+    private boolean previewEntryId(String id) {
+        return VoicePreviewPlayback.playEmergencyRescue(host.getMaid(), id);
+    }
+
+    private String firstSelectedOrFirstEntryId() {
+        if (!selectedIds.isEmpty()) {
+            return selectedIds.iterator().next();
+        }
+        return voiceEntries.isEmpty() ? "" : voiceEntries.get(0).id();
     }
 
     private String getSoundPackId() {

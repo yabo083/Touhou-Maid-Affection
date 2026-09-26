@@ -28,13 +28,10 @@ public class BondModalPage {
     }
 
     public void renderChrome(GuiGraphics graphics, Font font) {
-        int right = right();
-        int bottom = bottom();
         graphics.fill(pageLeft, pageTop, pageRight, pageBottom, BondGuiTokens.COLOR_BG_OVERLAY);
-        BondGuiTokens.drawFramedPanel(graphics, left, top, right, bottom, BondGuiTokens.COLOR_BG_PANEL);
-        int titleBottom = Math.min(bottom - 1, top + BondGuiTokens.MODAL_TITLE_HEIGHT);
-        graphics.fill(left + 2, top + 2, right - 2, titleBottom, BondGuiTokens.TITLE_PANEL_BG);
-        graphics.hLine(left + 2, right - 3, titleBottom, BondGuiTokens.DIVIDER_COLOR);
+        // Frame, panel body and the header separator come from one replaceable texture drawn as a
+        // nine-patch, so every modal size reuses the same artwork and no frame fill is drawn here.
+        BondGuiArt.drawModalChrome(graphics, left, top, width, height);
 
         int titleY = top + Math.max(2, (BondGuiTokens.MODAL_TITLE_HEIGHT - font.lineHeight) / 2);
         int titleX = left + (width - font.width(title)) / 2;
