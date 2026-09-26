@@ -25,8 +25,10 @@ import java.util.List;
 import java.util.Set;
 
 public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
-    private static final int MODAL_WIDTH = 166;
-    private static final int MODAL_HEIGHT = 132;
+    // Same modal rect as every other secondary page: the voice pages used to be 166x132 while the
+    // split pages were 172x150, so switching abilities visibly resized the window.
+    private static final int MODAL_WIDTH = BondGuiTokens.SECONDARY_MODAL_WIDTH;
+    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
     private static final int LIST_ROW_HEIGHT = 14;
     private static final int BUTTON_HEIGHT = 17;
     private static final int HEADER_BUTTON_HEIGHT = 13;

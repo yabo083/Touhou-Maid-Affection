@@ -1,6 +1,7 @@
 package com.github.touhoumaidaffection.client.screen.component;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 
@@ -108,6 +109,7 @@ public final class BondGuiArt {
                 left, top, width, height,
                 sliceLeft, sliceTop, sliceRight, sliceBottom,
                 textureWidth, textureHeight, TEXTURE_SCALE)) {
+            beginTranslucentPass();
             graphics.blit(
                     texture,
                     slice.x(), slice.y(), slice.width(), slice.height(),
@@ -123,7 +125,19 @@ public final class BondGuiArt {
         if (width <= 0 || height <= 0) {
             return;
         }
+        beginTranslucentPass();
         graphics.blit(texture, left, top, width, height,
                 0.0F, 0.0F, textureWidth, textureHeight, textureWidth, textureHeight);
+    }
+
+    /**
+     * A texture blit honours whatever blend state happens to be current, and finishing a
+     * {@code GuiGraphics} render-type batch - the fills the ability buttons are drawn with, just
+     * above the rows - clears that state. Without re-arming it here the translucent ability-row
+     * plate (black at 80/255 alpha) is written straight to the framebuffer as opaque black.
+     */
+    private static void beginTranslucentPass() {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
     }
 }
