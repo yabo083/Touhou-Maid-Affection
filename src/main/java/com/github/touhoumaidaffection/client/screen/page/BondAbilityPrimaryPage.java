@@ -5,6 +5,7 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityRowLayout;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
@@ -227,7 +228,9 @@ public final class BondAbilityPrimaryPage {
         Component status = host.getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
 
         BondAbilityRowLayout row = createLayout(y, x, hasSecondaryButton);
-        graphics.fill(row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom(), BondGuiTokens.COLOR_BG_ELEMENT);
+        BondGuiArt.drawRowPlate(graphics, row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom());
+        // unlock lamp: lit once the skill is unlocked, dim while it is locked
+        BondGuiArt.drawRowStar(graphics, row.rowLeft() + 2, row.rowTop() + 3, abilityUnlocked);
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
@@ -282,27 +285,18 @@ public final class BondAbilityPrimaryPage {
     private void renderActionButton(GuiGraphics graphics, Font font, int x, int y, int width, int height, Component label,
                                     boolean enabled, int mouseX, int mouseY, int textColor, boolean primary) {
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
-        int border;
-        int background;
+        BondGuiArt.BondButtonStyle style;
         if (!enabled) {
-            border = BondGuiTokens.STATE_DISABLED_BORDER;
-            background = BondGuiTokens.STATE_DISABLED_BG;
+            style = BondGuiArt.BondButtonStyle.DISABLED;
+        } else if (primary) {
+            style = hovered ? BondGuiArt.BondButtonStyle.PRIMARY_HOVER : BondGuiArt.BondButtonStyle.PRIMARY;
         } else {
-            border = hovered ? BondGuiTokens.STATE_HOVER_BORDER : BondGuiTokens.STATE_DEFAULT_BORDER;
-            if (primary) {
-                background = hovered ? BondGuiTokens.PRIMARY_BUTTON_HOVER_BG : BondGuiTokens.PRIMARY_BUTTON_BG;
-            } else {
-                background = hovered ? BondGuiTokens.STATE_HOVER_BG : BondGuiTokens.STATE_DEFAULT_BG;
-            }
+            style = hovered ? BondGuiArt.BondButtonStyle.HOVER : BondGuiArt.BondButtonStyle.DEFAULT;
         }
 
-        BondGuiTokens.drawFramedPanelWithInnerBorder(graphics, x, y, x + width, y + height, background, border);
-        if (hovered && enabled) {
-            graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, BondGuiTokens.HOVER_OVERLAY);
-        }
+        BondGuiArt.drawButton(graphics, x, y, x + width, y + height, style);
         int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
-        int textY = y + Math.max(1, (height - font.lineHeight) / 2);
-        graphics.drawCenteredString(font, label, x + width / 2, textY, color);
+        BondGuiArt.drawFittedLabel(graphics, font, label, x, y, width, height, color);
     }
 
     private void renderSettingsButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {

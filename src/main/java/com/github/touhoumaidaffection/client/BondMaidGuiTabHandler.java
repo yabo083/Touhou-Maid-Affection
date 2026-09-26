@@ -31,6 +31,12 @@ public final class BondMaidGuiTabHandler {
 
     private static final ResourceLocation BOND_TAB_ICON =
             ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/bond_tab_icon.png");
+    /**
+     * The tab icon is a standalone 16x16 texture (same size TLM draws its own tab icons at), so it
+     * is sampled with explicit texture dimensions. The 7-argument {@code blit} overload assumes a
+     * 256x256 atlas and would sample a 1x1 corner of a 16x16 file.
+     */
+    private static final int TAB_ICON_SIZE = 16;
 
     private BondMaidGuiTabHandler() {
     }
@@ -167,6 +173,20 @@ public final class BondMaidGuiTabHandler {
     }
 
     private static final class BondTabButton extends MaidTabButton {
+        /**
+         * TLM paints the tab of the screen you are currently on with a light, raised plate (the
+         * {@code !active} branch of {@link MaidTabButton}); every other tab draws no plate at all
+         * and simply shows the dark strip behind it. On a dark bond page that bright plate was the
+         * only light element in the row - which is why the page artwork ended up carrying white
+         * borders to match it. Tinting the plate with the page's own palette fixes the mismatch the
+         * other way round: TLM's plate body is {@code #C6C6C6}, so these factors land it on the
+         * page's {@code #382C22} surface, with the white bevel becoming the page's {@code #48392B}
+         * edge and the outline staying black.
+         */
+        private static final float PLATE_TINT_RED = 0.283F;
+        private static final float PLATE_TINT_GREEN = 0.222F;
+        private static final float PLATE_TINT_BLUE = 0.172F;
+
         private final boolean unlocked;
 
         private BondTabButton(int x, int y, int left, OnPress onPress, boolean unlocked) {
@@ -178,7 +198,8 @@ public final class BondMaidGuiTabHandler {
         public void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
             if (!unlocked) {
                 graphics.setColor(0.45f, 0.45f, 0.45f, 1.0f);
-                graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+                graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, TAB_ICON_SIZE, TAB_ICON_SIZE,
+                        0.0F, 0.0F, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE);
                 graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
                 if (isHovered()) {
                     graphics.fill(getX() + 1, getY() + 1, getX() + width - 1, getY() + height - 1, 0x18000000);
@@ -186,8 +207,11 @@ public final class BondMaidGuiTabHandler {
                 return;
             }
 
+            graphics.setColor(PLATE_TINT_RED, PLATE_TINT_GREEN, PLATE_TINT_BLUE, 1.0F);
             super.renderWidget(graphics, mouseX, mouseY, partialTicks);
-            graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+            graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+            graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, TAB_ICON_SIZE, TAB_ICON_SIZE,
+                    0.0F, 0.0F, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE);
         }
 
         @Override

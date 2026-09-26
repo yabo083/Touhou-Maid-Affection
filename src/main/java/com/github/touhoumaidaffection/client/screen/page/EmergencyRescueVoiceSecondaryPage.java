@@ -10,6 +10,7 @@ import com.github.touhoumaidaffection.client.EmergencyRescueSoundPlayer;
 import com.github.touhoumaidaffection.client.RescueTlmVoiceIndex;
 import com.github.touhoumaidaffection.client.VoicePreviewPlayback;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondVoicePoolList;
@@ -25,8 +26,10 @@ import java.util.List;
 import java.util.Set;
 
 public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPage {
-    private static final int MODAL_WIDTH = 166;
-    private static final int MODAL_HEIGHT = 132;
+    // Same modal rect as every other secondary page: the voice pages used to be 166x132 while the
+    // split pages were 172x150, so switching abilities visibly resized the window.
+    private static final int MODAL_WIDTH = BondGuiTokens.SECONDARY_MODAL_WIDTH;
+    private static final int MODAL_HEIGHT = BondGuiTokens.SECONDARY_MODAL_HEIGHT;
     private static final int LIST_ROW_HEIGHT = 14;
     private static final int BUTTON_HEIGHT = 17;
     private static final int HEADER_BUTTON_HEIGHT = 13;
@@ -63,7 +66,7 @@ public final class EmergencyRescueVoiceSecondaryPage implements BondSecondaryPag
         int listTop = contentTop + 16;
         int listHeight = Math.max(LIST_ROW_HEIGHT * 4, buttonY - listTop - 3);
         if (voiceEntries.isEmpty()) {
-            BondGuiTokens.drawFramedPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
+            BondGuiArt.drawInsetPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight);
             graphics.drawCenteredString(font, Component.translatable("bond.voice_pool.no_entries"), contentLeft + contentWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
         } else {
             voiceList.render(graphics, font, voiceEntries, selectedIds, mouseX, mouseY);
