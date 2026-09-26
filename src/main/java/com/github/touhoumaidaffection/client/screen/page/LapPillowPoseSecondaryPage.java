@@ -29,11 +29,22 @@ public final class LapPillowPoseSecondaryPage implements BondSecondaryPage {
     private static final int BUTTON_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
     private static final int BUTTON_GAP = BondGuiTokens.SPACING_MD;
     private static final int DROPDOWN_WIDTH = 72;
-    private static final int DROPDOWN_HEIGHT = BondGuiTokens.CONTROL_HEIGHT;
+    /** Shorter than {@link BondGuiTokens#CONTROL_HEIGHT}: the right column has to fit two dropdowns
+     *  and two coordinate cards above the footer buttons inside {@link #MODAL_HEIGHT}. */
+    private static final int DROPDOWN_HEIGHT = 18;
     private static final int DROPDOWN_ROW_HEIGHT = BondGuiTokens.DROPDOWN_ROW_HEIGHT;
     private static final int DROPDOWN_VISIBLE_ROWS = 4;
     private static final int COORD_CARD_WIDTH = 72;
-    private static final int COORD_CARD_HEIGHT = 16;
+    /** The readout inside is drawn at 0.70 scale, so 13 px is enough and saves 6 px of column. */
+    private static final int COORD_CARD_HEIGHT = 13;
+    // Right-column offsets, measured from the modal's content top. The whole column is 83 px tall so
+    // it clears the footer buttons in a 140 px modal; keep MAID_CARD_Y + COORD_CARD_HEIGHT <= 83.
+    private static final int MAID_LABEL_Y = 0;
+    private static final int MAID_DROPDOWN_Y = 9;
+    private static final int PLAYER_LABEL_Y = 28;
+    private static final int PLAYER_DROPDOWN_Y = 37;
+    private static final int PLAYER_CARD_Y = 56;
+    private static final int MAID_CARD_Y = 70;
     private static final double STEP_Y = 0.05D;
     private static final int POINT_HITBOX = 7;
 
@@ -58,8 +69,8 @@ public final class LapPillowPoseSecondaryPage implements BondSecondaryPage {
         BondModalPage modal = modal();
         int rightLeft = rightPanelLeft(modal);
         int rightTop = rightPanelTop(modal);
-        this.maidActionDropdown = new BondDropdown<>(rightLeft, rightTop + 15, DROPDOWN_WIDTH, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
-        this.playerActionDropdown = new BondDropdown<>(rightLeft, rightTop + 43, DROPDOWN_WIDTH, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        this.maidActionDropdown = new BondDropdown<>(rightLeft, rightTop + MAID_DROPDOWN_Y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
+        this.playerActionDropdown = new BondDropdown<>(rightLeft, rightTop + PLAYER_DROPDOWN_Y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT, DROPDOWN_ROW_HEIGHT, DROPDOWN_VISIBLE_ROWS);
         this.maidActionOptions = buildMaidActionOptions();
     }
 
@@ -243,14 +254,14 @@ public final class LapPillowPoseSecondaryPage implements BondSecondaryPage {
         int left = rightPanelLeft(modal);
         int top = rightPanelTop(modal);
 
-        graphics.drawString(font, Component.translatable("bond.lap_pillow.maid_action"), left, top + 6, BondGuiTokens.COLOR_TEXT_BODY, false);
+        graphics.drawString(font, Component.translatable("bond.lap_pillow.maid_action"), left, top + MAID_LABEL_Y, BondGuiTokens.COLOR_TEXT_BODY, false);
         maidActionDropdown.renderBase(graphics, font, maidActionOptions, selectedActionIndex(maidActionOptions, workingPose.maidActionId()), mouseX, mouseY, this::renderMaidActionOption);
 
-        graphics.drawString(font, Component.translatable("bond.lap_pillow.player_action"), left, top + 34, BondGuiTokens.COLOR_TEXT_BODY, false);
+        graphics.drawString(font, Component.translatable("bond.lap_pillow.player_action"), left, top + PLAYER_LABEL_Y, BondGuiTokens.COLOR_TEXT_BODY, false);
         playerActionDropdown.renderBase(graphics, font, PLAYER_ACTION_OPTIONS, selectedActionIndex(PLAYER_ACTION_OPTIONS, workingPose.playerActionId()), mouseX, mouseY, this::renderPlayerActionOption);
 
-        drawCoordCard(graphics, font, left, top + 58, COORD_CARD_WIDTH, Component.translatable("bond.lap_pillow.subject.player"), workingPose.playerOffsetX(), workingPose.playerOffsetY(), workingPose.playerOffsetZ(), activePoint == EditablePoint.PLAYER);
-        drawCoordCard(graphics, font, left, top + 78, COORD_CARD_WIDTH, Component.translatable("bond.lap_pillow.subject.maid"), workingPose.maidOffsetX(), workingPose.maidOffsetY(), workingPose.maidOffsetZ(), activePoint == EditablePoint.MAID);
+        drawCoordCard(graphics, font, left, top + PLAYER_CARD_Y, COORD_CARD_WIDTH, Component.translatable("bond.lap_pillow.subject.player"), workingPose.playerOffsetX(), workingPose.playerOffsetY(), workingPose.playerOffsetZ(), activePoint == EditablePoint.PLAYER);
+        drawCoordCard(graphics, font, left, top + MAID_CARD_Y, COORD_CARD_WIDTH, Component.translatable("bond.lap_pillow.subject.maid"), workingPose.maidOffsetX(), workingPose.maidOffsetY(), workingPose.maidOffsetZ(), activePoint == EditablePoint.MAID);
     }
 
     private void renderMaidActionOption(GuiGraphics graphics, Font font, ActionOption option, int index, int left, int top, int right, int height, boolean hovered, boolean selectedHeader) {
