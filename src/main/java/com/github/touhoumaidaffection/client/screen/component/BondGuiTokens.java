@@ -81,7 +81,6 @@ public final class BondGuiTokens {
     public static final int HOVER_OVERLAY = 0x33FFFFFF;
     public static final int SELECTED_ROW_GLOW = 0x3DC05E77;
     public static final int SELECTED_ROW_STRIPE = 0xFFC05E77;
-    public static final int TITLE_PANEL_BG = 0x00000000;
 
     // ---- Semantic control colors (settings panel and later pages) ----
     public static final int TOGGLE_TRACK = 0xFF3A2E22;

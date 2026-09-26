@@ -6,6 +6,7 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.YsmModelActionIndex;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
 import com.github.touhoumaidaffection.client.screen.component.BondDropdown;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
@@ -216,7 +217,7 @@ public final class LapPillowPoseSecondaryPage implements BondSecondaryPage {
         int panelTop = leftPanelTop(modal);
         int panelRight = panelLeft + LEFT_PANEL_WIDTH;
         int panelBottom = panelTop + LEFT_PANEL_HEIGHT;
-        BondGuiTokens.drawFramedPanel(graphics, panelLeft, panelTop, panelRight, panelBottom, BondGuiTokens.COLOR_BG_ELEMENT);
+        BondGuiArt.drawInsetPanel(graphics, panelLeft, panelTop, panelRight, panelBottom);
 
         graphics.drawString(font, Component.translatable("bond.lap_pillow.relative_position"), panelLeft + 4, panelTop + 4, BondGuiTokens.COLOR_TEXT_BODY, false);
 
@@ -224,7 +225,7 @@ public final class LapPillowPoseSecondaryPage implements BondSecondaryPage {
         int gridTop = panelTop + 14;
         int gridRight = gridLeft + GRID_SIZE;
         int gridBottom = gridTop + GRID_SIZE;
-        BondGuiTokens.drawFramedPanel(graphics, gridLeft, gridTop, gridRight, gridBottom, BondGuiTokens.STATE_DEFAULT_BG);
+        BondGuiArt.drawInsetPanel(graphics, gridLeft, gridTop, gridRight, gridBottom);
         for (int step = 1; step < 4; step++) {
             int offset = step * (GRID_SIZE / 4);
             graphics.hLine(gridLeft, gridRight - 1, gridTop + offset, 0x334A4A4A);

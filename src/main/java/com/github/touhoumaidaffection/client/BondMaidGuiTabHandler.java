@@ -31,6 +31,12 @@ public final class BondMaidGuiTabHandler {
 
     private static final ResourceLocation BOND_TAB_ICON =
             ResourceLocation.fromNamespaceAndPath(TouhouMaidAffection.MOD_ID, "textures/gui/bond_tab_icon.png");
+    /**
+     * The tab icon is a standalone 16x16 texture (same size TLM draws its own tab icons at), so it
+     * is sampled with explicit texture dimensions. The 7-argument {@code blit} overload assumes a
+     * 256x256 atlas and would sample a 1x1 corner of a 16x16 file.
+     */
+    private static final int TAB_ICON_SIZE = 16;
 
     private BondMaidGuiTabHandler() {
     }
@@ -178,7 +184,8 @@ public final class BondMaidGuiTabHandler {
         public void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
             if (!unlocked) {
                 graphics.setColor(0.45f, 0.45f, 0.45f, 1.0f);
-                graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+                graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, TAB_ICON_SIZE, TAB_ICON_SIZE,
+                        0.0F, 0.0F, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE);
                 graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
                 if (isHovered()) {
                     graphics.fill(getX() + 1, getY() + 1, getX() + width - 1, getY() + height - 1, 0x18000000);
@@ -187,7 +194,8 @@ public final class BondMaidGuiTabHandler {
             }
 
             super.renderWidget(graphics, mouseX, mouseY, partialTicks);
-            graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, 0, 0, 16, 16, 16, 16);
+            graphics.blit(BOND_TAB_ICON, getX() + 4, getY() + 6, TAB_ICON_SIZE, TAB_ICON_SIZE,
+                    0.0F, 0.0F, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE, TAB_ICON_SIZE);
         }
 
         @Override

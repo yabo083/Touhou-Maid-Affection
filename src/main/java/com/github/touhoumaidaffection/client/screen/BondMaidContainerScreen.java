@@ -10,6 +10,7 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.YsmModelActionIndex;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.page.BondAbilityPrimaryPage;
@@ -226,16 +227,10 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
     private void renderBondPageBackground(GuiGraphics graphics) {
         int left = leftPos + PAGE_X_OFFSET;
         int top = topPos + PAGE_Y_OFFSET;
-        int right = left + PAGE_WIDTH;
-        int bottom = top + PAGE_HEIGHT;
 
-        BondGuiTokens.drawFramedPanel(graphics, left, top, right, bottom, BondGuiTokens.COLOR_BG_PANEL);
-        graphics.fill(left + 3, top + 3, right - 3, bottom - 3, 0xAA2B2228);
-        graphics.fill(left + 6, top + 22, right - 6, bottom - 6, BondGuiTokens.COLOR_BG_ELEMENT);
-        graphics.fill(left + 6, top + 22, right - 6, top + 23, BondGuiTokens.DIVIDER_COLOR);
-        graphics.fill(left + 6, bottom - 7, right - 6, bottom - 6, 0x440F0A0D);
-        graphics.fill(left + 6, top + 22, left + 7, bottom - 6, BondGuiTokens.DIVIDER_COLOR);
-        graphics.fill(right - 7, top + 22, right - 6, bottom - 6, 0x440F0A0D);
+        // Frame, separators, content area and the header rose all come from one replaceable texture,
+        // so no fill or line is drawn here (same contract as the settings panel's artwork).
+        BondGuiArt.drawPageBackground(graphics, left, top, PAGE_WIDTH, PAGE_HEIGHT);
         if (!hasActiveSecondaryPage()) {
             graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, BondGuiTokens.COLOR_TEXT_TITLE);
         }

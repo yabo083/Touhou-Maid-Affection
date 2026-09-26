@@ -9,6 +9,7 @@ import com.github.touhoumaidaffection.client.BondKeyMappings;
 import com.github.touhoumaidaffection.client.MorningKissVoiceIndex;
 import com.github.touhoumaidaffection.client.VoicePreviewPlayback;
 import com.github.touhoumaidaffection.client.screen.component.BondButtonRow;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.component.BondVoicePoolList;
@@ -62,7 +63,7 @@ public final class MorningKissVoiceSecondaryPage implements BondSecondaryPage {
         int listTop = contentTop + 16;
         int listHeight = Math.max(LIST_ROW_HEIGHT * 4, buttonY - listTop - 3);
         if (voiceEntries.isEmpty()) {
-            BondGuiTokens.drawFramedPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight, BondGuiTokens.COLOR_BG_ELEMENT);
+            BondGuiArt.drawInsetPanel(graphics, contentLeft, listTop, contentLeft + contentWidth, listTop + listHeight);
             graphics.drawCenteredString(font, Component.translatable("bond.voice_pool.no_entries"), contentLeft + contentWidth / 2, listTop + 12, BondGuiTokens.COLOR_TEXT_HINT);
         } else {
             voiceList.render(graphics, font, voiceEntries, selectedIds, mouseX, mouseY);

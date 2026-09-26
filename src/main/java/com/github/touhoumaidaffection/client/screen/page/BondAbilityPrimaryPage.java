@@ -5,6 +5,7 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityRowLayout;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiArt;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
@@ -227,7 +228,7 @@ public final class BondAbilityPrimaryPage {
         Component status = host.getStatusText(ability, unlocked, abilityUnlocked, enoughPowerPoint, canUnlockNow, canUseSecondary);
 
         BondAbilityRowLayout row = createLayout(y, x, hasSecondaryButton);
-        graphics.fill(row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom(), BondGuiTokens.COLOR_BG_ELEMENT);
+        BondGuiArt.drawRowPlate(graphics, row.rowLeft(), row.rowTop(), row.rowRight(), row.rowBottom());
 
         MutableComponent title = ability.getDisplayName().copy();
         if (!unlocked) {
