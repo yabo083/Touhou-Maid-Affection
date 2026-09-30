@@ -5,6 +5,8 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityListPanel;
 import com.github.touhoumaidaffection.client.screen.component.BondAbilityRowLayout;
+import com.github.touhoumaidaffection.client.screen.component.BondGuiText;
+import com.github.touhoumaidaffection.client.screen.component.BondHeaderLayout;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
@@ -26,12 +28,11 @@ public final class BondAbilityPrimaryPage {
     private final int secondaryButtonGap;
     private final int panelX;
     private final int panelWidth;
-    private final int settingsButtonX;
-    private final int settingsButtonY;
-    private static final int SETTINGS_BUTTON_WIDTH = 50;
-    private static final int SETTINGS_BUTTON_HEIGHT = 12;
+    private final BondHeaderLayout header;
+    private final Component title = Component.translatable("bond.tab.title");
 
     public BondAbilityPrimaryPage(BondPrimaryPageHost host,
+                                  BondHeaderLayout header,
                                   int panelX,
                                   int panelY,
                                   int panelWidth,
@@ -44,6 +45,7 @@ public final class BondAbilityPrimaryPage {
                                   int buttonHeight,
                                   int secondaryButtonGap) {
         this.host = host;
+        this.header = header;
         this.listPanel = new BondAbilityListPanel(panelX, panelY, panelWidth, panelHeight, rowStartY, rowHeight, rowSpacing);
         this.rowHeight = rowHeight;
         this.buttonWidth = buttonWidth;
@@ -52,10 +54,6 @@ public final class BondAbilityPrimaryPage {
         this.secondaryButtonGap = secondaryButtonGap;
         this.panelX = panelX;
         this.panelWidth = panelWidth;
-        // Sits in the top-right slot of the panel frame (where the removed AI button used to be),
-        // kept inside the bond page frame so the screen's click routing reaches this button.
-        this.settingsButtonX = panelX + panelWidth - SETTINGS_BUTTON_WIDTH - 2;
-        this.settingsButtonY = panelY - SETTINGS_BUTTON_HEIGHT - 3;
     }
 
     public void render(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -68,7 +66,7 @@ public final class BondAbilityPrimaryPage {
         boolean unlocked = host.isBondUnlocked();
         int rowLeft = panelX + 2;
 
-        renderSettingsButton(graphics, font, mouseX, mouseY);
+        renderHeader(graphics, font, mouseX, mouseY);
 
         listPanel.renderViewport(graphics, () -> {
             int visible = listPanel.getVisibleRowCount();
@@ -84,8 +82,10 @@ public final class BondAbilityPrimaryPage {
         if (host.getMaid() == null) {
             return false;
         }
-        if (isSettingsButtonHovered(mouseX, mouseY)) {
-            host.openSettingsPage();
+        if (header.settings().contains(mouseX, mouseY)) {
+            if (host.isBondUnlocked()) {
+                host.openSettingsPage();
+            }
             return true;
         }
         if (!listPanel.contains(mouseX, mouseY)) {
@@ -134,7 +134,7 @@ public final class BondAbilityPrimaryPage {
         if (host.getMaid() == null) {
             return List.of();
         }
-        if (isSettingsButtonHovered(mouseX, mouseY)) {
+        if (header.settings().contains(mouseX, mouseY)) {
             return List.of(
                     Component.translatable("bond.settings.title"),
                     Component.translatable("bond.settings.entry.tip").withStyle(ChatFormatting.GRAY)
@@ -301,32 +301,32 @@ public final class BondAbilityPrimaryPage {
             graphics.fill(x + 2, y + 2, x + width - 2, y + height - 2, BondGuiTokens.HOVER_OVERLAY);
         }
         int color = enabled ? textColor : BondGuiTokens.COLOR_TEXT_DISABLED;
-        int textY = y + Math.max(1, (height - font.lineHeight) / 2);
-        graphics.drawCenteredString(font, label, x + width / 2, textY, color);
+        BondGuiText.drawFittedLabel(graphics, font, label, x, y, width, height, color);
     }
 
-    private void renderSettingsButton(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        renderActionButton(
-                graphics,
-                font,
-                settingsButtonX,
-                settingsButtonY,
-                SETTINGS_BUTTON_WIDTH,
-                SETTINGS_BUTTON_HEIGHT,
-                Component.translatable("bond.settings.entry"),
-                true,
-                mouseX,
-                mouseY,
-                BondGuiTokens.COLOR_TEXT_SELECTED,
-                false
-        );
-    }
+    private void renderHeader(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
+        BondHeaderLayout.Rect titleBounds = header.title();
+        BondGuiText.drawFittedLabel(graphics, font, title, titleBounds.x(), titleBounds.y(),
+                titleBounds.width(), titleBounds.height(), BondGuiTokens.COLOR_TEXT_TITLE);
 
-    private boolean isSettingsButtonHovered(double mouseX, double mouseY) {
-        return mouseX >= settingsButtonX
-                && mouseX < settingsButtonX + SETTINGS_BUTTON_WIDTH
-                && mouseY >= settingsButtonY
-                && mouseY < settingsButtonY + SETTINGS_BUTTON_HEIGHT;
+        BondHeaderLayout.Rect gear = header.settings();
+        int color = !host.isBondUnlocked() ? BondGuiTokens.COLOR_TEXT_DISABLED
+                : gear.contains(mouseX, mouseY) ? BondGuiTokens.COLOR_ACCENT : BondGuiTokens.COLOR_TEXT_HINT;
+        int x = gear.x();
+        int y = gear.y();
+        // Twelve-pixel gear: transparent center, four rim segments and eight teeth.
+        graphics.fill(x + 3, y + 2, x + 9, y + 4, color);
+        graphics.fill(x + 3, y + 8, x + 9, y + 10, color);
+        graphics.fill(x + 2, y + 4, x + 4, y + 8, color);
+        graphics.fill(x + 8, y + 4, x + 10, y + 8, color);
+        graphics.fill(x + 5, y, x + 7, y + 2, color);
+        graphics.fill(x + 5, y + 10, x + 7, y + 12, color);
+        graphics.fill(x, y + 5, x + 2, y + 7, color);
+        graphics.fill(x + 10, y + 5, x + 12, y + 7, color);
+        graphics.fill(x + 1, y + 1, x + 3, y + 3, color);
+        graphics.fill(x + 9, y + 1, x + 11, y + 3, color);
+        graphics.fill(x + 1, y + 9, x + 3, y + 11, color);
+        graphics.fill(x + 9, y + 9, x + 11, y + 11, color);
     }
 
     private BondAbilityRowLayout createLayout(int index, boolean hasSecondaryButton) {

@@ -62,11 +62,14 @@ Configure the following keys under **Options → Controls → Key Binds**:
 - **Lock View Angle**: Lock the camera angle during a lap pillow session.
 
 ### In-Game Settings Panel
-Click the **Settings** gear icon in the top-right corner of the Bond GUI to open the in-game control panel:
-- **Status**: Monitor AI dialogue cache progress, active toggles, and per-maid statistics.
-- **Features**: Toggle individual bond mechanics and adjust AI cache generation limits and scan intervals.
+Click the gear beside **Bond Abilities**, inside the panel header, to open settings:
+- **Status**: Monitoring is grouped by **Random Gift** and **AI Morning Kiss**. Select a maid in the gift section; AI switches, languages, and cache statistics form subsections.
+- **Features**: Toggle bond abilities, adjust AI cache policy, and choose the gift pool, preparation interval, and queue limit.
 - **Voice**: Switch display/voice languages, edit the Morning Kiss prompt template live, or jump directly to TLM's AI provider settings.
 - **Volume**: Adjust volume sliders in real-time for kiss sounds, morning kiss voices, rescue lines, and voice previews.
+
+If an upgraded save produces a narrow selection of gifts, turn off **Features → Gift preparation → Tag-only pool** to select the broad pool. Existing configurations retain their saved choice.
+The Status tab displays server snapshots; use **Refresh** to update them. Delivery also depends on distance and cooldown after a gift is prepared. Hover and scroll over the contents row to inspect longer item lists.
 
 ### Admin Commands
 All data and settings follow server-authoritative validation. Operators (Permission Level 2) can manage features via `/tma`:
@@ -82,6 +85,7 @@ Expand dialogue pools and `.ogg` voice lines via Datapacks:
 - Datapack paths: `data/touhou_maid_affection/morning_kiss/` and `emergency_rescue/`
 - Ready-to-use sample pack: [examples/TMA-Custom-Voice-Pack](examples/TMA-Custom-Voice-Pack)
 - Detailed tutorial: [早安吻相关配置说明.md](早安吻相关配置说明.md)
+- Modpack author guide (Chinese): [PACK_AUTHORING.md](PACK_AUTHORING.md) — gift allowlists/blacklists, pack formats, config timing, voices, and reload limits.
 
 ## Important Notes
 
@@ -101,7 +105,7 @@ Expand dialogue pools and `.ogg` voice lines via Datapacks:
 ### Installation
 1. Install Minecraft `1.21.1` and NeoForge `21.1.x`.
 2. Install **Touhou Little Maid** (`1.5.1+`).
-3. Place `touhou-maid-affection-1.7.5.1.jar` into your `.minecraft/mods` directory.
+3. Place `touhou-maid-affection-1.7.5.2.jar` into your `.minecraft/mods` directory.
 4. Launch the game.
 
 ### Developer & Architecture Docs

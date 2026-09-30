@@ -4,12 +4,16 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.BondManager;
+import com.github.tartaricacid.touhoulittlemaid.world.backups.MaidBackupsManager;
+import com.github.touhoumaidaffection.bond.BondData;
+import com.github.touhoumaidaffection.bond.RandomGiftClock;
+import com.github.touhoumaidaffection.bond.RandomGiftQueue;
+import com.github.touhoumaidaffection.bond.settings.TmaGiftStatusWire;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.handler.BondSyncHelper;
 import com.github.touhoumaidaffection.util.MaidDisplayNameResolver;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
 import com.github.touhoumaidaffection.ysm.YSMMaidAnimation;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -20,11 +24,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -58,12 +61,107 @@ public final class RandomGiftService {
     }
 
     public static int reconcileQueuedGifts(ServerPlayer player, EntityMaid maid) {
-        return BondManager.reconcileRandomGiftQueue(player, maid.getUUID(), System.currentTimeMillis());
+        if (!ModConfig.BOND_RANDOM_GIFT_ENABLED.get() || !maid.isOwnedBy(player)
+                || !BondManager.isAbilityUnlocked(player, maid.getUUID(), "random_gift")) {
+            return BondManager.getQueuedGiftCount(player, maid.getUUID());
+        }
+        BondManager.reconcileRandomGiftQueue(player, maid.getUUID(), System.currentTimeMillis());
+        return prepareGifts(player, maid).queued();
     }
 
     public static long getNextGiftReadyAtMs(ServerPlayer player, EntityMaid maid) {
         return BondManager.getNextRandomGiftReadyAtMs(player, maid.getUUID(), System.currentTimeMillis());
     }
+
+
+    /** Read-only, owner-scoped projection. It never loads chunks, rolls gifts, or advances the clock. */
+    public static TmaGiftStatusWire.Status giftStatus(ServerPlayer player, int requestedPage) {
+        long nowMs = System.currentTimeMillis();
+        BondData data = BondData.readOnly(player);
+        Map<UUID, String> ownedNames = new HashMap<>();
+        try {
+            MaidBackupsManager.getMaidIndexMap(player).forEach((uuid, entry) ->
+                    ownedNames.put(uuid, entry.name() == null ? "" : entry.name().getString()));
+        } catch (RuntimeException ex) {
+            TouhouMaidAffection.LOGGER.warn("[TMA Gift Status] Failed to read maid index for player={}", player.getScoreboardName(), ex);
+        }
+        Map<UUID, EntityMaid> loaded = new HashMap<>();
+        List<UUID> unlocked = data.getUnlockedMaidIdsForAbility("random_gift");
+        for (UUID uuid : unlocked) {
+            for (ServerLevel level : player.getServer().getAllLevels()) {
+                Entity entity = level.getEntity(uuid);
+                if (!(entity instanceof EntityMaid maid)) continue;
+                // A loaded entity is authoritative if an old backup still names a former owner.
+                if (maid.isAlive() && maid.isOwnedBy(player)) {
+                    loaded.put(uuid, maid);
+                    ownedNames.put(uuid, MaidDisplayNameResolver.resolveDisplayName(maid).getString());
+                } else {
+                    ownedNames.remove(uuid);
+                }
+                break;
+            }
+        }
+        unlocked.removeIf(uuid -> !ownedNames.containsKey(uuid));
+        unlocked.sort(Comparator.comparing((UUID uuid) -> ownedNames.get(uuid), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(UUID::toString));
+        int page = Math.max(0, Math.min(requestedPage, Math.max(0, (unlocked.size() - 1) / TmaGiftStatusWire.MAX_MAIDS)));
+        int candidateCount = collectGiftCandidates(null).size();
+        boolean enabled = ModConfig.BOND_RANDOM_GIFT_ENABLED.get();
+        int interval = ModConfig.BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES.get();
+        int maxQueued = ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get();
+        List<TmaGiftStatusWire.MaidStatus> maids = new ArrayList<>();
+        int end = Math.min(unlocked.size(), (page + 1) * TmaGiftStatusWire.MAX_MAIDS);
+        for (int i = page * TmaGiftStatusWire.MAX_MAIDS; i < end; i++) {
+            UUID uuid = unlocked.get(i);
+            RandomGiftQueue queue = data.getRandomGiftQueue(uuid).retain(RandomGiftService::isPreparedGiftAllowed);
+            RandomGiftClock.State clock = RandomGiftClock.reconcile(queue.queued(), data.getLastGiftWallClockMs(uuid),
+                    data.getLastGiftIntervalMinutes(uuid), interval, maxQueued, nowMs);
+            int queued = enabled ? clock.queued() : queue.queued();
+            List<TmaGiftStatusWire.Gift> gifts = queue.prepared().stream()
+                    .map(id -> new TmaGiftStatusWire.Gift(id, 1)).toList();
+            EntityMaid maid = loaded.get(uuid);
+            int cooldown = deliveryCooldownSeconds(data, uuid, player.serverLevel().getGameTime());
+            TmaGiftStatusWire.DeliveryState state = deliveryState(player, maid, queued, gifts.size(), candidateCount, cooldown);
+            String name = ownedNames.get(uuid);
+            if (name.isBlank()) name = data.getMaidDisplayName(uuid);
+            maids.add(new TmaGiftStatusWire.MaidStatus(uuid.toString(), statusText(name), queued, gifts.size(), gifts,
+                    enabled ? clock.nextReadyAtMs() : 0L, data.getLastGiftDeliveryWallClockMs(uuid),
+                    statusText(data.getLastDeliveredGiftId(uuid)), state, cooldown));
+        }
+        return new TmaGiftStatusWire.Status(nowMs, enabled, ModConfig.BOND_RANDOM_GIFT_CURATED_POOL_ONLY.get(),
+                ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get(), candidateCount, interval, maxQueued, page, unlocked.size(), maids);
+    }
+
+    private static String statusText(String value) {
+        return value.length() <= TmaGiftStatusWire.MAX_STRING_LENGTH ? value
+                : value.substring(0, TmaGiftStatusWire.MAX_STRING_LENGTH);
+    }
+
+
+    private static int deliveryCooldownSeconds(BondData data, UUID uuid, long gameTime) {
+        long elapsed = Math.max(0L, gameTime - data.getLastGiftDeliveryGameTime(uuid));
+        long remaining = Math.max(0L, ModConfig.BOND_RANDOM_GIFT_DELIVERY_COOLDOWN_TICKS.get() - elapsed);
+        return (int) ((remaining + 19L) / 20L);
+    }
+
+    private static TmaGiftStatusWire.DeliveryState deliveryState(ServerPlayer player, EntityMaid maid,
+            int queued, int prepared, int candidates, int cooldown) {
+        if (!ModConfig.BOND_RANDOM_GIFT_ENABLED.get()) return TmaGiftStatusWire.DeliveryState.DISABLED;
+        if (maid == null) return TmaGiftStatusWire.DeliveryState.UNLOADED;
+        if (maid.level() != player.level()) return TmaGiftStatusWire.DeliveryState.OTHER_DIMENSION;
+        double range = ModConfig.BOND_RANDOM_GIFT_DELIVERY_SEARCH_RANGE.get();
+        if (player.distanceToSqr(maid) > range * range) return TmaGiftStatusWire.DeliveryState.TOO_FAR;
+        if (LapPillowState.isActive(player)) return TmaGiftStatusWire.DeliveryState.LAP_PILLOW;
+        if (cooldown > 0) return TmaGiftStatusWire.DeliveryState.COOLDOWN;
+        if (queued == 0) return TmaGiftStatusWire.DeliveryState.PREPARING;
+        if (prepared == 0) return candidates == 0 ? TmaGiftStatusWire.DeliveryState.POOL_EMPTY : TmaGiftStatusWire.DeliveryState.PREPARING;
+        PendingDeliveryTask task = DELIVERY_TASKS.get(maid.getUUID());
+        double reach = Math.max(ModConfig.BOND_RANDOM_GIFT_DELIVERY_REACH_DISTANCE.get(), 2.8D);
+        boolean ready = task == null ? isReadyToThrowGift(maid, player, reach)
+                : shouldDeliverNow(maid, player, task, range, reach, player.serverLevel().getGameTime());
+        return ready ? TmaGiftStatusWire.DeliveryState.READY : TmaGiftStatusWire.DeliveryState.APPROACHING;
+    }
+
 
     public static void cancelForMaid(UUID maidUuid) {
         if (maidUuid == null) {
@@ -116,6 +214,7 @@ public final class RandomGiftService {
                 continue;
             }
             int queuedGiftCount = reconcileQueuedGifts(player, maid);
+            if (BondData.of(player).getRandomGiftQueue(maid.getUUID()).prepared().isEmpty()) continue;
             if (queuedGiftCount <= 0 || DELIVERY_TASKS.containsKey(maid.getUUID())) {
                 continue;
             }
@@ -134,6 +233,10 @@ public final class RandomGiftService {
     }
 
     private static void tickActiveDeliveries(MinecraftServer server) {
+        if (!ModConfig.BOND_RANDOM_GIFT_ENABLED.get()) {
+            DELIVERY_TASKS.clear();
+            return;
+        }
         Iterator<PendingDeliveryTask> iterator = DELIVERY_TASKS.values().iterator();
         while (iterator.hasNext()) {
             PendingDeliveryTask task = iterator.next();
@@ -152,7 +255,7 @@ public final class RandomGiftService {
                 iterator.remove();
                 continue;
             }
-            if (LapPillowState.isSessionMaid(player, maid.getUUID())) {
+            if (LapPillowState.isActive(player)) {
                 iterator.remove();
                 continue;
             }
@@ -160,8 +263,8 @@ public final class RandomGiftService {
                 iterator.remove();
                 continue;
             }
-            int queuedGiftCount = reconcileQueuedGifts(player, maid);
-            if (queuedGiftCount <= 0) {
+            int queuedGiftCount = BondManager.getQueuedGiftCount(player, maid.getUUID());
+            if (queuedGiftCount <= 0 || deliveryCooldownSeconds(BondData.of(player), maid.getUUID(), level.getGameTime()) > 0) {
                 iterator.remove();
                 continue;
             }
@@ -189,18 +292,18 @@ public final class RandomGiftService {
     }
 
     private static void deliverOneGift(ServerPlayer player, EntityMaid maid) {
-        ItemStack gift = rollGiftStack(player.serverLevel(), maid);
-        if (gift.isEmpty()) {
-            return;
-        }
-
-        throwGiftTowardPlayer(player, maid, gift);
+        if (!ModConfig.BOND_RANDOM_GIFT_ENABLED.get()) return;
+        BondData data = BondData.of(player);
+        RandomGiftQueue queue = data.getRandomGiftQueue(maid.getUUID());
+        if (queue.prepared().isEmpty()) return;
+        String itemId = queue.prepared().get(0);
+        if (!isPreparedGiftAllowed(itemId)) return;
+        ItemStack gift = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(itemId)), 1);
+        if (!throwGiftTowardPlayer(player, maid, gift)) return;
+        data.recordGiftDelivery(maid.getUUID(), queue.consumeFirst(), player.serverLevel().getGameTime(), System.currentTimeMillis(), itemId);
         maid.spawnItemParticles(gift, 5);
         YSMActionBridge.playIfAvailable(maid, YSMMaidAnimation.RANDOM_GIFT);
 
-        int queuedAfter = Math.max(0, BondManager.getQueuedGiftCount(player, maid.getUUID()) - 1);
-        BondManager.setQueuedGiftCount(player, maid.getUUID(), queuedAfter);
-        BondManager.setLastGiftDeliveryGameTime(player, maid.getUUID(), player.serverLevel().getGameTime());
 
         if (ModConfig.BOND_RANDOM_GIFT_SHOW_ACTION_BAR.get()) {
             player.displayClientMessage(Component.translatable(
@@ -213,149 +316,77 @@ public final class RandomGiftService {
         sendStateSync(player, maid);
     }
 
-    private static ItemStack rollGiftStack(ServerLevel level, EntityMaid maid) {
-        List<Item> candidates = collectGiftCandidates(level);
-        if (candidates.isEmpty()) {
-            TouhouMaidAffection.LOGGER.warn("Random gift pool is empty at runtime; skipping this gift instead of bypassing the configured blacklist.");
-            return ItemStack.EMPTY;
+    private static RandomGiftQueue prepareGifts(ServerPlayer player, EntityMaid maid) {
+        BondData data = BondData.of(player);
+        RandomGiftQueue original = data.getRandomGiftQueue(maid.getUUID());
+        RandomGiftQueue queue = original.retain(RandomGiftService::isPreparedGiftAllowed);
+        if (queue.prepared().size() < queue.queued()) {
+            // One registry pass and one fresh mod sample per batch, not per earned slot.
+            List<Item> candidates = collectGiftCandidates(maid.getRandom());
+            if (!candidates.isEmpty()) {
+                List<String> prepared = new ArrayList<>(queue.prepared());
+                while (prepared.size() < queue.queued()) {
+                    Item item = candidates.get(maid.getRandom().nextInt(candidates.size()));
+                    prepared.add(BuiltInRegistries.ITEM.getKey(item).toString());
+                }
+                queue = new RandomGiftQueue(queue.queued(), prepared);
+            }
         }
-        RandomSource random = maid.getRandom();
-        Item item = candidates.get(random.nextInt(candidates.size()));
-        return new ItemStack(item, 1);
+        if (!queue.equals(original)) data.setRandomGiftQueue(maid.getUUID(), queue);
+        return queue;
     }
 
-    private static List<Item> collectGiftCandidates(ServerLevel level) {
-        Set<Item> candidates = new LinkedHashSet<>();
+    private static boolean isPreparedGiftAllowed(String itemId) {
+        ResourceLocation id = ResourceLocation.tryParse(itemId);
+        if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return false;
+        Item item = BuiltInRegistries.ITEM.get(id);
+        return isValidGiftCandidate(item) && RandomGiftPolicy.allows(itemId,
+                item.builtInRegistryHolder().is(GIFT_POOL_TAG), item.builtInRegistryHolder().is(GIFT_BLACKLIST_TAG),
+                ModConfig.BOND_RANDOM_GIFT_CURATED_POOL_ONLY.get(), ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get(),
+                ModConfig.BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE.get());
+    }
 
-        boolean curatedPoolOnly = ModConfig.BOND_RANDOM_GIFT_CURATED_POOL_ONLY.get();
-        if (RandomGiftPolicy.includeAutomaticRegistryCandidates(curatedPoolOnly)) {
+    /** A null RNG counts the effective pool without consuming randomness or preparing gifts. */
+    private static List<Item> collectGiftCandidates(RandomSource random) {
+        Set<Item> candidates = new LinkedHashSet<>();
+        Map<String, List<Item>> modItems = new HashMap<>();
+        boolean curatedOnly = ModConfig.BOND_RANDOM_GIFT_CURATED_POOL_ONLY.get();
+        boolean includeMods = ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get();
+        int sampleSize = Math.max(0, ModConfig.BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE.get());
+        if (curatedOnly) {
+            for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(GIFT_POOL_TAG)) {
+                Item item = holder.value();
+                if (isValidGiftCandidate(item) && !holder.is(GIFT_BLACKLIST_TAG)) candidates.add(item);
+            }
+        } else {
             for (Item item : BuiltInRegistries.ITEM) {
-                if (isDefaultVanillaGiftCandidate(item)) {
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+                boolean explicit = item.builtInRegistryHolder().is(GIFT_POOL_TAG);
+                if (!RandomGiftPolicy.allows(id.toString(), explicit,
+                        item.builtInRegistryHolder().is(GIFT_BLACKLIST_TAG), false, includeMods, sampleSize)
+                        || !isValidGiftCandidate(item)) continue;
+                if (explicit || ResourceLocation.DEFAULT_NAMESPACE.equals(id.getNamespace())) {
                     candidates.add(item);
+                } else {
+                    modItems.computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>()).add(item);
                 }
             }
-
-            if (ModConfig.BOND_RANDOM_GIFT_INCLUDE_MOD_ITEMS.get()) {
-                addSampledModItems(level, candidates);
-            }
+            RandomGiftPolicy.addSampled(modItems, candidates, sampleSize, random == null ? bound -> bound - 1 : random::nextInt);
         }
-
-        for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(GIFT_POOL_TAG)) {
-            Item item = holder.value();
-            if (isValidGiftCandidate(item)) {
-                candidates.add(item);
-            }
-        }
-
-        for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(GIFT_BLACKLIST_TAG)) {
-            candidates.remove(holder.value());
-        }
-
         return new ArrayList<>(candidates);
     }
 
-    private static boolean isDefaultVanillaGiftCandidate(Item item) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-        if (!ResourceLocation.DEFAULT_NAMESPACE.equals(id.getNamespace())) {
-            return false;
-        }
-        if (RandomGiftPolicy.isExcludedDefaultGift(id.toString())) {
-            return false;
-        }
-        return isValidGiftCandidate(item);
-    }
-
     private static boolean isValidGiftCandidate(Item item) {
-        if (item == Items.AIR) {
-            return false;
-        }
-        if (!item.canFitInsideContainerItems()) {
-            return false;
-        }
-        ItemStack stack = item.getDefaultInstance();
-        return !stack.isEmpty();
+        if (item == net.minecraft.world.item.Items.AIR) return false;
+        return item.canFitInsideContainerItems() && !item.getDefaultInstance().isEmpty();
     }
 
-    private static void addSampledModItems(ServerLevel level, Set<Item> candidates) {
-        int sampleSize = Math.max(0, ModConfig.BOND_RANDOM_GIFT_AUTO_MOD_SAMPLE_SIZE.get());
-        if (sampleSize <= 0) {
-            return;
-        }
-
-        Map<String, List<Item>> byNamespace = new HashMap<>();
-        for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-            if (ResourceLocation.DEFAULT_NAMESPACE.equals(id.getNamespace())) {
-                continue;
-            }
-            if (item.builtInRegistryHolder().is(GIFT_BLACKLIST_TAG)
-                    || RandomGiftPolicy.isExcludedDefaultGift(id.toString())
-                    || !isValidGiftCandidate(item)) {
-                continue;
-            }
-            byNamespace.computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>()).add(item);
-        }
-
-        if (byNamespace.isEmpty()) {
-            return;
-        }
-
-        long baseSeed = level.getSeed() ^ 0x5EEDC0DEL;
-        List<String> namespaces = new ArrayList<>(byNamespace.keySet());
-        namespaces.sort(Comparator.naturalOrder());
-        shuffleStrings(namespaces, RandomSource.create(baseSeed ^ 0x1234ABCDL));
-
-        for (String namespace : namespaces) {
-            List<Item> items = byNamespace.get(namespace);
-            items.sort(Comparator.comparing(item -> BuiltInRegistries.ITEM.getKey(item).toString()));
-            shuffleItems(items, RandomSource.create(baseSeed ^ namespace.hashCode()));
-        }
-
-        int added = 0;
-        int round = 0;
-        while (added < sampleSize) {
-            boolean progressed = false;
-            for (String namespace : namespaces) {
-                List<Item> items = byNamespace.get(namespace);
-                if (round >= items.size()) {
-                    continue;
-                }
-                if (candidates.add(items.get(round))) {
-                    added++;
-                }
-                progressed = true;
-                if (added >= sampleSize) {
-                    break;
-                }
-            }
-            if (!progressed) {
-                break;
-            }
-            round++;
-        }
-    }
-
-    private static void shuffleItems(List<Item> items, RandomSource random) {
-        for (int i = items.size() - 1; i > 0; i--) {
-            int swapIndex = random.nextInt(i + 1);
-            Item tmp = items.get(i);
-            items.set(i, items.get(swapIndex));
-            items.set(swapIndex, tmp);
-        }
-    }
-
-    private static void shuffleStrings(List<String> items, RandomSource random) {
-        for (int i = items.size() - 1; i > 0; i--) {
-            int swapIndex = random.nextInt(i + 1);
-            String tmp = items.get(i);
-            items.set(i, items.get(swapIndex));
-            items.set(swapIndex, tmp);
-        }
-    }
-
-    private static void throwGiftTowardPlayer(ServerPlayer player, EntityMaid maid, ItemStack stack) {
-        Vec3 targetPos = new Vec3(player.getX(), player.getEyeY() - 0.2D, player.getZ());
-        BehaviorUtils.throwItem(maid, stack.copy(), targetPos);
+    private static boolean throwGiftTowardPlayer(ServerPlayer player, EntityMaid maid, ItemStack stack) {
+        ItemEntity entity = new ItemEntity(maid.level(), maid.getX(), maid.getEyeY() - 0.3D, maid.getZ(), stack);
+        Vec3 target = new Vec3(player.getX(), player.getEyeY() - 0.2D, player.getZ());
+        entity.setDeltaMovement(target.subtract(maid.position()).normalize().scale(0.3D));
+        entity.setDefaultPickUpDelay();
+        return maid.level().addFreshEntity(entity);
     }
 
     private static boolean isReadyToThrowGift(EntityMaid maid, ServerPlayer player, double reach) {

@@ -255,3 +255,12 @@ data/touhou_maid_affection/emergency_rescue/voices/*.ogg
 - `BondData`：长期状态字段持续增多；key 常量已收敛到 `BondKeys`、存储已改为按女仆嵌套，后续新增字段继续走 `BondKeys` + 女仆子树，避免回到扁平键。
 
 后续重构的优先方向是按增长情况继续把早安吻调度器与任务执行器分离；把羁绊页继续拆成更独立的 page controller 与状态对象。
+
+## 礼物状态与标题入口
+
+- 礼物后端保留 `RandomGiftQueue` 的持久 FIFO 及 `RandomGiftClock` 的现实时间积攒规则。新配置默认广泛池；已准备物品在实际生成掉落后才消耗。
+- `TmaGiftStatusWire` 保持每包 16 名女仆的只读协议。`TmaGiftStatusSelection` 串行收集分页，按 UUID 保留选择；每项保存自己的服务器时间和接收时钟。`TmaGiftStatusClientState` 绑定当前连接、玩家和世界。
+- `TmaSettingsScreen` 保持状态/功能/语音/音量四个 tab。`TmaStatusLayout` 定义功能、子分类与数据行的统一几何：随机礼物与 AI 早安吻为同级功能；礼物选择器/详情和 AI 开关/语种/缓存位于各自功能下。滚动、悬浮命中和末行可达性使用同一布局模型。
+- 羁绊页与二级页恢复原有绘制及尺寸，设置背景恢复原素材。`BondHeaderLayout` 从实际页面边框计算标题和齿轮矩形，齿轮位于框内标题右侧；`BondTextFit` / `BondGuiText` 单独提供文字缩放，按钮组按可用宽度约束。
+- 界面使用 Minecraft 提供的默认 `Font`，测量、裁剪、编辑和绘制沿用同一字体。文字适配缩放由 `BondTextFit` / `BondGuiText` 独立处理。
+

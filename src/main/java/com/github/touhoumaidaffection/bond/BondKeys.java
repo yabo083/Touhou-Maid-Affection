@@ -70,6 +70,9 @@ public final class BondKeys {
     public static final String LAP_PILLOW_PLAYER_ACTION = "BondMaidLapPillow_PlayerAction";
 
     public static final String RANDOM_GIFT_QUEUE = "RandomGiftQueue";
+    public static final String RANDOM_GIFT_PREPARED = "RandomGiftPrepared";
+    public static final String RANDOM_GIFT_LAST_DELIVERY_WALL_CLOCK = "RandomGiftLastDeliveryWallClock";
+    public static final String RANDOM_GIFT_LAST_ITEM = "RandomGiftLastItem";
     public static final String RANDOM_GIFT_LAST_WALL_CLOCK = "RandomGiftLastWallClock";
     public static final String RANDOM_GIFT_LAST_DELIVERY = "RandomGiftLastDelivery";
     public static final String RANDOM_GIFT_LAST_INTERVAL_MINUTES = "RandomGiftLastIntervalMinutes";
@@ -112,6 +115,8 @@ public final class BondKeys {
     public static final Set<String> RUNTIME_KEYS = Set.of(
             RANDOM_GIFT_LAST_WALL_CLOCK,
             RANDOM_GIFT_LAST_DELIVERY,
+            RANDOM_GIFT_LAST_DELIVERY_WALL_CLOCK,
+            RANDOM_GIFT_LAST_ITEM,
             RANDOM_GIFT_LAST_INTERVAL_MINUTES,
             MORNING_KISS_SCHEDULED_WINDOW,
             MORNING_KISS_SCHEDULED_ATTEMPT_TICK,

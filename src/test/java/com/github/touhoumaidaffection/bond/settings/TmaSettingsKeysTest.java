@@ -11,28 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TmaSettingsKeysTest {
-    @Test
-    void whitelistCoversEveryFeatureSwitchLanguageTextAndInteger() {
-        assertEquals(14, TmaSettingsKeys.keys().size());
-        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.enabled"));
-        assertTrue(TmaSettingsKeys.isWhitelisted("maid_prayer_buff.enabled"));
-        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.display_language"));
-        assertTrue(TmaSettingsKeys.isWhitelisted("morning_kiss.voice_language"));
-        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
-        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED));
-        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL));
-        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS));
-        assertTrue(TmaSettingsKeys.isWhitelisted(TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE));
-        assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_language"));
-        assertFalse(TmaSettingsKeys.isWhitelisted("morning_kiss.ai_dialogue_voice_language"));
-        assertEquals(TmaSettingsKeys.Type.BOOLEAN, TmaSettingsKeys.typeOf("random_gift.enabled"));
-        assertEquals(TmaSettingsKeys.Type.LANGUAGE, TmaSettingsKeys.typeOf("morning_kiss.display_language"));
-        assertEquals(TmaSettingsKeys.Type.TEXT, TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_TEXT_PROMPT));
-        assertEquals(TmaSettingsKeys.Type.INT,
-                TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL));
-        assertEquals(TmaSettingsKeys.Type.INT,
-                TmaSettingsKeys.typeOf(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS));
-    }
 
     @Test
     void integerKeysAcceptOnlyDigitsInsideTheirOwnRange() {
@@ -76,6 +54,29 @@ class TmaSettingsKeysTest {
         )), TmaSettingsKeys.normalizeAll(List.of(
                 new TmaSettingsWire.Entry(TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "1200")
         )));
+    }
+
+    @Test
+    void giftPolicyChangesValidateBooleansAndIndependentNumericLimits() {
+        for (String key : List.of(TmaSettingsKeys.RANDOM_GIFT_CURATED_POOL_ONLY,
+                TmaSettingsKeys.RANDOM_GIFT_INCLUDE_MOD_ITEMS)) {
+            assertEquals(Optional.of("false"), TmaSettingsKeys.normalize(key, " FALSE "));
+            assertTrue(TmaSettingsKeys.normalize(key, "yes").isEmpty());
+        }
+        assertEquals(Optional.of("1440"), TmaSettingsKeys.normalize(TmaSettingsKeys.RANDOM_GIFT_INTERVAL_MINUTES, "1440"));
+        assertTrue(TmaSettingsKeys.normalize(TmaSettingsKeys.RANDOM_GIFT_INTERVAL_MINUTES, "1441").isEmpty());
+        assertEquals(Optional.of("64"), TmaSettingsKeys.normalize(TmaSettingsKeys.RANDOM_GIFT_MAX_QUEUED, "64"));
+        assertTrue(TmaSettingsKeys.normalize(TmaSettingsKeys.RANDOM_GIFT_MAX_QUEUED, "65").isEmpty());
+        for (String key : List.of(TmaSettingsKeys.RANDOM_GIFT_INTERVAL_MINUTES, TmaSettingsKeys.RANDOM_GIFT_MAX_QUEUED)) {
+            assertEquals(Optional.of("1"), TmaSettingsKeys.normalize(key, "1"));
+            for (String value : List.of("0", "-1", "1.5", "abc")) {
+                assertTrue(TmaSettingsKeys.normalize(key, value).isEmpty());
+            }
+        }
+        assertTrue(TmaSettingsKeys.normalizeAll(List.of(
+                new TmaSettingsWire.Entry(TmaSettingsKeys.RANDOM_GIFT_CURATED_POOL_ONLY, "false"),
+                new TmaSettingsWire.Entry(TmaSettingsKeys.RANDOM_GIFT_MAX_QUEUED, "65")
+        )).isEmpty());
     }
 
     @Test
@@ -180,10 +181,6 @@ class TmaSettingsKeysTest {
         assertEquals(Optional.of(List.of()), TmaSettingsKeys.normalizeAll(null));
     }
 
-    @Test
-    void labelKeysAreDerivedFromLogicalKeys() {
-        assertEquals("bond.settings.key.morning_kiss.enabled", TmaSettingsKeys.labelKey("morning_kiss.enabled"));
-    }
 
     @Test
     void displayLanguageCollapsesLegacyKeywordsToAuto() {

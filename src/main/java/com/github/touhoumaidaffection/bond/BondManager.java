@@ -124,75 +124,21 @@ public final class BondManager {
 
     public static int reconcileRandomGiftQueue(ServerPlayer player, UUID maidUuid, long nowMs) {
         BondData data = BondData.of(player);
-        int intervalMinutes = Math.max(1, ModConfig.BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES.get());
-        data.initializeRandomGiftState(maidUuid, nowMs, intervalMinutes);
-
-        int maxQueued = Math.max(1, ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get());
-        long intervalMs = intervalMinutes * 60_000L;
-
-        int queued = Math.min(maxQueued, data.getQueuedGiftCount(maidUuid));
-        long lastWallClock = data.getLastGiftWallClockMs(maidUuid);
-        int lastIntervalMinutes = data.getLastGiftIntervalMinutes(maidUuid);
-        if (lastIntervalMinutes > 0 && lastIntervalMinutes != intervalMinutes) {
-            data.setQueuedGiftCount(maidUuid, queued);
-            data.setLastGiftWallClockMs(maidUuid, nowMs);
-            data.setLastGiftIntervalMinutes(maidUuid, intervalMinutes);
-            return queued;
-        }
-        if (lastWallClock <= 0L) {
-            data.setLastGiftWallClockMs(maidUuid, nowMs);
-            data.setLastGiftIntervalMinutes(maidUuid, intervalMinutes);
-            if (queued != data.getQueuedGiftCount(maidUuid)) {
-                data.setQueuedGiftCount(maidUuid, queued);
-            }
-            return queued;
-        }
-
-        if (queued >= maxQueued) {
-            data.setQueuedGiftCount(maidUuid, maxQueued);
-            data.setLastGiftWallClockMs(maidUuid, nowMs);
-            data.setLastGiftIntervalMinutes(maidUuid, intervalMinutes);
-            return maxQueued;
-        }
-
-        long elapsed = Math.max(0L, nowMs - lastWallClock);
-        int produced = (int) Math.min(Integer.MAX_VALUE, elapsed / intervalMs);
-        if (produced <= 0) {
-            if (queued != data.getQueuedGiftCount(maidUuid)) {
-                data.setQueuedGiftCount(maidUuid, queued);
-            }
-            return queued;
-        }
-
-        int updatedQueue = Math.min(maxQueued, queued + produced);
-        if (updatedQueue >= maxQueued) {
-            data.setQueuedGiftCount(maidUuid, maxQueued);
-            data.setLastGiftWallClockMs(maidUuid, nowMs);
-            data.setLastGiftIntervalMinutes(maidUuid, intervalMinutes);
-            return maxQueued;
-        }
-
-        data.setQueuedGiftCount(maidUuid, updatedQueue);
-        data.setLastGiftWallClockMs(maidUuid, lastWallClock + produced * intervalMs);
-        data.setLastGiftIntervalMinutes(maidUuid, intervalMinutes);
-        return updatedQueue;
+        int interval = Math.max(1, ModConfig.BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES.get());
+        RandomGiftClock.State state = RandomGiftClock.reconcile(data.getQueuedGiftCount(maidUuid),
+                data.getLastGiftWallClockMs(maidUuid), data.getLastGiftIntervalMinutes(maidUuid),
+                interval, ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get(), nowMs);
+        if (state.queued() != data.getQueuedGiftCount(maidUuid)) data.setQueuedGiftCount(maidUuid, state.queued());
+        if (state.lastWallClockMs() != data.getLastGiftWallClockMs(maidUuid)) data.setLastGiftWallClockMs(maidUuid, state.lastWallClockMs());
+        if (interval != data.getLastGiftIntervalMinutes(maidUuid)) data.setLastGiftIntervalMinutes(maidUuid, interval);
+        return state.queued();
     }
 
     public static long getNextRandomGiftReadyAtMs(ServerPlayer player, UUID maidUuid, long nowMs) {
         BondData data = BondData.of(player);
-        int intervalMinutes = Math.max(1, ModConfig.BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES.get());
-        data.initializeRandomGiftState(maidUuid, nowMs, intervalMinutes);
-
-        int maxQueued = Math.max(1, ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get());
-        if (data.getQueuedGiftCount(maidUuid) >= maxQueued) {
-            return 0L;
-        }
-
-        long lastWallClock = data.getLastGiftWallClockMs(maidUuid);
-        if (lastWallClock <= 0L) {
-            return nowMs + intervalMinutes * 60_000L;
-        }
-        return lastWallClock + intervalMinutes * 60_000L;
+        return RandomGiftClock.reconcile(data.getQueuedGiftCount(maidUuid),
+                data.getLastGiftWallClockMs(maidUuid), data.getLastGiftIntervalMinutes(maidUuid),
+                ModConfig.BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES.get(), ModConfig.BOND_RANDOM_GIFT_MAX_QUEUED.get(), nowMs).nextReadyAtMs();
     }
 
     public static String getMorningKissLastSuccessfulWindowId(ServerPlayer player, UUID maidUuid) {

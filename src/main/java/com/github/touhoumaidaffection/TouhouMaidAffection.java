@@ -15,6 +15,7 @@ import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.TmaAiStatusRequestHandler;
+import com.github.touhoumaidaffection.handler.TmaGiftStatusRequestHandler;
 import com.github.touhoumaidaffection.handler.VoicePreviewRequestHandler;
 import com.github.touhoumaidaffection.handler.TmaSettingsRequestHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
@@ -36,6 +37,8 @@ import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.TmaAiCacheClearPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusRequestPayload;
+import com.github.touhoumaidaffection.network.TmaGiftStatusPayload;
+import com.github.touhoumaidaffection.network.TmaGiftStatusRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
@@ -210,5 +213,9 @@ public class TouhouMaidAffection {
                 TmaAiCacheClearPayload.STREAM_CODEC,
                 TmaAiStatusRequestHandler::handleClear
         );
+        registrar.playToServer(TmaGiftStatusRequestPayload.TYPE, TmaGiftStatusRequestPayload.STREAM_CODEC,
+                TmaGiftStatusRequestHandler::handleStatusRequest);
+        registrar.playToClient(TmaGiftStatusPayload.TYPE, TmaGiftStatusPayload.STREAM_CODEC,
+                BondClientPayloadHandler::handleGiftStatus);
     }
 }

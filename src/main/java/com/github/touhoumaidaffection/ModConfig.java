@@ -220,9 +220,9 @@ public class ModConfig {
 
         BOND_RANDOM_GIFT_CURATED_POOL_ONLY = builder
                 .comment("Use only items explicitly listed in the touhou_maid_affection:bond_random_gift_pool item tag",
-                        "Recommended: prevents arbitrary registry items from becoming gifts",
-                        "Set false to restore the legacy broad vanilla/mod registry sampling behavior")
-                .define("curatedPoolOnly", true);
+                        "Set false for broad vanilla/mod gifts; true restricts gifts to the data-pack tag",
+                        "Existing saved choices are preserved; change the pool mode in the in-game Features panel")
+                .define("curatedPoolOnly", false);
 
         BOND_RANDOM_GIFT_INTERVAL_REAL_MINUTES = builder
                 .comment("Real-time minutes required to prepare one gift")

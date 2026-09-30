@@ -12,7 +12,12 @@ public final class BondButtonRow {
     }
 
     public static List<ButtonSpec> createCentered(int totalWidth, int y, int buttonWidth, int buttonHeight, int gap, ButtonSpec... specs) {
-        List<ButtonSpec> result = new ArrayList<>();
+        if (specs.length == 0) {
+            return List.of();
+        }
+        int available = totalWidth - 2 * BondGuiTokens.CONTENT_SIDE_PADDING - (specs.length - 1) * gap;
+        buttonWidth = Math.min(buttonWidth, Math.max(0, available / specs.length));
+        List<ButtonSpec> result = new ArrayList<>(specs.length);
         int x = (totalWidth - (specs.length * buttonWidth + Math.max(0, specs.length - 1) * gap)) / 2;
         for (ButtonSpec spec : specs) {
             result.add(new ButtonSpec(x, y, buttonWidth, buttonHeight, spec.label(), spec.id(), spec.enabled(), spec.primary()));
@@ -43,8 +48,7 @@ public final class BondButtonRow {
             }
 
             int color = textColor(button);
-            int textY = y + Math.max(1, (button.height() - font.lineHeight) / 2);
-            graphics.drawCenteredString(font, button.label(), x + button.width() / 2, textY, color);
+            BondGuiText.drawFittedLabel(graphics, font, button.label(), x, y, button.width(), button.height(), color);
         }
     }
 
