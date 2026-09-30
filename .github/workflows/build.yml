@@ -27,6 +27,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build
+        # Allow dependency setup, but do not leave a stalled build unbounded.
+        timeout-minutes: 30
         run: |
           chmod +x ./gradlew
           ./gradlew build
@@ -62,10 +64,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build
-        run: |
-          chmod +x ./gradlew
-          ./gradlew build
+      - name: Download tested artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: touhou-maid-affection
+          path: build/libs
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -121,7 +124,9 @@ jobs:
           if [ "$CODE" = "200" ]; then
             echo "Modrinth 已有 $VERSION，跳过发布（更新说明可在网页端修改）"
           else
-            ./gradlew modrinth
+            chmod +x ./gradlew
+            # Minotaur depends on assemble and uploadFile = jar; promote without repackaging.
+            ./gradlew modrinth -x assemble -x jar
           fi
 
       - name: Resolve release jar

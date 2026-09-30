@@ -26,6 +26,9 @@
 - GitHub Actions 在 `main` 分支或 `v*` tag push 时构建；NeoForge 正式发布 tag 为 `v<mod_version>`，Forge 使用 `v<mod_version>-forge1.20.1` 并指向 Forge 分支提交。
 - tag 工作流上传 GitHub Release；配置相应凭据后再发布 Modrinth 和 CurseForge。GitHub Release 已生成不代表两个平台上传均已成功，需分别检查工作流步骤。
 - CurseForge 去重同时精确匹配文件名、Minecraft 版本与加载器，避免双版本同名 jar 互相误判为已上传。
+- `build` job 只执行一次完整 `./gradlew build`（包含测试），Build 步骤限时 30 分钟；`release` job 下载同次运行的 `touhou-maid-affection` artifact 到 `build/libs`，不再次编译。
+- Modrinth 使用 `./gradlew modrinth -x assemble -x jar`，跳过 Minotaur 自动关联的打包任务，上传已通过构建的 jar；保留版本号、必需依赖、更新说明与 README 正文同步。GitHub 与 CurseForge 使用同一份下载产物。
+- 普通分支 push / PR 只构建，不发布；只有 `v*` tag 触发发布。已发布 tag 不移动、不删除，排障时先确认各平台已有产物，不为修 CI 重发旧版本。
 - 发布任务依赖环境变量：
   - `MODRINTH_TOKEN`
   - `CHANGELOG`（可选，不提供则使用默认说明）

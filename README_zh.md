@@ -98,7 +98,7 @@
 
 ### 模组联动
 - **Touhou Little Maid (车万女仆)**：核心前置模组。
-- **MaidFileManager (女仆档案管理器)**：支持将女仆的羁绊等级、解锁能力与语音偏好随 `.maid` 档案一同无损迁移导出。
+- **MaidFileManager 1.4.0+（女仆档案管理器，可选）**：支持将女仆的羁绊等级、解锁能力与语音偏好随 `.maid` 档案一同迁移。旧版缺少迁移 SPI，不能与 TMA 1.7.5.2 一起使用。请先移除旧管理器 JAR，再安装官方 [1.4.2 NeoForge / Minecraft 1.21.1 产物](https://github.com/zgxhzhr/MaidFileManager/releases/download/v1.4.2-all/maid_file_manager-neoforge-1.21.1-1.4.2.jar)。不安装管理器也能使用 TMA；更明确的依赖版本检查待下个 TMA 版本发布，1.7.5.2 尚未包含。
 - **Yes Steve Model (YSM)**：支持膝枕状态下的自定义动作播放。
 - **Tweakerge / Tweakeroo**：完美兼容自由摄像机视角，膝枕平躺不会引发任何冲突。
 
