@@ -99,7 +99,7 @@ Expand dialogue pools and `.ogg` voice lines via Datapacks:
 
 ### Mod Integrations
 - **Touhou Little Maid (TLM)**: Required core dependency (built against `1.5.3-forge+mc1.20.1`).
-- **MaidFileManager**: Seamlessly carries bond levels, unlocked abilities, and voice settings across `.maid` file migrations.
+- **MaidFileManager 1.4.0+ (optional)**: Carries bond levels, unlocked abilities, and voice settings across `.maid` file migrations. Older versions lack the migration SPI and cannot be used together with TMA 1.7.5.2. Use the official [1.4.2 Forge / Minecraft 1.20.1 JAR](https://github.com/zgxhzhr/MaidFileManager/releases/download/v1.4.2-all/maid_file_manager-forge-1.20.1-1.4.2.jar), removing the old manager JAR first. TMA works without MaidFileManager; the clearer dependency-version check is pending the next TMA release, not included in 1.7.5.2.
 - **Epic Fight**: Compatible with `[史诗战斗：车万女仆]` bridge & `Epic Fight - Avalon`; bond tab automatically avoids GUI tab collisions.
 - **Yes Steve Model (YSM)**: Supports custom animation sync during lap pillows.
 - **Tweakerge / Tweakeroo**: Fully compatible with Free Camera mode without causing player pose conflicts.

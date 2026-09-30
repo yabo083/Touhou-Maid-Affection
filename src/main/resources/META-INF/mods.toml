@@ -29,3 +29,11 @@ mandatory=true
 versionRange="[1.5.0,)"
 ordering="AFTER"
 side="BOTH"
+
+# Migration SPI was introduced in MaidFileManager 1.4.0.
+[[dependencies.${mod_id}]]
+modId="maid_file_manager"
+mandatory=false
+versionRange="[1.4.0,)"
+ordering="NONE"
+side="BOTH"

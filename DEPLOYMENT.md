@@ -39,6 +39,10 @@ Windows PowerShell:
 - Modrinth 发布使用 `com.modrinth.minotaur`。
 - CurseForge 发布只在 tag 名包含 `forge1.20.1` 且 token/项目变量存在时执行。
 - CurseForge 去重同时精确匹配文件名、Minecraft 版本与加载器，避免 NeoForge 同名 jar 导致 Forge 上传被跳过；GitHub Release 创建后仍需分别确认两个平台的发布步骤。
+- `build` job 只执行一次完整 `./gradlew build`（包含测试及 Forge 重混淆），Build 步骤限时 30 分钟；`release` job 下载同次运行的 `touhou-maid-affection-<tag>` artifact 到 `build/libs`，不再次编译。
+- Modrinth 使用 `./gradlew modrinth -x assemble -x jar`，跳过 Minotaur 自动关联的打包任务及 `jar` 的 `reobfJar` finalizer，上传已构建的重混淆 jar；保留版本号、必需依赖、更新说明与 README 正文同步。GitHub 与 CurseForge 使用同一份下载产物。
+- 普通分支 push / PR 只构建，不发布；只有 `v*` tag 触发发布。已发布 tag 不移动、不删除，排障时先确认各平台已有产物，不为修 CI 重发旧版本。
+- [1.7.5.2 Forge 运行日志](https://github.com/yabo083/Touhou-Maid-Affection/actions/runs/36759450815/job/110038919292) 中第二次 Build 实际在 15 分 36 秒后成功，随后三个平台均执行了发布；长等待发生在 Forge/MCP 环境准备阶段，日志不足以确定底层网络或缓存原因。取消状态本身不能证明上传失败。
 
 发布任务依赖环境变量或仓库配置：
 
