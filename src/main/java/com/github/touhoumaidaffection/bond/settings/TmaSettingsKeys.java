@@ -24,6 +24,10 @@ public final class TmaSettingsKeys {
     public static final String MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED = "morning_kiss.immediate_fallback_enabled";
     public static final String EMERGENCY_RESCUE_ENABLED = "emergency_rescue.enabled";
     public static final String RANDOM_GIFT_ENABLED = "random_gift.enabled";
+    public static final String RANDOM_GIFT_CURATED_POOL_ONLY = "random_gift.curated_pool_only";
+    public static final String RANDOM_GIFT_INCLUDE_MOD_ITEMS = "random_gift.include_mod_items";
+    public static final String RANDOM_GIFT_INTERVAL_MINUTES = "random_gift.interval_minutes";
+    public static final String RANDOM_GIFT_MAX_QUEUED = "random_gift.max_queued";
     public static final String MAID_PRAYER_BUFF_ENABLED = "maid_prayer_buff.enabled";
 
     // Language values (auto / tlm / inherit / default / explicit locale)
@@ -83,6 +87,10 @@ public final class TmaSettingsKeys {
         keys.put(MORNING_KISS_IMMEDIATE_FALLBACK_ENABLED, Type.BOOLEAN);
         keys.put(EMERGENCY_RESCUE_ENABLED, Type.BOOLEAN);
         keys.put(RANDOM_GIFT_ENABLED, Type.BOOLEAN);
+        keys.put(RANDOM_GIFT_CURATED_POOL_ONLY, Type.BOOLEAN);
+        keys.put(RANDOM_GIFT_INCLUDE_MOD_ITEMS, Type.BOOLEAN);
+        keys.put(RANDOM_GIFT_INTERVAL_MINUTES, Type.INT);
+        keys.put(RANDOM_GIFT_MAX_QUEUED, Type.INT);
         keys.put(MAID_PRAYER_BUFF_ENABLED, Type.BOOLEAN);
         keys.put(MORNING_KISS_DISPLAY_LANGUAGE, Type.LANGUAGE);
         keys.put(MORNING_KISS_VOICE_LANGUAGE, Type.LANGUAGE);
@@ -177,6 +185,8 @@ public final class TmaSettingsKeys {
             case MORNING_KISS_CACHE_TARGET_PER_POOL -> new int[]{CACHE_TARGET_PER_POOL_MIN, CACHE_TARGET_PER_POOL_MAX};
             case MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS ->
                     new int[]{CACHE_SCAN_INTERVAL_TICKS_MIN, CACHE_SCAN_INTERVAL_TICKS_MAX};
+            case RANDOM_GIFT_INTERVAL_MINUTES -> new int[]{1, 1440};
+            case RANDOM_GIFT_MAX_QUEUED -> new int[]{1, 64};
             default -> null;
         };
     }

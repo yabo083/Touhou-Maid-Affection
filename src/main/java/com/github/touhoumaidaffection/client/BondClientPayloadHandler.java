@@ -8,6 +8,8 @@ import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusPayload;
+import com.github.touhoumaidaffection.network.TmaGiftStatusPayload;
+import net.minecraft.client.Minecraft;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
@@ -92,5 +94,10 @@ public final class BondClientPayloadHandler {
 
     public static void handleAiStatus(TmaAiStatusPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> TmaAiStatusClientState.applyStatus(payload));
+    }
+
+    public static void handleGiftStatus(TmaGiftStatusPayload payload, IPayloadContext context) {
+        Object connection = Minecraft.getInstance().getConnection();
+        context.enqueueWork(() -> TmaGiftStatusClientState.applyStatus(payload, connection));
     }
 }

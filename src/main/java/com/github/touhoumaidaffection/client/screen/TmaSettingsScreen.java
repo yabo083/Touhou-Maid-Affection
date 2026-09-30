@@ -5,6 +5,8 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.ai.settin
 import com.github.touhoumaidaffection.ModConfig;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.settings.TmaAiStatusWire;
+import com.github.touhoumaidaffection.bond.settings.TmaGiftStatusWire;
+import com.github.touhoumaidaffection.bond.settings.TmaGiftStatusViewRules;
 import com.github.touhoumaidaffection.bond.settings.TmaMaidLabels;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsKeys;
 import com.github.touhoumaidaffection.client.TmaAiStatusClientState;
@@ -42,7 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Layout follows the reviewed mockup: a 340x230 modal with a 50px navigation rail (status / features
  * / voice / volume, status first and selected by default) and one section per tab. Feature switches,
  * the cache policy and the languages are server-authoritative and go through the settings channel,
- * the status tab is a read-only view fed by the AI status channel, while the volume sliders are pure
+ * the status tab is a read-only view fed by the AI and gift status channels, while the volume sliders are pure
  * client preferences written straight into the local config. Every control applies instantly. The
  * panel chrome (outer frame, header/sidebar/footer separators and the rose in the lower-left corner)
  * is a single baked background artwork blitted 1:1 at GUI scale 3, so this screen draws no frame or
@@ -127,9 +129,6 @@ public final class TmaSettingsScreen extends Screen {
     private static final int SITE_ROW_HEIGHT = 18;
 
     // ---- Status tab ----
-    private static final int STATUS_KV_HEIGHT = 13;
-    private static final int STATUS_MAID_HEIGHT = 18;
-    private static final int STATUS_ROW_GAP = 6;
     private static final int STATUS_CLEAR_BUTTON_WIDTH = 26;
     /** Width of a compact cache-policy number field, matching the language dropdown column. */
     private static final int NUMBER_FIELD_WIDTH = DROPDOWN_WIDTH;
@@ -161,18 +160,19 @@ public final class TmaSettingsScreen extends Screen {
             // "Consume on use" belongs to the cache-policy section of the same tab, so it is
             // rendered there and excluded here to keep exactly one control per key.
             .filter(key -> !TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE.equals(key))
+            .filter(key -> !key.startsWith("random_gift."))
             .toList();
     private static final List<String> LANGUAGE_KEYS = TmaSettingsKeys.keys().stream()
             .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.LANGUAGE)
             .toList();
     /** Integer cache-policy keys of the features tab, in whitelist order. */
-    private static final List<String> CACHE_NUMBER_KEYS = TmaSettingsKeys.keys().stream()
-            .filter(key -> TmaSettingsKeys.typeOf(key) == TmaSettingsKeys.Type.INT)
-            .toList();
+    private static final List<String> CACHE_NUMBER_KEYS = List.of(
+            TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL, TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS);
     /** Unit suffix of each cache-policy integer field, e.g. {@code t} for the scan interval. */
     private static final Map<String, String> CACHE_NUMBER_UNITS = Map.of(
             TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL, "",
-            TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "t");
+            TmaSettingsKeys.MORNING_KISS_CACHE_SCAN_INTERVAL_TICKS, "t",
+            TmaSettingsKeys.RANDOM_GIFT_INTERVAL_MINUTES, "min");
 
     /** Client-only volume preferences; they never travel over the settings channel. */
     private static final List<VolumeSetting> VOLUME_SETTINGS = List.of(
@@ -191,6 +191,7 @@ public final class TmaSettingsScreen extends Screen {
     private final List<SliderRow> sliders = new ArrayList<>();
     /** Status tab rows, rebuilt on every layout pass from the pushed status. */
     private final List<StatusRow> statusRows = new ArrayList<>();
+    private int statusContentHeight;
     /** Cache-policy rows of the features tab, positioned once in {@link #buildRows()}. */
     private final List<NumberRow> cacheNumberRows = new ArrayList<>();
     /** Compact integer editors of the features tab, keyed by the server key. */
@@ -214,6 +215,8 @@ public final class TmaSettingsScreen extends Screen {
     /** The "consume on use" switch, rendered inside the cache-policy section of the features tab. */
     private ToggleRow cacheConsumeRow;
     private int cachePolicySectionY;
+    private int giftPolicySectionY;
+    private TmaGiftStatusPanel giftPanel;
     private int featuresContentHeight;
 
     // ---- Voice tab state ----
@@ -225,13 +228,10 @@ public final class TmaSettingsScreen extends Screen {
     private int voiceSiteSectionY;
     private int voiceSiteRowY;
     private int voiceContentHeight;
-    /** Whether a status request is already in flight, so opening the tab does not spam the server. */
-    private boolean statusRequested;
 
     public TmaSettingsScreen(Screen parent) {
         super(Component.translatable("bond.settings.title"));
         this.parent = parent;
-        buildRows();
         TmaSettingsClientState.addListener(refreshListener);
         TmaAiStatusClientState.addListener(statusListener);
         // Always re-read: the cache may still hold the state of a previous world or server.
@@ -241,11 +241,15 @@ public final class TmaSettingsScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        if (toggles.isEmpty()) buildRows();
+        cacheNumberFields.clear();
         modal = null;
         promptBox = null;
+        if (giftPanel == null || !giftPanel.state().valid()) giftPanel = new TmaGiftStatusPanel();
+        giftPanel.collapse();
         layoutDirty = true;
-        // The status tab is selected by default, so its read-only feed has to be requested on open.
-        requestStatusIfNeeded();
+        // Initialization (including resize) refreshes both screen-owned feeds.
+        refreshStatus();
     }
 
     @Override
@@ -285,8 +289,9 @@ public void renderBackground(GuiGraphics graphics) {
         graphics.flush();
         // Dropdown overlays are drawn after every other element and are clamped to the screen, never
         // to the panel content viewport, so an expanded list is always fully visible.
-        renderDropdownOverlays(graphics, font, mouseX, mouseY);
         renderFooter(graphics, font, mouseX, mouseY);
+        graphics.flush();
+        renderDropdownOverlays(graphics, font, mouseX, mouseY);
 
         List<Component> tooltip = getTooltip(mouseX, mouseY);
         if (!tooltip.isEmpty()) {
@@ -302,6 +307,8 @@ public void renderBackground(GuiGraphics graphics) {
         if (button != 0) {
             return true;
         }
+        ensureLayout();
+        if (handleExpandedDropdown(mouseX, mouseY)) return true;
         BondModalPage modal = modal();
         if (!modal.contains(mouseX, mouseY)) {
             closeToParent();
@@ -316,15 +323,13 @@ public void renderBackground(GuiGraphics graphics) {
             for (LanguageRow row : languages) {
                 row.dropdown.collapse();
             }
+            giftPanel.collapse();
             if (tab != activeTab) {
                 activeTab = tab;
                 scrollOffset = 0;
                 layoutDirty = true;
-                requestStatusIfNeeded();
+                if (activeTab == 0) refreshStatus();
             }
-            return true;
-        }
-        if (handleExpandedDropdown(mouseX, mouseY)) {
             return true;
         }
         if (handleFooterClick(mouseX, mouseY)) {
@@ -342,7 +347,7 @@ public void renderBackground(GuiGraphics graphics) {
     private void clickActiveTabRow(double mouseX, double mouseY) {
         switch (activeTab) {
             case 0 -> {
-                // The status tab is read-only; only the per-maid "clear" buttons accept clicks.
+                // Status keeps gift selection local and cache-clear actions server-authoritative.
                 blurPrompt();
                 blurNumberFields();
                 clickStatus(mouseX, mouseY);
@@ -359,7 +364,7 @@ public void renderBackground(GuiGraphics graphics) {
                     }
                 }
             }
-            default -> {
+            case 3 -> {
                 blurPrompt();
                 clickSlider(mouseX, mouseY);
             }
@@ -445,6 +450,7 @@ public void renderBackground(GuiGraphics graphics) {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         ensureLayout();
+        if (activeTab == 0 && giftPanel.scroll(mouseX, mouseY, scrollY)) return true;
         // A wheel event inside the dialogue editor scrolls the editor's own text and is consumed
         // here, so the panel behind it never scrolls at the same time (the two never move together).
         if (activeTab == 2 && promptBox != null && promptBox.isMouseOver(mouseX, mouseY)) {
@@ -460,7 +466,8 @@ public void renderBackground(GuiGraphics graphics) {
             return false;
         }
         int delta = scrollY > 0.0D ? -SCROLL_STEP : SCROLL_STEP;
-        scrollOffset = Math.max(0, Math.min(maxScroll(), scrollOffset + delta));
+        scrollOffset = TmaGiftStatusViewRules.clampScroll(scrollOffset + delta, contentHeight, viewportBottom() - contentTop());
+        giftPanel.collapse();
         layoutDirty = true;
         return true;
     }
@@ -501,6 +508,7 @@ public void renderBackground(GuiGraphics graphics) {
 
     private List<Component> getTooltip(int mouseX, int mouseY) {
         ensureLayout();
+        if (activeTab == 0 && giftPanel.expanded()) return List.of();
         FooterLayout footer = footerLayout(this.font);
         for (FooterButton button : footer.buttons()) {
             if (within(mouseX, mouseY, button.left(), button.width(), footer.top(), FOOTER_BUTTON_HEIGHT)) {
@@ -512,7 +520,8 @@ public void renderBackground(GuiGraphics graphics) {
         }
         switch (activeTab) {
             case 0 -> {
-                // Read-only tab: the only interactive elements are the per-maid "clear" buttons.
+                List<Component> giftTip = giftPanel.tooltip(mouseX, mouseY);
+                if (!giftTip.isEmpty()) return giftTip;
                 if (statusClearHovered(mouseX, mouseY) != null) {
                     return List.of(Component.translatable("bond.settings.status.clear.tip"));
                 }
@@ -569,6 +578,10 @@ public void renderBackground(GuiGraphics graphics) {
 
     /** Tooltip of one of the editable feature switches (capsule toggle + pending marker). */
     private List<Component> toggleTooltip(String key) {
+        if (TmaSettingsKeys.RANDOM_GIFT_CURATED_POOL_ONLY.equals(key)
+                || TmaSettingsKeys.RANDOM_GIFT_INCLUDE_MOD_ITEMS.equals(key)) {
+            return rowTooltip(key, Component.translatable("bond.settings.gifts.pool.tip"));
+        }
         return rowTooltip(key, Component.translatable(currentToggleValue(key)
                 ? "bond.settings.toggle.tip.off"
                 : "bond.settings.toggle.tip.on").withStyle(ChatFormatting.GRAY));
@@ -583,17 +596,13 @@ public void renderBackground(GuiGraphics graphics) {
 
     /** Called after every AI status push; just re-lays out the status tab. */
     private void onStatusPushed() {
-        statusRequested = false;
         layoutDirty = true;
     }
 
-    /** Asks for the AI status the first time the status tab becomes active (or after a failure). */
-    private void requestStatusIfNeeded() {
-        if (activeTab != 0 || statusRequested) {
-            return;
-        }
-        statusRequested = true;
-        TmaAiStatusClientState.requestSync();
+    public void acceptGiftStatus(TmaGiftStatusWire.Status status, Object connection) {
+        if (giftPanel == null) return;
+        giftPanel.state().accept(status, connection);
+        layoutDirty = true;
     }
 
     /** Compares every in-flight request against the freshly pushed authoritative values. */
@@ -646,15 +655,7 @@ public void renderBackground(GuiGraphics graphics) {
             toggles.add(new ToggleRow(key, y));
             y += TOGGLE_ROW_HEIGHT + ROW_GAP;
         }
-        // Features tab, cache-policy section: two integer fields plus the "consume on use" switch.
-        // "Consume on use" is deliberately not part of TOGGLE_KEYS, so it exists exactly once.
-        //
-        // Every tab now breathes with the widened spacing constants and simply scrolls when its
-        // content is taller than the viewport (MODAL_HEIGHT 230 - MODAL_TITLE_HEIGHT 20 -
-        // CONTENT_PADDING 8 - MODAL_FOOTER_HEIGHT 30 = 172px of visible content).
-        //   header 15 + 8 * (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)               = 207
-        // + cache header 15 + 2 * (NUMBER_ROW_HEIGHT 18 + ROW_GAP 6)         = 270
-        // + consume row (TOGGLE_ROW_HEIGHT 18 + ROW_GAP 6)                   = 294
+        // Keep AI cache policy separate from gift preparation controls.
         cachePolicySectionY = y;
         y += SECTION_HEADER_HEIGHT;
         for (String key : CACHE_NUMBER_KEYS) {
@@ -663,6 +664,17 @@ public void renderBackground(GuiGraphics graphics) {
         }
         cacheConsumeRow = new ToggleRow(TmaSettingsKeys.MORNING_KISS_CACHE_CONSUME_ON_USE, y);
         y += TOGGLE_ROW_HEIGHT + ROW_GAP;
+        giftPolicySectionY = y;
+        y += SECTION_HEADER_HEIGHT;
+        for (String key : List.of(TmaSettingsKeys.RANDOM_GIFT_ENABLED,
+                TmaSettingsKeys.RANDOM_GIFT_CURATED_POOL_ONLY, TmaSettingsKeys.RANDOM_GIFT_INCLUDE_MOD_ITEMS)) {
+            toggles.add(new ToggleRow(key, y));
+            y += TOGGLE_ROW_HEIGHT + ROW_GAP;
+        }
+        for (String key : List.of(TmaSettingsKeys.RANDOM_GIFT_INTERVAL_MINUTES, TmaSettingsKeys.RANDOM_GIFT_MAX_QUEUED)) {
+            cacheNumberRows.add(new NumberRow(key, y));
+            y += NUMBER_ROW_HEIGHT + ROW_GAP;
+        }
         featuresContentHeight = y;
 
         y = SECTION_HEADER_HEIGHT;
@@ -722,11 +734,12 @@ public void renderBackground(GuiGraphics graphics) {
         if (!layoutDirty) {
             return;
         }
+        buildStatusRows();
+        contentHeight = contentHeight(activeTab);
+        scrollOffset = TmaGiftStatusViewRules.clampScroll(scrollOffset, contentHeight, viewportBottom() - contentTop());
         int contentRight = contentRight();
         int rowTop = contentTop() - scrollOffset;
-        // The status tab owns its own read-only rows, so it is laid out before the shared language
-        // dropdowns of the voice tab are positioned.
-        buildStatusRows();
+        giftPanel.layout(contentLeft(), contentRight, rowTop, contentTop(), viewportBottom(), height);
         for (LanguageRow row : languages) {
             row.options = buildLanguageOptions(row.key);
             row.selectedIndex = Math.max(0, row.options.indexOf(
@@ -752,7 +765,6 @@ public void renderBackground(GuiGraphics graphics) {
             syncPromptBox();
         }
         ensureCacheNumberFields(rowTop);
-        contentHeight = contentHeight(activeTab);
         layoutDirty = false;
     }
 
@@ -789,7 +801,7 @@ public void renderBackground(GuiGraphics graphics) {
             return Integer.parseInt(normalized.get());
         }
         TmaAiStatusWire.Status status = TmaAiStatusClientState.get();
-        if (status != null) {
+        if (status != null && CACHE_NUMBER_KEYS.contains(key)) {
             int fromStatus = TmaSettingsKeys.MORNING_KISS_CACHE_TARGET_PER_POOL.equals(key)
                     ? status.cacheTargetPerPool()
                     : status.scanIntervalTicks();
@@ -800,10 +812,7 @@ public void renderBackground(GuiGraphics graphics) {
 
     private int contentHeight(int tab) {
         return switch (tab) {
-            case 0 -> Math.max(STATUS_KV_HEIGHT, statusRows.isEmpty()
-                    ? STATUS_KV_HEIGHT + STATUS_ROW_GAP
-                    : statusRows.get(statusRows.size() - 1).y() + statusRows.get(statusRows.size() - 1).height()
-                    + STATUS_ROW_GAP);
+            case 0 -> statusContentHeight;
             case 1 -> featuresContentHeight;
             case 2 -> voiceContentHeight;
             default -> SECTION_HEADER_HEIGHT + sliders.size() * (SLIDER_ROW_HEIGHT + ROW_GAP);
@@ -813,54 +822,53 @@ public void renderBackground(GuiGraphics graphics) {
     private void buildStatusRows() {
         statusRows.clear();
         TmaAiStatusWire.Status status = TmaAiStatusClientState.get();
-        if (status == null) {
-            return;
-        }
-        int y = 0;
-        y = addStatusHeader(y, "bond.settings.status.section.switches");
-        y = addStatusKv(y, tr("bond.settings.status.switch.morning_kiss"), onOff(status.morningKissEnabled()));
-        y = addStatusKv(y, tr("bond.settings.status.switch.ai_dialogue"), onOff(status.aiDialogueEnabled()));
-        y = addStatusKv(y, tr("bond.settings.status.switch.ai_tts"), onOff(status.aiTtsEnabled()));
-        y = addStatusKv(y, tr("bond.settings.status.switch.fallback"), onOff(status.immediateFallbackEnabled()));
-        y = addStatusHeader(y, "bond.settings.status.section.languages");
-        y = addStatusKv(y, tr("bond.settings.status.language.display"),
-                languageValue(status.globalDisplayLanguage(), "bond.settings.status.language.auto.display"));
-        y = addStatusKv(y, tr("bond.settings.status.language.voice"),
-                languageValue(status.globalVoiceLanguage(), "bond.settings.status.language.auto.voice"));
-        y = addStatusHeader(y, "bond.settings.status.section.cache_policy");
-        y = addStatusKv(y, tr("bond.settings.status.cache_policy.target"),
-                literal(String.valueOf(status.cacheTargetPerPool())));
-        y = addStatusKv(y, tr("bond.settings.status.cache_policy.scan"),
-                literal(status.scanIntervalTicks() + "t"));
-        y = addStatusKv(y, tr("bond.settings.status.cache_policy.consume"), onOff(status.consumeOnUse()));
-        y = addStatusHeader(y, "bond.settings.status.section.cache_stats");
-        y = addStatusKv(y, tr("bond.settings.status.cache.entries"),
-                literal(status.totalEntries() + " (" + status.voiceEntries() + " / " + status.textOnlyEntries() + ")"));
-        y = addStatusKv(y, tr("bond.settings.status.cache.runtime"),
-                literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
-        y = addStatusHeader(y, "bond.settings.status.section.maids");
-        List<TmaAiStatusWire.MaidStatus> maids = status.maids();
+        List<TmaAiStatusWire.MaidStatus> maids = status == null ? List.of() : status.maids();
         List<String> maidLabels = TmaMaidLabels.displayLabels(maids,
                 Component.translatable("bond.settings.status.maid.unknown").getString());
-        for (int index = 0; index < maids.size(); index++) {
-            TmaAiStatusWire.MaidStatus maid = maids.get(index);
-            int totalTarget = maid.target() * Math.max(1, maid.pools().size());
-            statusRows.add(new StatusRow(StatusRow.Kind.MAID, y, STATUS_MAID_HEIGHT, null,
-                    literal(maidLabels.get(index)),
-                    literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + totalTarget),
-                    maid.maidUuid()));
-            y += STATUS_MAID_HEIGHT + STATUS_ROW_GAP;
+        TmaStatusLayout layout = new TmaStatusLayout(status != null, maids.size());
+        statusContentHeight = layout.height();
+        for (TmaStatusLayout.Row geometry : layout.rows()) {
+            if (geometry.kind() == TmaStatusLayout.Kind.FEATURE || geometry.kind() == TmaStatusLayout.Kind.SUBSECTION) {
+                statusRows.add(new StatusRow(geometry, null, null, null));
+            } else if (geometry.kind() == TmaStatusLayout.Kind.MESSAGE) {
+                statusRows.add(new StatusRow(geometry, tr(geometry.section() == TmaStatusLayout.Section.AI
+                        ? "bond.settings.status.loading" : "bond.settings.status.maids.empty"), null, null));
+            } else if (geometry.kind() == TmaStatusLayout.Kind.MAID) {
+                TmaAiStatusWire.MaidStatus maid = maids.get(geometry.index());
+                int totalTarget = maid.target() * Math.max(1, maid.pools().size());
+                statusRows.add(new StatusRow(geometry, literal(maidLabels.get(geometry.index())),
+                        literal(poolSummary(maid) + " · " + maid.totalEntries() + "/" + totalTarget), maid.maidUuid()));
+            } else {
+                statusRows.add(statusField(geometry, status));
+            }
         }
     }
 
-    private int addStatusHeader(int y, String headerKey) {
-        statusRows.add(new StatusRow(StatusRow.Kind.HEADER, y, SECTION_HEADER_HEIGHT, headerKey, null, null, null));
-        return y + SECTION_HEADER_HEIGHT;
+    private StatusRow statusField(TmaStatusLayout.Row row, TmaAiStatusWire.Status status) {
+        return switch (row.section()) {
+            case SWITCHES -> switch (row.index()) {
+                case 0 -> statusKv(row, "switch.morning_kiss", onOff(status.morningKissEnabled()));
+                case 1 -> statusKv(row, "switch.ai_dialogue", onOff(status.aiDialogueEnabled()));
+                case 2 -> statusKv(row, "switch.ai_tts", onOff(status.aiTtsEnabled()));
+                default -> statusKv(row, "switch.fallback", onOff(status.immediateFallbackEnabled()));
+            };
+            case LANGUAGES -> row.index() == 0
+                    ? statusKv(row, "language.display", languageValue(status.globalDisplayLanguage(), "bond.settings.status.language.auto.display"))
+                    : statusKv(row, "language.voice", languageValue(status.globalVoiceLanguage(), "bond.settings.status.language.auto.voice"));
+            case CACHE_POLICY -> switch (row.index()) {
+                case 0 -> statusKv(row, "cache_policy.target", literal(String.valueOf(status.cacheTargetPerPool())));
+                case 1 -> statusKv(row, "cache_policy.scan", literal(status.scanIntervalTicks() + "t"));
+                default -> statusKv(row, "cache_policy.consume", onOff(status.consumeOnUse()));
+            };
+            case CACHE_STATS -> row.index() == 0
+                    ? statusKv(row, "cache.entries", literal(status.totalEntries() + " (" + status.voiceEntries() + " / " + status.textOnlyEntries() + ")"))
+                    : statusKv(row, "cache.runtime", literal(status.maidCount() + " / " + status.inFlightRequests() + " / " + status.revision()));
+            default -> throw new IllegalArgumentException("Not a status field: " + row.section());
+        };
     }
 
-    private int addStatusKv(int y, Component label, Component value) {
-        statusRows.add(new StatusRow(StatusRow.Kind.KV, y, STATUS_KV_HEIGHT, null, label, value, null));
-        return y + STATUS_KV_HEIGHT + STATUS_ROW_GAP;
+    private StatusRow statusKv(TmaStatusLayout.Row row, String labelKey, Component value) {
+        return new StatusRow(row, tr("bond.settings.status." + labelKey), value, null);
     }
 
     private static Component onOff(boolean on) {
@@ -1026,7 +1034,7 @@ public void renderBackground(GuiGraphics graphics) {
     }
 
     private void renderContent(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
-        if (!TmaSettingsClientState.hasState()) {
+        if (activeTab != 0 && !TmaSettingsClientState.hasState()) {
             graphics.drawString(
                     font,
                     Component.translatable("bond.settings.status.loading"),
@@ -1068,6 +1076,8 @@ public void renderBackground(GuiGraphics graphics) {
     private void renderCachePolicySection(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
         renderSectionHeader(graphics, font, rowTop + cachePolicySectionY,
                 "bond.settings.section.cache_policy", BondGuiTokens.TAG_SERVER);
+        renderSectionHeader(graphics, font, rowTop + giftPolicySectionY,
+                "bond.settings.section.gifts", BondGuiTokens.TAG_SERVER);
         for (NumberRow row : cacheNumberRows) {
             renderNumberRow(graphics, font, row, rowTop + row.y(), mouseX, mouseY);
         }
@@ -1147,16 +1157,21 @@ public void renderBackground(GuiGraphics graphics) {
     }
 
     private void renderStatusTab(GuiGraphics graphics, Font font, int rowTop, int mouseX, int mouseY) {
-        if (!TmaAiStatusClientState.hasStatus()) {
-            graphics.drawString(font, Component.translatable("bond.settings.status.loading"),
-                    contentLeft(), rowTop, BondGuiTokens.COLOR_TEXT_HINT, false);
-            return;
-        }
+        giftPanel.render(graphics, font, mouseX, mouseY);
         for (StatusRow row : statusRows) {
-            int y = rowTop + row.y();
-            switch (row.kind()) {
-                case HEADER -> renderSectionHeader(graphics, font, y, row.key(), BondGuiTokens.TAG_SERVER);
-                case KV -> drawKvRow(graphics, font, y, row.label(), row.value());
+            TmaStatusLayout.Row geometry = row.geometry();
+            int y = rowTop + geometry.y();
+            int left = geometry.left(contentLeft());
+            switch (geometry.kind()) {
+                case FEATURE -> {
+                    graphics.drawString(font, tr(geometry.section().key), left, y, BondGuiTokens.COLOR_TEXT_TITLE, false);
+                    graphics.hLine(left, contentRight() - 1, y + font.lineHeight + 2, BondGuiTokens.DIVIDER_COLOR);
+                }
+                case SUBSECTION -> graphics.drawString(font, tr(geometry.section().key), left, y,
+                        BondGuiTokens.COLOR_TEXT_HINT, false);
+                case MESSAGE -> graphics.drawString(font, clip(font, row.label(), contentRight() - left), left, y,
+                        BondGuiTokens.COLOR_TEXT_HINT, false);
+                case FIELD -> drawKvRow(graphics, font, left, y, row.label(), row.value());
                 case MAID -> renderMaidRow(graphics, font, y, row, mouseX, mouseY);
             }
         }
@@ -1168,16 +1183,16 @@ public void renderBackground(GuiGraphics graphics) {
      * <p>The value is right-aligned and the label is clipped to the space left of it, so a long
      * value (for example {@code 24 (18 / 6)}) can never be overpainted by the label.
      */
-    private void drawKvRow(GuiGraphics graphics, Font font, int y, Component label, Component value) {
+    private void drawKvRow(GuiGraphics graphics, Font font, int left, int y, Component label, Component value) {
         int right = contentRight();
         int valueLeft = right;
         if (value != null) {
-            String clippedValue = clip(font, value, Math.max(0, right - contentLeft() - LABEL_CONTROL_GAP));
+            String clippedValue = clip(font, value, Math.max(0, right - left - LABEL_CONTROL_GAP));
             valueLeft = right - font.width(clippedValue);
             graphics.drawString(font, clippedValue, valueLeft, y, BondGuiTokens.HIGHLIGHT_TEXT, false);
         }
-        int labelWidth = Math.max(0, valueLeft - LABEL_CONTROL_GAP - contentLeft());
-        graphics.drawString(font, clip(font, label, labelWidth), contentLeft(), y,
+        int labelWidth = Math.max(0, valueLeft - LABEL_CONTROL_GAP - left);
+        graphics.drawString(font, clip(font, label, labelWidth), left, y,
                 BondGuiTokens.COLOR_TEXT_BODY, false);
     }
 
@@ -1187,9 +1202,10 @@ public void renderBackground(GuiGraphics graphics) {
      * can slide under the button.
      */
     private void renderMaidRow(GuiGraphics graphics, Font font, int y, StatusRow row, int mouseX, int mouseY) {
+        int left = row.geometry().left(contentLeft());
         int buttonLeft = contentRight() - STATUS_CLEAR_BUTTON_WIDTH;
         int labelRight = buttonLeft - STATUS_DOT_GAP - LABEL_CONTROL_GAP;
-        int available = Math.max(0, labelRight - contentLeft());
+        int available = Math.max(0, labelRight - left);
         Component detail = row.value();
         int detailLeft = labelRight;
         if (detail != null) {
@@ -1199,12 +1215,12 @@ public void renderBackground(GuiGraphics graphics) {
             detailLeft = labelRight - font.width(clippedDetail);
             graphics.drawString(font, clippedDetail, detailLeft, y, BondGuiTokens.COLOR_TEXT_HINT, false);
         }
-        int nameWidth = Math.max(0, detailLeft - LABEL_CONTROL_GAP - contentLeft());
-        graphics.drawString(font, clip(font, row.label(), nameWidth), contentLeft(), y,
+        int nameWidth = Math.max(0, detailLeft - LABEL_CONTROL_GAP - left);
+        graphics.drawString(font, clip(font, row.label(), nameWidth), left, y,
                 BondGuiTokens.COLOR_TEXT_BODY, false);
 
         boolean canClear = TmaAiStatusClientState.get() != null && TmaAiStatusClientState.get().canClear();
-        int buttonTop = y + (STATUS_MAID_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+        int buttonTop = row.geometry().controlTop(contentTop() - scrollOffset, TEXT_BUTTON_HEIGHT);
         boolean hovered = canClear && within(mouseX, mouseY, buttonLeft, STATUS_CLEAR_BUTTON_WIDTH, buttonTop, TEXT_BUTTON_HEIGHT);
         drawTextButton(graphics, font, Component.translatable("bond.settings.status.clear"), buttonLeft, buttonTop,
                 STATUS_CLEAR_BUTTON_WIDTH, hovered, canClear);
@@ -1522,6 +1538,7 @@ public void renderBackground(GuiGraphics graphics) {
     }
 
     private void renderDropdownOverlays(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
+        if (activeTab == 0) giftPanel.renderOverlay(graphics, font, mouseX, mouseY);
         for (LanguageRow row : languages) {
             if (!row.dropdown.isExpanded()) {
                 continue;
@@ -1542,6 +1559,7 @@ public void renderBackground(GuiGraphics graphics) {
     // ---- Interaction ----
 
     private boolean handleExpandedDropdown(double mouseX, double mouseY) {
+        if (activeTab == 0 && giftPanel.expanded()) return giftPanel.click(mouseX, mouseY);
         for (LanguageRow row : languages) {
             if (!row.dropdown.isExpanded()) {
                 continue;
@@ -1587,9 +1605,9 @@ public void renderBackground(GuiGraphics graphics) {
         TmaSettingsClientState.requestSync();
     }
 
-    /** Re-requests the AI status; the push lands through {@link #onStatusPushed()}. */
+    /** Explicit refresh updates both AI and gift snapshots. */
     private void refreshStatus() {
-        statusRequested = true;
+        giftPanel.refresh();
         TmaAiStatusClientState.requestSync();
     }
 
@@ -1623,8 +1641,9 @@ public void renderBackground(GuiGraphics graphics) {
         ));
     }
 
-    /** The status tab is read-only: only the per-maid "clear" buttons react to a click. */
+    /** Gift selection is local; cache clear remains server-authoritative. */
     private void clickStatus(double mouseX, double mouseY) {
+        if (giftPanel.click(mouseX, mouseY)) return;
         clickStatusClear(mouseX, mouseY);
     }
 
@@ -1687,11 +1706,10 @@ public void renderBackground(GuiGraphics graphics) {
         int rowTop = contentTop() - scrollOffset;
         int buttonLeft = contentRight() - STATUS_CLEAR_BUTTON_WIDTH;
         for (StatusRow row : statusRows) {
-            if (row.kind() != StatusRow.Kind.MAID) {
+            if (row.geometry().kind() != TmaStatusLayout.Kind.MAID) {
                 continue;
             }
-            int y = rowTop + row.y();
-            int buttonTop = y + (STATUS_MAID_HEIGHT - TEXT_BUTTON_HEIGHT) / 2;
+            int buttonTop = row.geometry().controlTop(rowTop, TEXT_BUTTON_HEIGHT);
             if (within(mouseX, mouseY, buttonLeft, STATUS_CLEAR_BUTTON_WIDTH, buttonTop, TEXT_BUTTON_HEIGHT)) {
                 return row.maidUuid();
             }
@@ -1925,20 +1943,8 @@ public void renderBackground(GuiGraphics graphics) {
     private record PendingRequest(String value, long sentAt) {
     }
 
-    /**
-     * One rendered row of the status tab; {@code y} is relative to the top of the content area.
-     *
-     * <p>The status tab is read-only, so {@code key} is only used by a {@link Kind#HEADER} row (its
-     * translation key); {@code label} / {@code value} carry the text of a {@link Kind#KV} row and
-     * {@code maidUuid} identifies the {@link Kind#MAID} row a "clear" button belongs to.
-     */
-    private record StatusRow(Kind kind, int y, int height, String key, Component label, Component value,
-                             String maidUuid) {
-        private enum Kind {
-            HEADER,
-            KV,
-            MAID
-        }
+    /** Text and identity attached to the hierarchy's shared render/hit geometry. */
+    private record StatusRow(TmaStatusLayout.Row geometry, Component label, Component value, String maidUuid) {
     }
 
     /** One cache-policy numeric row of the features tab; {@code y} is relative to the content top. */

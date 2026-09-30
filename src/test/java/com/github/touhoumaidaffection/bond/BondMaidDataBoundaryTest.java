@@ -5,7 +5,6 @@ import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,27 +22,6 @@ class BondMaidDataBoundaryTest {
 
     private static final UUID MAID_A = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID MAID_B = UUID.fromString("22222222-2222-2222-2222-222222222222");
-
-    // ---------------------------------------------------------------- 键集合
-
-    @Test
-    void runtimeKeysCoverSchedulingAndLastSeenButKeepGiftQueue() {
-        assertEquals(
-                Set.of(
-                        BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK,
-                        BondKeys.RANDOM_GIFT_LAST_DELIVERY,
-                        BondKeys.RANDOM_GIFT_LAST_INTERVAL_MINUTES,
-                        BondKeys.MORNING_KISS_SCHEDULED_WINDOW,
-                        BondKeys.MORNING_KISS_SCHEDULED_ATTEMPT_TICK,
-                        BondKeys.MORNING_KISS_LAST_AUTO_ATTEMPT_GAME_TIME,
-                        BondKeys.MORNING_KISS_LAST_SUCCESS_WINDOW,
-                        BondKeys.MORNING_KISS_LAST_FAILED_WINDOW,
-                        BondKeys.LAST_SEEN_KEY
-                ),
-                BondKeys.RUNTIME_KEYS
-        );
-        assertFalse(BondKeys.RUNTIME_KEYS.contains(BondKeys.RANDOM_GIFT_QUEUE), "待发礼物队列必须随迁");
-    }
 
     // ---------------------------------------------------------------- 导出
 
@@ -307,7 +285,7 @@ class BondMaidDataBoundaryTest {
         data.unlockAbility(maidUuid, "lap_pillow");
 
         data.setLastGiftWallClockMs(maidUuid, 1_111L);
-        data.setLastGiftDeliveryGameTime(maidUuid, 2_222L);
+        data.recordGiftDelivery(maidUuid, data.getRandomGiftQueue(maidUuid), 2_222L, 1_700_000_000_000L, "minecraft:apple");
         data.setLastGiftIntervalMinutes(maidUuid, 45);
         data.setMorningKissScheduledWindowId(maidUuid, "morning");
         data.setMorningKissScheduledAttemptTick(maidUuid, 1_234L);

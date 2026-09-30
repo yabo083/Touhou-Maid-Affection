@@ -12,6 +12,7 @@ import com.github.touhoumaidaffection.client.BondClientStateCache;
 import com.github.touhoumaidaffection.client.RescueYsmActionConfig;
 import com.github.touhoumaidaffection.client.YsmModelActionIndex;
 import com.github.touhoumaidaffection.client.screen.component.BondGuiTokens;
+import com.github.touhoumaidaffection.client.screen.component.BondHeaderLayout;
 import com.github.touhoumaidaffection.client.screen.component.BondModalPage;
 import com.github.touhoumaidaffection.client.screen.page.BondAbilityPrimaryPage;
 import com.github.touhoumaidaffection.client.screen.page.BondPrimaryPageHost;
@@ -87,6 +88,7 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         TouhouMaidAffection.CHANNEL.sendToServer(new BondStateRequestPayload(maid.getUUID()));
         primaryPage = new BondAbilityPrimaryPage(
                 this,
+                BondHeaderLayout.fromPage(leftPos + PAGE_X_OFFSET, topPos + PAGE_Y_OFFSET, PAGE_WIDTH),
                 leftPos + PANEL_X_OFFSET,
                 topPos + PANEL_Y_OFFSET,
                 PANEL_WIDTH,
@@ -237,9 +239,6 @@ public class BondMaidContainerScreen extends AbstractMaidContainerGui<BondContai
         graphics.fill(left + 6, bottom - 7, right - 6, bottom - 6, 0x440F0A0D);
         graphics.fill(left + 6, top + 22, left + 7, bottom - 6, BondGuiTokens.DIVIDER_COLOR);
         graphics.fill(right - 7, top + 22, right - 6, bottom - 6, 0x440F0A0D);
-        if (!hasActiveSecondaryPage()) {
-            graphics.drawCenteredString(font, Component.translatable("bond.tab.title"), left + PAGE_WIDTH / 2, top + 8, BondGuiTokens.COLOR_TEXT_TITLE);
-        }
     }
 
     private void renderBondPanel(GuiGraphics graphics, int mouseX, int mouseY) {

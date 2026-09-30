@@ -12,7 +12,7 @@ public final class LapPillowState {
     }
 
     public static boolean isActive(ServerPlayer player) {
-        return getRoot(player).getBoolean("active");
+        return player.getPersistentData().getCompound(ROOT_KEY).getBoolean("active");
     }
 
     public static UUID getMaidUuid(ServerPlayer player) {

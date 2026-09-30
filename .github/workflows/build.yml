@@ -145,7 +145,7 @@ jobs:
           JAR_NAME="$(basename '${{ steps.forge_jar.outputs.path }}')"
           EXISTING="$(curl -sS -H "x-api-key: $CURSEFORGE_TOKEN" \
             "https://api.curseforge.com/v1/mods/${{ vars.CURSEFORGE_PROJECT_ID }}/files?pageSize=50" \
-            | jq -r --arg n "$JAR_NAME" '.data[]? | select((.fileName // .displayName // .name) == $n) | .id' | head -n1)"
+            | jq -r --arg n "$JAR_NAME" '.data[]? | select((.fileName // .displayName // .name) == $n) | select((.gameVersions // []) | index("1.20.1") != null and index("Forge") != null) | .id' | head -n1)"
           if [ -n "$EXISTING" ]; then
             echo "CurseForge 已有 $JAR_NAME（id=$EXISTING），跳过上传"
             echo "skip=true" >> "$GITHUB_OUTPUT"

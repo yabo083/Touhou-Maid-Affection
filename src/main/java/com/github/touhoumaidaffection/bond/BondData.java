@@ -48,6 +48,15 @@ public class BondData {
         return data;
     }
 
+    /** A detached view: even legacy migration cannot write through a status request. */
+    public static BondData readOnly(ServerPlayer player) {
+        CompoundTag root = player.getPersistentData().getCompound(BondKeys.ROOT).copy();
+        BondData data = new BondData(new CompoundTag(), root);
+        data.migrateIfNeeded();
+        return data;
+    }
+
+
     /**
      * 测试用：直接以给定根 compound 构造，不触发迁移、不依赖玩家。
      *
@@ -515,13 +524,48 @@ public class BondData {
     }
 
     public int getQueuedGiftCount(UUID maidUuid) {
-        return Math.max(0, maidTag(maidUuid, false).getInt(BondKeys.RANDOM_GIFT_QUEUE));
+        return Math.max(0, Math.min(RandomGiftQueue.MAX_QUEUED, maidTag(maidUuid, false).getInt(BondKeys.RANDOM_GIFT_QUEUE)));
     }
 
     public void setQueuedGiftCount(UUID maidUuid, int count) {
-        maidTag(maidUuid, true).putInt(BondKeys.RANDOM_GIFT_QUEUE, Math.max(0, count));
+        setRandomGiftQueue(maidUuid, new RandomGiftQueue(count, getRandomGiftQueue(maidUuid).prepared()));
+    }
+
+    public RandomGiftQueue getRandomGiftQueue(UUID maidUuid) {
+        CompoundTag tag = maidTag(maidUuid, false);
+        var list = tag.getList(BondKeys.RANDOM_GIFT_PREPARED, Tag.TAG_STRING);
+        List<String> prepared = new ArrayList<>();
+        for (int i = 0; i < Math.min(RandomGiftQueue.MAX_QUEUED, list.size()); i++) {
+            prepared.add(list.getString(i));
+        }
+        return new RandomGiftQueue(tag.getInt(BondKeys.RANDOM_GIFT_QUEUE), prepared);
+    }
+
+    public void setRandomGiftQueue(UUID maidUuid, RandomGiftQueue queue) {
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putInt(BondKeys.RANDOM_GIFT_QUEUE, queue.queued());
+        var prepared = new net.minecraft.nbt.ListTag();
+        for (String id : queue.prepared()) prepared.add(StringTag.valueOf(id));
+        tag.put(BondKeys.RANDOM_GIFT_PREPARED, prepared);
         save();
     }
+
+    public long getLastGiftDeliveryWallClockMs(UUID maidUuid) {
+        return maidTag(maidUuid, false).getLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY_WALL_CLOCK);
+    }
+
+    public String getLastDeliveredGiftId(UUID maidUuid) {
+        return maidTag(maidUuid, false).getString(BondKeys.RANDOM_GIFT_LAST_ITEM);
+    }
+
+    public void recordGiftDelivery(UUID maidUuid, RandomGiftQueue remaining, long gameTime, long nowMs, String itemId) {
+        CompoundTag tag = maidTag(maidUuid, true);
+        tag.putLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY, gameTime);
+        tag.putLong(BondKeys.RANDOM_GIFT_LAST_DELIVERY_WALL_CLOCK, nowMs);
+        tag.putString(BondKeys.RANDOM_GIFT_LAST_ITEM, itemId);
+        setRandomGiftQueue(maidUuid, remaining);
+    }
+
 
     public long getLastGiftWallClockMs(UUID maidUuid) {
         return maidTag(maidUuid, false).getLong(BondKeys.RANDOM_GIFT_LAST_WALL_CLOCK);

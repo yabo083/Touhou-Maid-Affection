@@ -15,6 +15,7 @@ import com.github.touhoumaidaffection.handler.MorningKissVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueActionConfigHandler;
 import com.github.touhoumaidaffection.handler.RescueVoiceConfigHandler;
 import com.github.touhoumaidaffection.handler.TmaAiStatusRequestHandler;
+import com.github.touhoumaidaffection.handler.TmaGiftStatusRequestHandler;
 import com.github.touhoumaidaffection.handler.VoicePreviewRequestHandler;
 import com.github.touhoumaidaffection.handler.TmaSettingsRequestHandler;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
@@ -37,6 +38,8 @@ import com.github.touhoumaidaffection.network.RescueVoiceConfigPayload;
 import com.github.touhoumaidaffection.network.TmaAiCacheClearPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusRequestPayload;
+import com.github.touhoumaidaffection.network.TmaGiftStatusPayload;
+import com.github.touhoumaidaffection.network.TmaGiftStatusRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
@@ -53,11 +56,13 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.function.BiConsumer;
 
 @Mod(TouhouMaidAffection.MOD_ID)
@@ -123,7 +128,23 @@ public class TouhouMaidAffection {
         id = registerMessage(id, TmaSettingsStatePayload.class, TmaSettingsStatePayload.STREAM_CODEC, BondClientPayloadHandler::handleSettingsState);
         id = registerMessage(id, TmaAiStatusRequestPayload.class, TmaAiStatusRequestPayload.STREAM_CODEC, TmaAiStatusRequestHandler::handleStatusRequest);
         id = registerMessage(id, TmaAiStatusPayload.class, TmaAiStatusPayload.STREAM_CODEC, BondClientPayloadHandler::handleAiStatus);
-        registerMessage(id, TmaAiCacheClearPayload.class, TmaAiCacheClearPayload.STREAM_CODEC, TmaAiStatusRequestHandler::handleClear);
+        id = registerMessage(id, TmaAiCacheClearPayload.class, TmaAiCacheClearPayload.STREAM_CODEC, TmaAiStatusRequestHandler::handleClear);
+        CHANNEL.registerMessage(id++, TmaGiftStatusRequestPayload.class,
+                (payload, buf) -> TmaGiftStatusRequestPayload.STREAM_CODEC.encode(buf, payload),
+                TmaGiftStatusRequestPayload.STREAM_CODEC::decode,
+                (payload, supplier) -> {
+                    NetworkEvent.Context context = supplier.get();
+                    TmaGiftStatusRequestHandler.handleStatusRequest(payload, ForgePayloadContext.wrap(context));
+                    context.setPacketHandled(true);
+                }, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id, TmaGiftStatusPayload.class,
+                (payload, buf) -> TmaGiftStatusPayload.STREAM_CODEC.encode(buf, payload),
+                TmaGiftStatusPayload.STREAM_CODEC::decode,
+                (payload, supplier) -> {
+                    NetworkEvent.Context context = supplier.get();
+                    BondClientPayloadHandler.handleGiftStatus(payload, ForgePayloadContext.wrap(context));
+                    context.setPacketHandled(true);
+                }, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     private <T> int registerMessage(

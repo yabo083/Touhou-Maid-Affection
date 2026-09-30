@@ -38,6 +38,7 @@ Windows PowerShell:
 - GitHub Release 上传 `build/libs/touhou-maid-affection-*.jar`。
 - Modrinth 发布使用 `com.modrinth.minotaur`。
 - CurseForge 发布只在 tag 名包含 `forge1.20.1` 且 token/项目变量存在时执行。
+- CurseForge 去重同时精确匹配文件名、Minecraft 版本与加载器，避免 NeoForge 同名 jar 导致 Forge 上传被跳过；GitHub Release 创建后仍需分别确认两个平台的发布步骤。
 
 发布任务依赖环境变量或仓库配置：
 
@@ -52,8 +53,8 @@ Windows PowerShell:
 - `CHANGELOG.md` 已有目标版本条目。
 - `README.md` 与 `README_zh.md` 的版本、运行时和功能说明一致。
 - `PROJECT_ARCHITECTURE.md` 已同步核心架构变更。
-- `早安吻文本修改教程.md` 与 `examples/TMA-Custom-Voice-Pack` 的数据包格式一致。
-- 示例数据包的 zip 根目录设计为 `pack.mcmeta` + `data/`。
+- `PACK_AUTHORING.md`、`早安吻相关配置说明.md` 与示例包使用实际支持的路径及 JSON 格式。
+- 示例包 zip 根目录包含 `pack.mcmeta`；服务端数据包使用 `data/`，客户端资源包使用 `assets/`，两者安装位置与 `pack_format` 按教程区分。
 - `.\gradlew.bat test` 通过。
 - `.\gradlew.bat compileJava` 通过。
 - `src/main/resources/META-INF/mods.toml` 的依赖范围仍符合当前发布目标。
