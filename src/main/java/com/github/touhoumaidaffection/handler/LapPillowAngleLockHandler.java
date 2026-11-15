@@ -2,9 +2,10 @@ package com.github.touhoumaidaffection.handler;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
+import com.github.touhoumaidaffection.network.IPayloadContext;
 import com.github.touhoumaidaffection.network.LapPillowAngleLockPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+
 
 public final class LapPillowAngleLockHandler {
     private LapPillowAngleLockHandler() {

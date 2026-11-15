@@ -1,12 +1,12 @@
 package com.github.touhoumaidaffection.handler;
 
 import com.github.touhoumaidaffection.bond.service.RandomGiftService;
+import com.github.touhoumaidaffection.network.IPayloadContext;
 import com.github.touhoumaidaffection.network.TmaGiftStatusPayload;
 import com.github.touhoumaidaffection.network.TmaGiftStatusRequestPayload;
 import net.minecraft.server.level.ServerPlayer;
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import net.minecraftforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class TmaGiftStatusRequestHandler {
     private TmaGiftStatusRequestHandler() { }

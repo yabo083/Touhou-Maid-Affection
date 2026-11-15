@@ -6,12 +6,12 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.service.MorningKissGeneratedDialogueService;
 import com.github.touhoumaidaffection.bond.service.MorningKissScheduleRules;
 import com.github.touhoumaidaffection.bond.settings.TmaAiStatusWire;
+import com.github.touhoumaidaffection.network.IPayloadContext;
 import com.github.touhoumaidaffection.network.TmaAiCacheClearPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusPayload;
 import com.github.touhoumaidaffection.network.TmaAiStatusRequestPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.Comparator;

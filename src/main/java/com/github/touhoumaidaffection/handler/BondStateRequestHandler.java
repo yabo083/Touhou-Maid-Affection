@@ -2,8 +2,8 @@ package com.github.touhoumaidaffection.handler;
 
 import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.network.BondStateRequestPayload;
+import com.github.touhoumaidaffection.network.IPayloadContext;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class BondStateRequestHandler {
     private BondStateRequestHandler() {

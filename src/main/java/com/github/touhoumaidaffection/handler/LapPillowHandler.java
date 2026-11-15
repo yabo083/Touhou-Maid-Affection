@@ -10,6 +10,7 @@ import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
 import com.github.touhoumaidaffection.bond.service.MorningKissService;
 import com.github.touhoumaidaffection.bond.service.RandomGiftService;
+import com.github.touhoumaidaffection.network.IPayloadContext;
 import com.github.touhoumaidaffection.network.LapPillowExitPayload;
 import com.github.touhoumaidaffection.network.LapPillowStartPayload;
 import com.github.touhoumaidaffection.ysm.YSMActionBridge;
@@ -27,7 +28,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.TickEvent;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.UUID;
