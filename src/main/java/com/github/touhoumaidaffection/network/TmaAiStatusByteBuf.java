@@ -2,7 +2,7 @@ package com.github.touhoumaidaffection.network;
 
 import com.github.touhoumaidaffection.bond.settings.TmaAiStatusWire;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
+import com.github.touhoumaidaffection.compat.ByteBufCodecs;
 
 /**
  * Adapts netty {@link ByteBuf} to the transport-agnostic {@link TmaAiStatusWire} codec so the status

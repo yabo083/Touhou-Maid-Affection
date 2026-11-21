@@ -1,7 +1,7 @@
 package com.github.touhoumaidaffection.network;
 
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraftforge.network.NetworkEvent;
 
 public final class ForgePayloadContext implements IPayloadContext {

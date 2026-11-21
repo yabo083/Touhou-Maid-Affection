@@ -1,11 +1,11 @@
 package com.github.touhoumaidaffection.client;
 
 import com.github.touhoumaidaffection.ModConfig;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.network.KissMaidPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class KissClientHandler {
     public static void handle(KissMaidPayload payload, IPayloadContext context) {

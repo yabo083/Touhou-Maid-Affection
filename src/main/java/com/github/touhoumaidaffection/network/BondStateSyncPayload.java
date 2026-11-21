@@ -4,10 +4,10 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import io.netty.buffer.ByteBuf;
 
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import com.github.touhoumaidaffection.compat.ByteBufCodecs;
+import com.github.touhoumaidaffection.compat.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.github.touhoumaidaffection.compat.CustomPacketPayload;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -2,9 +2,9 @@ package com.github.touhoumaidaffection.network;
 
 import com.github.touhoumaidaffection.TouhouMaidAffection;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.github.touhoumaidaffection.compat.ByteBufCodecs;
+import com.github.touhoumaidaffection.compat.StreamCodec;
+import com.github.touhoumaidaffection.compat.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 public record MaidRescuePopPayload(

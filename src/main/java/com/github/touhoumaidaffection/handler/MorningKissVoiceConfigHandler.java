@@ -5,9 +5,9 @@ import com.github.touhoumaidaffection.bond.BondManager;
 import com.github.touhoumaidaffection.bond.BondDataLimits;
 import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.VoicePoolIds;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.network.MorningKissVoiceConfigPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class MorningKissVoiceConfigHandler {
     private MorningKissVoiceConfigHandler() {

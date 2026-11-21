@@ -7,9 +7,9 @@ import com.github.touhoumaidaffection.bond.BondDataLimits;
 import com.github.touhoumaidaffection.bond.lap.LapPillowMode;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.bond.lap.LapPillowState;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.network.LapPillowPoseConfigPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class LapPillowPoseConfigHandler {
     private LapPillowPoseConfigHandler() {

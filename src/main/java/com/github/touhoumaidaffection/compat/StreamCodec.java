@@ -1,4 +1,4 @@
-package net.minecraft.network.codec;
+package com.github.touhoumaidaffection.compat;
 
 import java.util.function.BiFunction;
 import java.util.function.BiConsumer;

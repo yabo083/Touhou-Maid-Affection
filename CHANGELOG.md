@@ -10,8 +10,15 @@
 
 ## [Unreleased]
 
+## [1.7.5.3] - 2026-11-21
+
 ### Fixed
+- 修复 Forge 1.20.1 与其他自带 NeoForge 兼容层的模组（如 AE2 WCWT `wcwt`）同时安装时，ModLauncher 在构建模块层阶段因两个 mod 模块导出同一批包而抛出的 `ResolutionException`。此前游戏窗口尚未打开即崩溃，错误形如 `Modules touhou_maid_affection and wcwt export package net.neoforged.neoforge.network.handling to module libx`。
+- 产物不再包含本 mod 之外的任何包。为复用 1.21.1 协议代码而引入的兼容层（`IPayloadContext`、`StreamCodec`、`ByteBufCodecs`、`CustomPacketPayload`）统一迁到 `com.github.touhoumaidaffection.compat`，随 jar 一起发布的 `net.minecraft.network.*` 与 `net.neoforged.neoforge.network.handling` 包已全部移除。协议字段与方法签名保持不变，存档与联网行为不受影响。
 - 为可选联动 MaidFileManager 声明最低版本 **1.4.0**（issue #12）：已安装的旧版会在依赖检查阶段得到明确的版本提示，不再进入 TMA 初始化后因缺少 `MaidMigrationProvider` 崩溃；未安装管理器时仍可正常使用 TMA。此检查尚未包含在已发布的 **1.7.5.2** 中；现有用户请将管理器升级至对应加载器 / Minecraft 版本的官方 **1.4.2**，不要同时保留旧 JAR。
+
+### Notes
+- 包名迁移的最初版本由 @QiMeng0206 在 PR #15 中提出；本版本在此基础上把剩余三个兼容层类一并迁入本 mod 命名空间。
 
 ## [1.7.5.2] - 2026-10-01
 

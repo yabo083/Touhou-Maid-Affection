@@ -4,6 +4,7 @@ import com.github.touhoumaidaffection.bond.MorningKissVoiceSettings;
 import com.github.touhoumaidaffection.bond.EmergencyRescueVoiceSettings;
 import com.github.touhoumaidaffection.bond.lap.LapPillowPoseSnapshot;
 import com.github.touhoumaidaffection.network.BondStateSyncPayload;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.network.MaidRescuePopPayload;
 import com.github.touhoumaidaffection.network.MorningKissDataVoicePlayPayload;
 import com.github.touhoumaidaffection.network.MorningKissVoicePlayPayload;
@@ -14,7 +15,6 @@ import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import com.github.touhoumaidaffection.network.VoicePreviewDataPackPlayPayload;
 import com.github.touhoumaidaffection.network.VoicePreviewThrottledPayload;
 import net.minecraft.network.chat.Component;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.LinkedHashSet;
 

@@ -6,9 +6,9 @@ import com.github.touhoumaidaffection.bond.ability.IBondAbility;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueData;
 import com.github.touhoumaidaffection.bond.rescue.EmergencyRescueService;
 import com.github.touhoumaidaffection.network.BondActivateAbilityPayload;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.util.PowerPointInventoryHelper;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class BondAbilityActivateHandler {
     private BondAbilityActivateHandler() {

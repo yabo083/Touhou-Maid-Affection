@@ -1,4 +1,4 @@
-package net.minecraft.network.codec;
+package com.github.touhoumaidaffection.compat;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.DecoderException;

@@ -5,11 +5,11 @@ import com.github.touhoumaidaffection.TouhouMaidAffection;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsKeys;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsResolver;
 import com.github.touhoumaidaffection.bond.settings.TmaSettingsWire;
+import com.github.touhoumaidaffection.compat.IPayloadContext;
 import com.github.touhoumaidaffection.network.TmaSettingsRequestPayload;
 import com.github.touhoumaidaffection.network.TmaSettingsStatePayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.Optional;
