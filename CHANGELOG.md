@@ -10,8 +10,13 @@
 
 ## [Unreleased]
 
+## [1.7.5.3] - 2026-11-21
+
+### Changed
+- 与 Forge / Minecraft 1.20.1 侧同步发版。NeoForge / Minecraft 1.21.1 版本本版没有玩法与界面改动，只做打包卫生：产物内不含任何非本 mod 命名空间（`com/github/touhoumaidaffection/`）的类，编译期 shim `io/github/zgxhzhr/` 也不会进入 jar。除此之外本版行为与 **1.7.5.2** 一致。
+
 ### Fixed
-- 为可选联动 MaidFileManager 声明最低版本 **1.4.0**（issue #12）：已安装的旧版会在依赖检查阶段得到明确的版本提示，不再进入 TMA 初始化后因缺少 `MaidMigrationProvider` 崩溃；未安装管理器时仍可正常使用 TMA。此检查尚未包含在已发布的 **1.7.5.2** 中；现有用户请将管理器升级至对应加载器 / Minecraft 版本的官方 **1.4.2**，不要同时保留旧 JAR。
+- 为可选联动 MaidFileManager 声明最低版本 **1.4.0**（issue #12）：已安装的旧版会在依赖检查阶段得到明确的版本提示，不再进入 TMA 初始化后因缺少 `MaidMigrationProvider` 崩溃；未安装管理器时仍可正常使用 TMA。该声明自本版起随 jar 发布（已发布的 **1.7.5.2** 及更早版本不含）；现有用户请将管理器升级至对应加载器 / Minecraft 版本的官方 **1.4.2**，不要同时保留旧 JAR。
 
 ## [1.7.5.2] - 2026-10-01
 

@@ -24,6 +24,8 @@ base {
 // 这里排除整个 io.github.zgxhzhr 命名空间，连空的目录条目也不留在产物里。
 tasks.named('jar', Jar).configure {
     exclude 'io/github/zgxhzhr/**'
+    // 排除后 io/、io/github/ 只余空目录条目，也一并去掉。
+    includeEmptyDirs = false
 }
 
 repositories {

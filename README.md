@@ -98,14 +98,14 @@ Expand dialogue pools and `.ogg` voice lines via Datapacks:
 
 ### Mod Integrations
 - **Touhou Little Maid (TLM)**: Required core dependency.
-- **MaidFileManager 1.4.0+ (optional)**: Carries bond levels, unlocked abilities, and voice settings across `.maid` file migrations. Older versions lack the migration SPI and cannot be used together with TMA 1.7.5.2. Use the official [1.4.2 NeoForge / Minecraft 1.21.1 JAR](https://github.com/zgxhzhr/MaidFileManager/releases/download/v1.4.2-all/maid_file_manager-neoforge-1.21.1-1.4.2.jar), removing the old manager JAR first. TMA works without MaidFileManager; the clearer dependency-version check is pending the next TMA release, not included in 1.7.5.2.
+- **MaidFileManager 1.4.0+ (optional)**: Carries bond levels, unlocked abilities, and voice settings across `.maid` file migrations. Older versions lack the migration SPI and cannot be used together with TMA 1.7.5.3. Use the official [1.4.2 NeoForge / Minecraft 1.21.1 JAR](https://github.com/zgxhzhr/MaidFileManager/releases/download/v1.4.2-all/maid_file_manager-neoforge-1.21.1-1.4.2.jar), removing the old manager JAR first. TMA works without MaidFileManager; the clearer dependency-version check is included from TMA 1.7.5.3 onward.
 - **Yes Steve Model (YSM)**: Supports custom animation sync during lap pillows.
 - **Tweakerge / Tweakeroo**: Fully compatible with Free Camera mode without causing player pose conflicts.
 
 ### Installation
 1. Install Minecraft `1.21.1` and NeoForge `21.1.x`.
 2. Install **Touhou Little Maid** (`1.5.1+`).
-3. Place `touhou-maid-affection-1.7.5.2.jar` into your `.minecraft/mods` directory.
+3. Place `touhou-maid-affection-1.7.5.3.jar` into your `.minecraft/mods` directory.
 4. Launch the game.
 
 ### Developer & Architecture Docs
